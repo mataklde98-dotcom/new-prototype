@@ -1,0 +1,141 @@
+/**
+ * SlideTransition - Shared GPU-Optimized Slide Animation
+ * Identisch zu AccountEditScreenMobile / ScreenManager Pattern
+ * Wiederverwendbar für alle Screen-zu-Screen Übergänge
+ */
+
+.slide-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 56;
+  background: #0a0a0a;
+  
+  /* GPU-accelerated transition - ONLY transform */
+  transition: transform 300ms cubic-bezier(0.4, 0.0, 0.2, 1);
+  
+  /* CRITICAL: will-change ALWAYS ON for instant GPU promotion */
+  will-change: transform;
+  transform: translateZ(0);
+  
+  /* Prevent subpixel rendering issues */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  
+  /* Isolate paint/layout - CRITICAL for performance */
+  contain: layout style paint;
+  
+  /* Force hardware acceleration */
+  -webkit-transform: translateZ(0);
+  -webkit-backface-visibility: hidden;
+  -webkit-perspective: 1000px;
+}
+
+/* Entering - slides in from right */
+.slide-screen-entering {
+  animation: slideScreenInFromRight 300ms cubic-bezier(0.4, 0.0, 0.2, 1) forwards;
+}
+
+/* Exiting - slides out to right */
+.slide-screen-exiting {
+  animation: slideScreenOutToRight 300ms cubic-bezier(0.4, 0.0, 0.2, 1) forwards;
+  pointer-events: none;
+}
+
+/* Active - fully visible, centered */
+.slide-screen-active {
+  transform: translateX(0) translateZ(0);
+}
+
+/* Keyframe animations - GPU-only properties */
+@keyframes slideScreenInFromRight {
+  from {
+    transform: translateX(100%) translateZ(0);
+  }
+  to {
+    transform: translateX(0) translateZ(0);
+  }
+}
+
+@keyframes slideScreenOutToRight {
+  from {
+    transform: translateX(0) translateZ(0);
+  }
+  to {
+    transform: translateX(100%) translateZ(0);
+  }
+}
+
+/* Optimize for high refresh rate displays (120Hz+) */
+@media (min-resolution: 120dpi) {
+  .slide-screen {
+    transition-duration: 300ms;
+  }
+  
+  .slide-screen-entering,
+  .slide-screen-exiting {
+    animation-duration: 300ms !important;
+  }
+}
+
+/* Respect reduced motion preference */
+@media (prefers-reduced-motion: reduce) {
+  .slide-screen {
+    transition-duration: 1ms !important;
+  }
+  
+  .slide-screen-entering,
+  .slide-screen-exiting {
+    animation-duration: 1ms !important;
+  }
+}
+
+/* ===== Chat History Side-Panel (ChatGPT-style, slides from right) ===== */
+
+.chat-history-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 900;
+  background: rgba(0, 0, 0, 0);
+  transition: background 300ms cubic-bezier(0.4, 0.0, 0.2, 1);
+  will-change: background;
+}
+
+.chat-history-backdrop-visible {
+  background: rgba(0, 0, 0, 0.55);
+}
+
+.chat-history-panel {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 82%;
+  max-width: 340px;
+  z-index: 901;
+  background: #111111;
+  border-left: 1px solid rgba(255, 255, 255, 0.06);
+  
+  /* GPU-accelerated slide */
+  transform: translateX(100%) translateZ(0);
+  transition: transform 300ms cubic-bezier(0.4, 0.0, 0.2, 1);
+  will-change: transform;
+  -webkit-transform: translateX(100%) translateZ(0);
+  -webkit-backface-visibility: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  contain: layout style paint;
+}
+
+.chat-history-panel-visible {
+  transform: translateX(0) translateZ(0);
+  -webkit-transform: translateX(0) translateZ(0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chat-history-backdrop {
+    transition-duration: 1ms !important;
+  }
+  .chat-history-panel {
+    transition-duration: 1ms !important;
+  }
+}

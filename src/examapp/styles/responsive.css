@@ -1,0 +1,13 @@
+/* Scale down UI elements on desktop for better proportions */
+@media (min-width: 768px) {
+  /* Scale the entire app container */
+  .app-container {
+    transform: scale(0.8);
+    transform-origin: center center;
+  }
+
+  /* Reduce status bar on desktop for more content space */
+  .status-bar {
+    height: 20px !important;
+  }
+}

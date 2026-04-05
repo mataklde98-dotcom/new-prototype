@@ -1,0 +1,89 @@
+/* ===== SCROLLBAR SYSTEM =====
+ * Global: Thin Profil-Style scrollbar on ALL scrollable elements
+ * .scrollbar-hide → opt-in completely hidden scrollbar
+ * .scrollbar-thin → explicit thin scrollbar (legacy compat, same as global)
+ */
+
+/* === GLOBAL: Thin scrollbar everywhere === */
+/* Firefox */
+html {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+}
+/* Chrome, Safari, Opera – applied via * to catch all scroll containers */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 3px;
+  border: none;
+  box-shadow: none;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+::-webkit-scrollbar-thumb:active {
+  background: rgba(255, 255, 255, 0.35);
+}
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/* === .scrollbar-thin (legacy compat – same as global) === */
+.scrollbar-thin {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+}
+.scrollbar-thin::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+}
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 3px;
+  border: none;
+  box-shadow: none;
+}
+.scrollbar-thin::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+/* === .scrollbar-hide === */
+/* Opt-in: completely hide scrollbar (horizontal tab bars, etc.) */
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+.scrollbar-hide {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+/* Also apply to overflow-x-auto for backwards compat */
+.overflow-x-auto::-webkit-scrollbar {
+  display: none;
+}
+.overflow-x-auto {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Hide scrollbar on textareas (chat input etc.) */
+textarea.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+textarea.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}

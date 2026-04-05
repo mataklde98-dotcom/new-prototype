@@ -1,0 +1,122 @@
+/**
+ * AccountEditScreenMobile - Pure CSS GPU-Optimized Slide Animation
+ * Identisch zu ScreenManager für maximale Performance auf Mobile
+ */
+
+.account-edit-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
+  background: #0a0a0a;
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: none;
+  touch-action: pan-y pinch-zoom;
+  
+  /* GPU-accelerated transition - ONLY transform */
+  transition: transform 300ms cubic-bezier(0.4, 0.0, 0.2, 1);
+  
+  /* 🔥 CRITICAL: will-change ALWAYS ON for instant GPU promotion */
+  will-change: transform;
+  transform: translateZ(0);
+  
+  /* Prevent subpixel rendering issues */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  
+  /* Isolate paint/layout - CRITICAL for performance */
+  contain: layout style paint;
+  
+  /* Force hardware acceleration */
+  -webkit-transform: translateZ(0);
+  -webkit-backface-visibility: hidden;
+  -webkit-perspective: 1000px;
+  
+  /* Scrollbar styling */
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+}
+
+.account-edit-screen::-webkit-scrollbar {
+  width: 6px;
+}
+
+.account-edit-screen::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.account-edit-screen::-webkit-scrollbar-thumb {
+  background-color: rgba(255, 255, 255, 0.2);
+  border-radius: 3px;
+}
+
+/* Entering animation - slides in from right */
+.account-edit-entering {
+  animation: slideInFromRight 300ms cubic-bezier(0.4, 0.0, 0.2, 1) forwards;
+}
+
+/* Exiting animation - slides out to right */
+.account-edit-exiting {
+  animation: slideOutToRight 300ms cubic-bezier(0.4, 0.0, 0.2, 1) forwards;
+  pointer-events: none;
+}
+
+/* Active state - fully visible */
+.account-edit-active {
+  transform: translateX(0) translateZ(0);
+}
+
+/* Keyframe animations - GPU-only properties */
+@keyframes slideInFromRight {
+  from {
+    transform: translateX(100%) translateZ(0);
+  }
+  to {
+    transform: translateX(0) translateZ(0);
+  }
+}
+
+@keyframes slideOutToRight {
+  from {
+    transform: translateX(0) translateZ(0);
+  }
+  to {
+    transform: translateX(100%) translateZ(0);
+  }
+}
+
+@keyframes fadeInDown {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+/* Optimize for high refresh rate displays (120Hz+) */
+@media (min-resolution: 120dpi) {
+  .account-edit-screen {
+    transition-duration: 300ms;
+  }
+  
+  .account-edit-entering,
+  .account-edit-exiting {
+    animation-duration: 300ms !important;
+  }
+}
+
+/* Respect reduced motion preference */
+@media (prefers-reduced-motion: reduce) {
+  .account-edit-screen {
+    transition-duration: 1ms !important;
+  }
+  
+  .account-edit-entering,
+  .account-edit-exiting {
+    animation-duration: 1ms !important;
+  }
+}

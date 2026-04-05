@@ -1,0 +1,99 @@
+@import './fonts.css';
+@import './tailwind.css';
+@import './theme.css';
+@import './scrollbar-hide.css';
+
+/* ===== PREVENT ZOOM ON iOS/PWA - NATIVE APP BEHAVIOR ===== */
+* {
+  touch-action: manipulation;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* Allow text selection only in specific elements */
+input,
+textarea,
+[contenteditable="true"],
+.selectable-text {
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+html,
+body {
+  /* Prevent zoom */
+  touch-action: manipulation;
+  -webkit-text-size-adjust: 100%;
+  -ms-text-size-adjust: 100%;
+  
+  /* Prevent overscroll bounce */
+  overscroll-behavior: none;
+  -webkit-overflow-scrolling: touch;
+  
+  /* Fixed position for native app feel */
+  position: fixed;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+#root {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  position: relative;
+}
+
+/* ===== iOS SAFE AREA UTILITIES ===== */
+.pt-safe {
+  padding-top: var(--safe-area-inset-top);
+}
+
+.pb-safe {
+  padding-bottom: var(--safe-area-inset-bottom);
+}
+
+.pl-safe {
+  padding-left: var(--safe-area-inset-left);
+}
+
+.pr-safe {
+  padding-right: var(--safe-area-inset-right);
+}
+
+/* ===== TAB FADE-IN ANIMATION (GPU-composited, CSS-only) ===== */
+@keyframes tabFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ===== TAB SLIDE ANIMATIONS (directional, GPU-composited) ===== */
+/* Used for in-screen tab switching (MyFlashcards, TodoManagement, etc.) */
+@keyframes tabSlideFromRight {
+  from {
+    transform: translateX(100%) translateZ(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateX(0) translateZ(0);
+    opacity: 1;
+  }
+}
+
+@keyframes tabSlideFromLeft {
+  from {
+    transform: translateX(-100%) translateZ(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateX(0) translateZ(0);
+    opacity: 1;
+  }
+}

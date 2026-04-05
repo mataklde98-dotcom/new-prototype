@@ -1,0 +1,191 @@
+TASK — Global Desktop Layout Authority Refactor
+
+(Structural fix only. No per-screen patches.)
+
+⸻
+
+GOAL
+
+After this refactor, it must be impossible for any Desktop screen to change horizontal spacing unless MainLayout or DesktopContentWrapper is modified.
+
+Horizontal layout must be architecture-driven, not screen-driven.
+
+⸻
+
+NON-NEGOTIABLE PASS / FAIL (Desktop Only)
+
+For Home, Profil, Chats, Klassenarbeiten, in BOTH sidebar states (expanded + collapsed):
+	1.	abs(wrapperLeft - wrapperRight) <= 1px
+	2.	distanceSidebarEdgeToContent is constant (same gap token across screens)
+	3.	distanceContentToViewportRight follows the same Stage Padding rule
+	4.	Scrollbar is flush with viewport edge (no inset)
+
+If any of these fail → the task is NOT finished.
+
+⸻
+
+Regression Rule
+
+Fixing scrollbar position must NOT affect content centering.
+Fixing centering must NOT affect scrollbar position.
+
+If fixing one breaks the other → the architecture is still wrong.
+
+⸻
+
+Observed Problems
+	•	Scrollbar now sits correctly at viewport edge.
+	•	BUT horizontal spacing differs between:
+	•	Home
+	•	Profil
+	•	Chats
+	•	Right spacing differs per screen.
+	•	Some screens waste horizontal space.
+	•	Some screens appear visually shifted.
+
+Conclusion:
+There is no single horizontal layout authority.
+
+⸻
+
+REQUIRED: One Global Layout Rule
+
+Desktop hierarchy must be exactly:
+
+Viewport
+→ MainLayout
+→ Stage Container (defines outer horizontal framing)
+→ DesktopContentWrapper (defines max-width + centering)
+→ Screen content
+
+No screen may define its own horizontal padding, margin, or max-width.
+
+⸻
+
+1️⃣ MainLayout — Define the Desktop Stage Container
+
+MainLayout must:
+	•	NOT move the scroll root
+	•	NOT apply margin-right to fix symmetry
+	•	NOT rely on absolute sidebar offsets (e.g. left-3 hacks)
+	•	NOT shift scrollbar via margin/padding on scroll container
+
+Instead:
+	•	Create ONE consistent horizontal padding rule on a shared Stage Container.
+	•	Sidebar and Content must live inside the same padded container.
+	•	Sidebar must use layout spacing (flex/grid gap), NOT absolute offsets.
+
+Acceptance:
+Removing any screen component must NOT change global horizontal spacing.
+
+If structural changes are required (removing left-3, changing layout structure, switching flex/grid strategy), they must be done.
+
+Do NOT preserve broken structure.
+
+⸻
+
+2️⃣ DesktopContentWrapper — Single Max-Width Authority
+
+Requirements:
+	•	max-width defined in exactly one place
+	•	mx-auto centering
+	•	consistent responsive px
+	•	no nested max-w
+	•	no nested mx-auto
+	•	no per-screen px wrappers
+
+Mandatory code audit:
+
+Search entire project for:
+	•	max-w
+	•	mx-auto
+	•	px-
+	•	margin-left
+	•	margin-right
+
+Remove any horizontal spacing inside screens unless strictly internal to a card component.
+
+Screens must not control layout width.
+
+⸻
+
+3️⃣ Explicit Spacing Rule Definition (Required)
+
+Define and document exact values:
+	•	Outer Stage Padding (e.g. 24px)
+	•	Sidebar-to-Content gap (e.g. 24px)
+	•	DesktopContentWrapper max-width (e.g. 1200px)
+	•	Inner content padding (e.g. 24px)
+
+These values must be identical across:
+	•	Home
+	•	Profil
+	•	Chats
+	•	Klassenarbeiten
+	•	Every Desktop screen
+
+No deviations allowed.
+
+⸻
+
+4️⃣ Measurable Verification (Overlay Required)
+
+Extend Debug Overlay to output:
+
+For Home + Profil + Chats:
+	•	wrapperLeft
+	•	wrapperRight
+	•	sidebarRightEdge
+	•	contentLeftEdge
+	•	distanceSidebarToContent
+	•	distanceContentToViewportRight
+	•	scrollContainer element name
+	•	scrollContainer padding-right
+	•	scrollContainer margin-right
+
+Values must match the same rule on all screens.
+
+If numbers differ → layout not structurally unified.
+
+⸻
+
+5️⃣ Scrollbar Rule
+
+Scrollbar must:
+	•	Always sit at viewport edge
+	•	Never be shifted by margin or padding on scroll container
+	•	Scrolling must happen at root level (html/body/#root — confirm which)
+
+Framing belongs inside Stage Container, NOT on scroll root.
+
+Confirm explicitly:
+Which element scrolls?
+
+⸻
+
+6️⃣ Deliverables (Mandatory)
+
+Provide:
+	•	Screenshots with Debug Overlay:
+	•	Home (expanded + collapsed)
+	•	Profil (expanded + collapsed)
+	•	Chats (expanded + collapsed)
+	•	All measured numbers
+	•	Root cause list (file + line numbers)
+	•	Final layout hierarchy diagram
+	•	Diff/code excerpt of modified files
+	•	List of removed redundant wrappers
+
+⸻
+
+Important
+
+Do NOT:
+	•	Fix individual screens
+	•	Add route-specific marginRight
+	•	Patch visual differences
+	•	Add compensating px inside screens
+
+We are not tuning visuals.
+
+We are defining a layout architecture that makes horizontal drift impossible.

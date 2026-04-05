@@ -1,0 +1,233 @@
+You are extending the SoStudy platform with a Tutoring Activation system.
+
+IMPORTANT
+Do NOT modify the existing authentication system.
+The registration flow is already finished.
+
+Tutoring is NOT enabled during registration.
+
+Tutoring must now be activated AFTER login inside the student profile.
+
+--------------------------------------------------
+
+CORE IDEA
+
+The platform has two states for students:
+
+1. BASIC USER (no tutoring activated)
+2. TUTORING USER (tutoring service activated)
+
+Many features belong to the tutoring service and must be disabled in BASIC mode.
+
+--------------------------------------------------
+
+FEATURES THAT BELONG TO TUTORING SERVICE
+
+The following areas are part of the tutoring service and should NOT be fully accessible in BASIC mode.
+
+They should appear as locked or preview features.
+
+HOME SCREEN
+
+- Your Tutors
+- Extra Sessions
+- Recently Viewed Documents
+- Meetings
+- Chat (all chats except the AI learning assistant)
+
+PROFILE SCREEN
+
+- Set Availability
+- My Subjects
+- Extra Hours
+
+--------------------------------------------------
+
+BASIC USER EXPERIENCE
+
+If the student has NOT activated tutoring:
+
+Instead of the tutoring features, show a large call-to-action section:
+
+"Activate Tutoring"
+
+This CTA should appear:
+
+- on the Home screen
+- inside the Profile tutoring section
+
+The locked features may show preview UI cards but must display:
+
+"Activate tutoring to access this feature."
+
+The preview cards must not contain real data.
+
+--------------------------------------------------
+
+TUTORING ACTIVATION FLOW
+
+When the student clicks:
+
+"Activate Tutoring"
+
+Start a multi-step onboarding flow.
+
+STEP 1
+
+Choose tutoring type:
+
+- Online Tutoring
+- Local Tutoring
+
+STEP 2 (only if Local Tutoring selected)
+
+Partner Search
+
+User enters location or city.
+
+Show available tutoring partners.
+
+User selects a partner institute.
+
+STEP 3
+
+Subject Selection
+
+The student can see a list of all available school subjects.
+
+The student selects the subjects where tutoring is needed.
+
+STEP 4
+
+Send Tutoring Request
+
+The student submits a tutoring request.
+
+After submission show confirmation message:
+
+"Your tutoring request has been sent."
+
+Explain that the tutoring institute will contact the student via phone or email.
+
+Also show the tutoring contact details:
+
+- Phone number
+- Email address
+
+Add button:
+
+"Understood"
+
+--------------------------------------------------
+
+POST REQUEST STATE
+
+After the request has been submitted:
+
+The student returns to the Home screen.
+
+The CTA must change from:
+
+"Activate Tutoring"
+
+to
+
+"Request Submitted"
+
+The user must still be able to view the tutoring institute contact details at any time.
+
+Add a section:
+
+"Your Tutoring Request"
+
+Display:
+
+- Partner Name
+- Phone Number
+- Email Address
+
+--------------------------------------------------
+
+PROTOTYPE TESTING FEATURE
+
+For prototyping and testing purposes only:
+
+Add a temporary button inside the student Profile screen:
+
+"Accept Tutoring Request (Prototype)"
+
+This button simulates the tutoring institute approving the request.
+
+This button must ONLY exist for prototyping.
+
+When clicked:
+
+The system switches the user state from:
+
+BASIC USER → TUTORING USER
+
+--------------------------------------------------
+
+TUTORING USER STATE
+
+When tutoring is activated:
+
+Unlock all tutoring features:
+
+HOME
+
+- Your Tutors
+- Extra Sessions
+- Recently Viewed Documents
+- Meetings
+- Chat
+
+PROFILE
+
+- Set Availability
+- My Subjects
+- Extra Hours
+
+These features should now behave as normal interactive components.
+
+--------------------------------------------------
+
+STATE MANAGEMENT
+
+Use a tutoring status state for the user.
+
+Possible values:
+
+tutoringStatus =
+
+notActivated
+requestSent
+activated
+
+The UI must update dynamically based on this state.
+
+--------------------------------------------------
+
+UX GOALS
+
+The tutoring activation must feel simple and intuitive:
+
+Profile
+→ Activate tutoring
+→ Choose online or local
+→ Select subjects
+→ Send request
+→ Wait for approval
+→ Tutoring features unlock
+
+--------------------------------------------------
+
+IMPORTANT
+
+Do NOT modify:
+
+AuthWrapper
+Login system
+Registration system
+
+Only implement the tutoring activation system after login.

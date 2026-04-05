@@ -1,0 +1,17 @@
+/* 3D Flip Card Utilities for CreateOwnSetModal */
+
+/* Perspective container */
+.perspective-1000 {
+  perspective: 1000px;
+}
+
+/* Enable 3D transformations */
+.preserve-3d {
+  transform-style: preserve-3d;
+}
+
+/* Hide back face when flipped */
+.backface-hidden {
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}

@@ -1,0 +1,103 @@
+/**
+ * MeinTarifScreen - Pure CSS GPU-Optimized Slide Animation
+ * Identisch zu AccountEditScreen / ScreenManager für maximale Performance
+ */
+
+.mein-tarif-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
+  background: #0a0a0a;
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: none;
+  touch-action: pan-y pinch-zoom;
+  
+  /* GPU-accelerated transition - ONLY transform */
+  transition: transform 300ms cubic-bezier(0.4, 0.0, 0.2, 1);
+  
+  will-change: transform;
+  transform: translateZ(0);
+  
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  
+  contain: layout style paint;
+  
+  -webkit-transform: translateZ(0);
+  -webkit-backface-visibility: hidden;
+  -webkit-perspective: 1000px;
+  
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+}
+
+.mein-tarif-screen::-webkit-scrollbar {
+  width: 6px;
+}
+
+.mein-tarif-screen::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.mein-tarif-screen::-webkit-scrollbar-thumb {
+  background-color: rgba(255, 255, 255, 0.2);
+  border-radius: 3px;
+}
+
+/* Entering animation - slides in from right */
+.mein-tarif-entering {
+  animation: meinTarifSlideIn 300ms cubic-bezier(0.4, 0.0, 0.2, 1) forwards;
+}
+
+/* Exiting animation - slides out to right */
+.mein-tarif-exiting {
+  animation: meinTarifSlideOut 300ms cubic-bezier(0.4, 0.0, 0.2, 1) forwards;
+  pointer-events: none;
+}
+
+/* Active state - fully visible */
+.mein-tarif-active {
+  transform: translateX(0) translateZ(0);
+}
+
+@keyframes meinTarifSlideIn {
+  from {
+    transform: translateX(100%) translateZ(0);
+  }
+  to {
+    transform: translateX(0) translateZ(0);
+  }
+}
+
+@keyframes meinTarifSlideOut {
+  from {
+    transform: translateX(0) translateZ(0);
+  }
+  to {
+    transform: translateX(100%) translateZ(0);
+  }
+}
+
+@media (min-resolution: 120dpi) {
+  .mein-tarif-screen {
+    transition-duration: 300ms;
+  }
+  
+  .mein-tarif-entering,
+  .mein-tarif-exiting {
+    animation-duration: 300ms !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mein-tarif-screen {
+    transition-duration: 1ms !important;
+  }
+  
+  .mein-tarif-entering,
+  .mein-tarif-exiting {
+    animation-duration: 1ms !important;
+  }
+}
