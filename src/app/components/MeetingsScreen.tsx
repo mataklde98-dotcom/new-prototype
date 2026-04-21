@@ -11,11 +11,15 @@ import {
   Search, Filter, Calendar, Clock, ChevronDown, ChevronRight,
   X, Check, AlertCircle, Wifi, WifiOff, Volume2,
   User, UserPlus, Star, BookOpen, MoreVertical, Copy,
-  Play, Square, Camera, CameraOff, RefreshCw, Zap
+  Play, Square, Camera, CameraOff, RefreshCw, Zap, Brain, Sparkles,
+  AlertTriangle, CheckCircle2
 } from 'lucide-react';
 import { useMeetingRatings } from '@/hooks/useMeetingRatings';
 import { MeetingRatingModal, RatingBadge } from './MeetingRatingModal';
 import { useUser } from '@/contexts/UserContext';
+import { APP_NOW } from '@/mocks/extraSessions.mock';
+import { MOCK_SESSIONS } from '@/mocks/tutoringProgress.mock';
+import { useCancelledExtraSessions, cancelledExtraSessionsStore } from '@/app/components/cancelledExtraSessionsStore';
 
 // ===== TYPES =====
 interface Meeting {
@@ -31,6 +35,9 @@ interface Meeting {
   joinPolicy: { joinEarlyMinutes: number; requiresTutorStart: boolean };
   room: { roomId: string; roomKey?: string };
   liveState?: { isTutorPresent: boolean; participantsOnline: number; startedAt?: string; endedAt?: string };
+  isExtraSession?: boolean; // Verknüpfung zu MOCK_EXTRA_SESSIONS (Home)
+  extraSessionId?: string;
+  tutoringSessionId?: string; // Verknüpfung zu MOCK_SESSIONS (Nachhilfe-Fortschritt)
 }
 
 type UIStatus = 'live' | 'upcoming' | 'joinable' | 'waiting' | 'past' | 'cancelled';
@@ -42,13 +49,14 @@ interface MeetingsScreenProps {
   isMobile?: boolean;
   externalTransition?: boolean;
   onOpenTutoringActivation?: () => void;
+  onOpenTutoringSession?: (sessionId: string) => void;
 }
 
 // ===== HELPERS =====
 const poppins = (weight: string) => `font-['Poppins:${weight}',sans-serif]`;
 
 function getUIStatus(meeting: Meeting): UIStatus {
-  const now = new Date();
+  const now = APP_NOW;
   const start = new Date(meeting.startAt);
   const end = new Date(meeting.endAt);
 
@@ -87,7 +95,7 @@ function formatTimeRange(startIso: string, endIso: string): string {
 }
 
 function getCountdown(iso: string): string {
-  const now = new Date();
+  const now = APP_NOW;
   const target = new Date(iso);
   const diff = target.getTime() - now.getTime();
   if (diff <= 0) return 'Jetzt';
@@ -108,68 +116,92 @@ function getDuration(startIso: string, endIso: string): string {
   return `${mins} Min`;
 }
 
+// ===== STORNO-LOGIK (Extra-Stunden) =====
+// Gleiche Regeln wie in AllExtraSessionsSheet — 24h-Frei-Grenze
+type ExtraCancelState = 'none' | 'warning' | 'expired';
+function getExtraCancelState(startISO: string, now: Date): { state: ExtraCancelState; hoursLeft: number } {
+  const start = new Date(startISO).getTime();
+  const diffMs = start - now.getTime();
+  const hoursUntilStart = diffMs / (1000 * 60 * 60);
+  const hoursUntilDeadline = hoursUntilStart - 24;
+  if (hoursUntilStart < 24) return { state: 'expired', hoursLeft: 0 };
+  if (hoursUntilStart <= 48) return { state: 'warning', hoursLeft: Math.max(0, Math.floor(hoursUntilDeadline)) };
+  return { state: 'none', hoursLeft: Math.floor(hoursUntilDeadline) };
+}
+
 // ===== MOCK DATA =====
+// APP_NOW = 2026-03-18T12:00+01:00 — alle Meetings sind relativ dazu gesetzt, damit
+// "Bevorstehend" / "Live" / "Vergangen" im Prototyp dauerhaft funktioniert.
+// Meetings mit isExtraSession:true matchen Einträge in MOCK_EXTRA_SESSIONS (Home).
 const MOCK_MEETINGS: Meeting[] = [
+  // ===== LIVE — läuft gerade =====
   {
-    id: 'm1',
+    id: 'm-live',
     subjectName: 'Mathematik',
     lessonType: '1on1',
     tutor: { id: 't1', name: 'Dr. Sarah Weber' },
     students: [{ id: 's1', name: 'Max Mustermann' }],
     topicTitle: 'Quadratische Gleichungen',
-    startAt: '2026-03-04T16:00:00+01:00',
-    endAt: '2026-03-04T17:00:00+01:00',
+    startAt: '2026-03-18T11:30:00+01:00',
+    endAt: '2026-03-18T12:30:00+01:00',
     status: 'live',
     joinPolicy: { joinEarlyMinutes: 10, requiresTutorStart: true },
     room: { roomId: 'room-abc123' },
-    liveState: { isTutorPresent: true, participantsOnline: 2, startedAt: '2026-03-04T16:00:00+01:00' },
+    liveState: { isTutorPresent: true, participantsOnline: 2, startedAt: '2026-03-18T11:30:00+01:00' },
   },
+
+  // ===== UPCOMING — HEUTE (18.03.) =====
+  // Extra-Stunde ↔ ES-1 (Englisch, Dr. Maria Fischer, 18.03. 20:00)
   {
-    id: 'm2',
+    id: 'm-ex-1',
     subjectName: 'Englisch',
-    lessonType: 'group',
-    tutor: { id: 't2', name: 'Emily Johnson' },
-    students: [
-      { id: 's1', name: 'Max Mustermann' },
-      { id: 's2', name: 'Anna Schmidt' },
-      { id: 's3', name: 'Lukas Bauer' },
-      { id: 's4', name: 'Sophie Müller' },
-    ],
-    topicTitle: 'Conditional Sentences II & III',
-    startAt: '2026-03-04T18:00:00+01:00',
-    endAt: '2026-03-04T19:30:00+01:00',
-    status: 'scheduled',
-    joinPolicy: { joinEarlyMinutes: 10, requiresTutorStart: true },
-    room: { roomId: 'room-def456' },
-  },
-  {
-    id: 'm3',
-    subjectName: 'Physik',
     lessonType: '1on1',
-    tutor: { id: 't3', name: 'Prof. Hans Müller' },
+    tutor: { id: 't2', name: 'Dr. Maria Fischer' },
     students: [{ id: 's1', name: 'Max Mustermann' }],
-    topicTitle: 'Newtonsche Mechanik',
-    startAt: '2026-03-05T15:00:00+01:00',
-    endAt: '2026-03-05T16:00:00+01:00',
+    topicTitle: 'Vertiefung · Grammar Focus',
+    startAt: '2026-03-18T20:00:00+01:00',
+    endAt: '2026-03-18T21:00:00+01:00',
     status: 'scheduled',
     joinPolicy: { joinEarlyMinutes: 10, requiresTutorStart: true },
-    room: { roomId: 'room-ghi789' },
+    room: { roomId: 'room-ex-1' },
+    isExtraSession: true,
+    extraSessionId: 'es-1',
   },
+
+  // ===== UPCOMING — MORGEN (19.03.) =====
   {
-    id: 'm4',
+    id: 'm-tomorrow',
     subjectName: 'Deutsch',
     lessonType: '1on1',
-    tutor: { id: 't4', name: 'Lisa Hofmann' },
+    tutor: { id: 't3', name: 'Lisa Hofmann' },
     students: [{ id: 's1', name: 'Max Mustermann' }],
     topicTitle: 'Gedichtanalyse: Romantik',
-    startAt: '2026-03-06T14:00:00+01:00',
-    endAt: '2026-03-06T15:00:00+01:00',
+    startAt: '2026-03-19T15:00:00+01:00',
+    endAt: '2026-03-19T16:00:00+01:00',
     status: 'scheduled',
     joinPolicy: { joinEarlyMinutes: 10, requiresTutorStart: false },
-    room: { roomId: 'room-jkl012' },
+    room: { roomId: 'room-de-1' },
+  },
+
+  // ===== UPCOMING — IN 2 TAGEN (20.03.) =====
+  // Extra-Stunde ↔ ES-2 (Mathe, Sebastian Müller, 20.03. 10:00)
+  {
+    id: 'm-ex-2',
+    subjectName: 'Mathematik',
+    lessonType: '1on1',
+    tutor: { id: 't4', name: 'Sebastian Müller' },
+    students: [{ id: 's1', name: 'Max Mustermann' }],
+    topicTitle: 'Klausurvorbereitung · Analysis',
+    startAt: '2026-03-20T10:00:00+01:00',
+    endAt: '2026-03-20T11:00:00+01:00',
+    status: 'scheduled',
+    joinPolicy: { joinEarlyMinutes: 10, requiresTutorStart: true },
+    room: { roomId: 'room-ex-2' },
+    isExtraSession: true,
+    extraSessionId: 'es-2',
   },
   {
-    id: 'm5',
+    id: 'm-bio',
     subjectName: 'Biologie',
     lessonType: 'group',
     tutor: { id: 't5', name: 'Dr. Maria Klein' },
@@ -179,70 +211,106 @@ const MOCK_MEETINGS: Meeting[] = [
       { id: 's5', name: 'Leon Fischer' },
     ],
     topicTitle: 'Genetik: Mendelsche Regeln',
-    startAt: '2026-03-07T10:00:00+01:00',
-    endAt: '2026-03-07T11:30:00+01:00',
+    startAt: '2026-03-20T14:00:00+01:00',
+    endAt: '2026-03-20T15:30:00+01:00',
     status: 'scheduled',
     joinPolicy: { joinEarlyMinutes: 15, requiresTutorStart: true },
-    room: { roomId: 'room-mno345' },
+    room: { roomId: 'room-bio-1' },
   },
-  // Past meetings
+
+  // ===== UPCOMING — IN 4 TAGEN (22.03.) =====
+  // Extra-Stunde ↔ ES-3 (Mathe, Sebastian Müller, 22.03. 18:00)
   {
-    id: 'm6',
+    id: 'm-ex-3',
+    subjectName: 'Mathematik',
+    lessonType: '1on1',
+    tutor: { id: 't4', name: 'Sebastian Müller' },
+    students: [{ id: 's1', name: 'Max Mustermann' }],
+    topicTitle: 'Vertiefung · Integralrechnung',
+    startAt: '2026-03-22T18:00:00+01:00',
+    endAt: '2026-03-22T19:00:00+01:00',
+    status: 'scheduled',
+    joinPolicy: { joinEarlyMinutes: 10, requiresTutorStart: true },
+    room: { roomId: 'room-ex-3' },
+    isExtraSession: true,
+    extraSessionId: 'es-3',
+  },
+
+  // ===== UPCOMING — IN 7 TAGEN (25.03.) =====
+  {
+    id: 'm-phy',
+    subjectName: 'Physik',
+    lessonType: '1on1',
+    tutor: { id: 't6', name: 'Prof. Hans Müller' },
+    students: [{ id: 's1', name: 'Max Mustermann' }],
+    topicTitle: 'Newtonsche Mechanik',
+    startAt: '2026-03-25T16:00:00+01:00',
+    endAt: '2026-03-25T17:00:00+01:00',
+    status: 'scheduled',
+    joinPolicy: { joinEarlyMinutes: 10, requiresTutorStart: true },
+    room: { roomId: 'room-phy-1' },
+  },
+
+  // ===== PAST — Vergangene Meetings =====
+  {
+    id: 'm-past-1',
     subjectName: 'Mathematik',
     lessonType: '1on1',
     tutor: { id: 't1', name: 'Dr. Sarah Weber' },
     students: [{ id: 's1', name: 'Max Mustermann' }],
     topicTitle: 'Lineare Gleichungssysteme',
-    startAt: '2026-03-01T16:00:00+01:00',
-    endAt: '2026-03-01T17:00:00+01:00',
+    startAt: '2026-03-15T16:00:00+01:00',
+    endAt: '2026-03-15T17:00:00+01:00',
     status: 'ended',
     joinPolicy: { joinEarlyMinutes: 10, requiresTutorStart: true },
-    room: { roomId: 'room-pqr678' },
-    liveState: { isTutorPresent: false, participantsOnline: 0, startedAt: '2026-03-01T16:00:00+01:00', endedAt: '2026-03-01T17:02:00+01:00' },
+    room: { roomId: 'room-past-1' },
+    liveState: { isTutorPresent: false, participantsOnline: 0, startedAt: '2026-03-15T16:00:00+01:00', endedAt: '2026-03-15T17:02:00+01:00' },
+    tutoringSessionId: 'session_1',
   },
   {
-    id: 'm7',
-    subjectName: 'Französisch',
-    lessonType: '1on1',
-    tutor: { id: 't6', name: 'Marie Dupont' },
-    students: [{ id: 's1', name: 'Max Mustermann' }],
-    topicTitle: 'Passé Composé Übungen',
-    startAt: '2026-02-28T14:00:00+01:00',
-    endAt: '2026-02-28T15:00:00+01:00',
-    status: 'ended',
-    joinPolicy: { joinEarlyMinutes: 10, requiresTutorStart: true },
-    room: { roomId: 'room-stu901' },
-    liveState: { isTutorPresent: false, participantsOnline: 0, startedAt: '2026-02-28T14:00:00+01:00', endedAt: '2026-02-28T14:58:00+01:00' },
-  },
-  {
-    id: 'm8',
+    id: 'm-past-2',
     subjectName: 'Englisch',
     lessonType: 'group',
-    tutor: { id: 't2', name: 'Emily Johnson' },
+    tutor: { id: 't7', name: 'Emily Johnson' },
     students: [
       { id: 's1', name: 'Max Mustermann' },
       { id: 's2', name: 'Anna Schmidt' },
     ],
     topicTitle: 'Reading Comprehension B2',
-    startAt: '2026-02-26T18:00:00+01:00',
-    endAt: '2026-02-26T19:00:00+01:00',
+    startAt: '2026-03-12T18:00:00+01:00',
+    endAt: '2026-03-12T19:00:00+01:00',
     status: 'ended',
     joinPolicy: { joinEarlyMinutes: 10, requiresTutorStart: true },
-    room: { roomId: 'room-vwx234' },
-    liveState: { isTutorPresent: false, participantsOnline: 0, startedAt: '2026-02-26T18:01:00+01:00', endedAt: '2026-02-26T19:00:00+01:00' },
+    room: { roomId: 'room-past-2' },
+    liveState: { isTutorPresent: false, participantsOnline: 0, startedAt: '2026-03-12T18:01:00+01:00', endedAt: '2026-03-12T19:00:00+01:00' },
+    tutoringSessionId: 'session_2',
   },
   {
-    id: 'm9',
+    id: 'm-past-3',
+    subjectName: 'Französisch',
+    lessonType: '1on1',
+    tutor: { id: 't8', name: 'Marie Dupont' },
+    students: [{ id: 's1', name: 'Max Mustermann' }],
+    topicTitle: 'Passé Composé Übungen',
+    startAt: '2026-03-10T14:00:00+01:00',
+    endAt: '2026-03-10T15:00:00+01:00',
+    status: 'ended',
+    joinPolicy: { joinEarlyMinutes: 10, requiresTutorStart: true },
+    room: { roomId: 'room-past-3' },
+    liveState: { isTutorPresent: false, participantsOnline: 0, startedAt: '2026-03-10T14:00:00+01:00', endedAt: '2026-03-10T14:58:00+01:00' },
+  },
+  {
+    id: 'm-cancelled',
     subjectName: 'Chemie',
     lessonType: '1on1',
-    tutor: { id: 't7', name: 'Dr. Thomas Braun' },
+    tutor: { id: 't9', name: 'Dr. Thomas Braun' },
     students: [{ id: 's1', name: 'Max Mustermann' }],
     topicTitle: 'Stöchiometrie',
-    startAt: '2026-02-25T15:00:00+01:00',
-    endAt: '2026-02-25T16:00:00+01:00',
+    startAt: '2026-03-08T15:00:00+01:00',
+    endAt: '2026-03-08T16:00:00+01:00',
     status: 'cancelled',
     joinPolicy: { joinEarlyMinutes: 10, requiresTutorStart: true },
-    room: { roomId: 'room-yza567' },
+    room: { roomId: 'room-cancelled' },
   },
 ];
 
@@ -252,7 +320,7 @@ const SUBJECTS = ['Alle', 'Mathematik', 'Englisch', 'Deutsch', 'Physik', 'Biolog
 
 const StatusBadge = ({ status }: { status: UIStatus }) => {
   const config: Record<UIStatus, { label: string; color: string; bg: string; pulse?: boolean }> = {
-    live: { label: 'LIVE', color: '#FF4444', bg: 'rgba(255,68,68,0.15)', pulse: true },
+    live: { label: 'LIVE', color: '#00B894', bg: 'rgba(0,184,148,0.12)', pulse: true },
     joinable: { label: 'Beitreten', color: '#00D4AA', bg: 'rgba(0,212,170,0.15)' },
     waiting: { label: 'Warteraum', color: '#FFB800', bg: 'rgba(255,184,0,0.15)' },
     upcoming: { label: 'Geplant', color: '#7B61FF', bg: 'rgba(123,97,255,0.15)' },
@@ -281,6 +349,20 @@ const TypeBadge = ({ type }: { type: '1on1' | 'group' }) => (
     className={`px-2 py-0.5 rounded-md ${poppins('Medium')} text-[10px] text-white/50 bg-white/[0.04] border border-white/[0.06]`}
   >
     {type === '1on1' ? 'Einzel' : 'Gruppe'}
+  </span>
+);
+
+const ExtraSessionBadge = () => (
+  <span
+    className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md ${poppins('SemiBold')} text-[10px]`}
+    style={{
+      color: '#FF9F43',
+      background: 'rgba(255,159,67,0.08)',
+      border: '1px solid rgba(255,159,67,0.20)',
+    }}
+  >
+    <Zap className="w-2.5 h-2.5" strokeWidth={2.5} />
+    Extra-Stunde
   </span>
 );
 
@@ -367,6 +449,7 @@ const MeetingCard = ({ meeting, onClick, hasRating, onRate }: { meeting: Meeting
           <span className={`${poppins('Regular')} text-[11px] text-white/40`}>{formatTimeRange(meeting.startAt, meeting.endAt)}</span>
         </div>
         <TypeBadge type={meeting.lessonType} />
+        {meeting.isExtraSession && <ExtraSessionBadge />}
         {meeting.lessonType === 'group' && (
           <div className="flex items-center gap-1">
             <Users className="w-3.5 h-3.5 text-white/30" />
@@ -383,8 +466,8 @@ const MeetingCard = ({ meeting, onClick, hasRating, onRate }: { meeting: Meeting
         </div>
         <div className="flex items-center gap-2">
           {uiStatus === 'live' && (
-            <button className={`px-3 py-1.5 rounded-lg ${poppins('Medium')} text-[12px] text-white bg-[#FF4444]/80 active:bg-[#FF4444] transition-colors`}
-              style={{ WebkitTapHighlightColor: 'transparent' }}
+            <button className={`px-3 py-1.5 rounded-lg ${poppins('Medium')} text-[12px] text-white transition-colors`}
+              style={{ background: 'rgba(0,184,148,0.07)', border: '1px solid rgba(0,184,148,0.25)', WebkitTapHighlightColor: 'transparent' }}
               onClick={(e) => { e.stopPropagation(); }}
             >
               Jetzt beitreten
@@ -442,9 +525,12 @@ const MeetingCard = ({ meeting, onClick, hasRating, onRate }: { meeting: Meeting
 };
 
 // ===== MEETING DETAIL VIEW =====
-const MeetingDetailView = ({ meeting, onBack, onJoinLobby, ratingValue, onRate }: { meeting: Meeting; onBack: () => void; onJoinLobby: () => void; ratingValue?: 1 | 2 | 3 | 4; onRate?: () => void }) => {
+const MeetingDetailView = ({ meeting, onBack, onJoinLobby, ratingValue, onRate, onOpenTutoringSession, onRequestCancelExtra }: { meeting: Meeting; onBack: () => void; onJoinLobby: () => void; ratingValue?: 1 | 2 | 3 | 4; onRate?: () => void; onOpenTutoringSession?: (sessionId: string) => void; onRequestCancelExtra?: (meeting: Meeting) => void }) => {
   const uiStatus = getUIStatus(meeting);
   const [countdown, setCountdown] = useState(getCountdown(meeting.startAt));
+  const extraCancel = meeting.isExtraSession ? getExtraCancelState(meeting.startAt, APP_NOW) : null;
+  const showExtraCancelSection =
+    meeting.isExtraSession && (uiStatus === 'upcoming' || uiStatus === 'joinable' || uiStatus === 'waiting');
 
   useEffect(() => {
     if (uiStatus !== 'upcoming' && uiStatus !== 'joinable' && uiStatus !== 'waiting') return;
@@ -467,6 +553,7 @@ const MeetingDetailView = ({ meeting, onBack, onJoinLobby, ratingValue, onRate }
           <div className="flex items-center gap-2 flex-wrap">
             <h2 className={`${poppins('SemiBold')} text-[18px] text-white`}>{meeting.subjectName}</h2>
             <StatusBadge status={uiStatus} />
+            {meeting.isExtraSession && <ExtraSessionBadge />}
           </div>
           {meeting.topicTitle && uiStatus !== 'past' && (
             <p className={`${poppins('Regular')} text-[13px] text-white/50 mt-0.5`}>{meeting.topicTitle}</p>
@@ -499,6 +586,64 @@ const MeetingDetailView = ({ meeting, onBack, onJoinLobby, ratingValue, onRate }
           </div>
         )}
       </GlassCard>
+
+      {/* Storno-Section (nur für anstehende Extra-Stunden) */}
+      {showExtraCancelSection && extraCancel && (
+        <GlassCard className="p-4">
+          <p className={`${poppins('Medium')} text-[11px] text-white/30 uppercase tracking-wide mb-3 flex items-center gap-1.5`}>
+            <AlertTriangle className="w-3.5 h-3.5" />
+            Storno
+          </p>
+          <div className="flex items-center justify-between gap-3">
+            {/* Status-Text */}
+            <div className="flex-1 min-w-0">
+              {extraCancel.state === 'none' && (
+                <>
+                  <p className={`${poppins('Medium')} text-[13px] text-white leading-tight`}>
+                    Kostenlos stornierbar
+                  </p>
+                  <p className={`${poppins('Regular')} text-[11px] text-white/40 mt-0.5`}>
+                    Bis 24 h vor Beginn ohne Verlust der Stunde
+                  </p>
+                </>
+              )}
+              {extraCancel.state === 'warning' && (
+                <>
+                  <p className={`${poppins('SemiBold')} text-[13px] leading-tight`} style={{ color: '#FF9F43' }}>
+                    noch {extraCancel.hoursLeft} h kostenlos stornierbar
+                  </p>
+                  <p className={`${poppins('Regular')} text-[11px] text-white/40 mt-0.5`}>
+                    Danach wird die Extra-Stunde nicht mehr zurückerstattet
+                  </p>
+                </>
+              )}
+              {extraCancel.state === 'expired' && (
+                <>
+                  <p className={`${poppins('Medium')} text-[13px] text-white/60 leading-tight`}>
+                    Storno-Frist abgelaufen
+                  </p>
+                  <p className={`${poppins('Regular')} text-[11px] text-white/40 mt-0.5`}>
+                    Absage möglich — Extra-Stunde wird nicht zurückerstattet
+                  </p>
+                </>
+              )}
+            </div>
+            {/* Einheitlicher Absagen-Button */}
+            <button
+              onClick={() => onRequestCancelExtra?.(meeting)}
+              className={`${poppins('SemiBold')} text-[12px] px-3.5 py-2 rounded-lg transition-all active:scale-95 flex-shrink-0`}
+              style={{
+                color: '#FF9F43',
+                background: 'rgba(255,159,67,0.08)',
+                border: '1px solid rgba(255,159,67,0.25)',
+                WebkitTapHighlightColor: 'transparent',
+              }}
+            >
+              Absagen
+            </button>
+          </div>
+        </GlassCard>
+      )}
 
       {/* Tutor Block */}
       <GlassCard className="p-4">
@@ -562,26 +707,53 @@ const MeetingDetailView = ({ meeting, onBack, onJoinLobby, ratingValue, onRate }
         </div>
       </GlassCard>
 
-      {/* Past Meeting Summary */}
-      {uiStatus === 'past' && (
-        <GlassCard className="p-4">
-          <p className={`${poppins('Medium')} text-[11px] text-white/30 uppercase tracking-wide mb-3`}>Zusammenfassung</p>
-          <div className="space-y-3">
-            <div>
-              <p className={`${poppins('Medium')} text-[12px] text-white/50 mb-1`}>Behandelte Themen</p>
-              <p className={`${poppins('Regular')} text-[12px] text-white/40 italic`}>Noch keine Zusammenfassung verfügbar</p>
+      {/* AI-Zusammenfassung (Vergangene Meetings mit verknüpfter Nachhilfe-Sitzung) */}
+      {uiStatus === 'past' && (() => {
+        const linkedSession = meeting.tutoringSessionId
+          ? MOCK_SESSIONS.find((s) => s.id === meeting.tutoringSessionId)
+          : null;
+        if (!linkedSession) return null;
+
+        return (
+          <GlassCard className="p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <Brain className="w-4 h-4 text-[#7B61FF]" />
+              <p className={`${poppins('Medium')} text-[11px] text-white/30 uppercase tracking-wide`}>
+                AI-Zusammenfassung
+              </p>
+              <span
+                className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md ${poppins('SemiBold')} text-[9px]`}
+                style={{
+                  color: '#7B61FF',
+                  background: 'rgba(123,97,255,0.10)',
+                  border: '1px solid rgba(123,97,255,0.20)',
+                }}
+              >
+                <Sparkles className="w-2.5 h-2.5" strokeWidth={2.5} />
+                AI
+              </span>
             </div>
-            <div>
-              <p className={`${poppins('Medium')} text-[12px] text-white/50 mb-1`}>Hausaufgaben</p>
-              <p className={`${poppins('Regular')} text-[12px] text-white/40 italic`}>Keine Hausaufgaben zugewiesen</p>
-            </div>
-            <div>
-              <p className={`${poppins('Medium')} text-[12px] text-white/50 mb-1`}>Tutor-Feedback</p>
-              <p className={`${poppins('Regular')} text-[12px] text-white/40 italic`}>Kein Feedback vorhanden</p>
-            </div>
-          </div>
-        </GlassCard>
-      )}
+            <p className={`${poppins('Regular')} text-[12px] text-white/60 leading-relaxed mb-4`}>
+              {linkedSession.aiSummary}
+            </p>
+            {onOpenTutoringSession && (
+              <button
+                onClick={() => onOpenTutoringSession(linkedSession.id)}
+                className={`w-full flex items-center justify-center gap-1.5 py-2.5 rounded-xl ${poppins('SemiBold')} text-[12px] transition-all active:scale-[0.98]`}
+                style={{
+                  color: 'rgba(123,97,255,0.9)',
+                  background: 'rgba(123,97,255,0.08)',
+                  border: '1px solid rgba(123,97,255,0.20)',
+                  WebkitTapHighlightColor: 'transparent',
+                }}
+              >
+                Mehr Details
+                <ChevronRight className="w-3.5 h-3.5" strokeWidth={2.2} />
+              </button>
+            )}
+          </GlassCard>
+        );
+      })()}
 
       {/* Rating Section */}
       {uiStatus === 'past' && (
@@ -969,9 +1141,30 @@ const MeetingRoom = ({ meeting, onLeave }: { meeting: Meeting; onLeave: () => vo
 };
 
 // ===== MAIN MEETINGS SCREEN =====
-export default React.memo(function MeetingsScreen({ onClose, isMobile = false, externalTransition = false, onOpenTutoringActivation }: MeetingsScreenProps) {
+export default React.memo(function MeetingsScreen({ onClose, isMobile = false, externalTransition = false, onOpenTutoringActivation, onOpenTutoringSession }: MeetingsScreenProps) {
   const { tutoringStatus } = useUser();
   const isTutoringLocked = tutoringStatus !== 'activated';
+
+  // Abgesagte Extra-Stunden herausfiltern — verknüpfte Meetings verschwinden mit
+  const cancelledExtraSessionIds = useCancelledExtraSessions();
+  const visibleMeetings = useMemo(
+    () => MOCK_MEETINGS.filter((m) => !m.extraSessionId || !cancelledExtraSessionIds.has(m.extraSessionId)),
+    [cancelledExtraSessionIds],
+  );
+
+  // Storno-Dialog + Toast State
+  const [cancelConfirmMeeting, setCancelConfirmMeeting] = useState<Meeting | null>(null);
+  const [cancelToast, setCancelToast] = useState<{ message: string; refunded: boolean } | null>(null);
+
+  useEffect(() => {
+    if (!cancelToast) return;
+    const t = setTimeout(() => setCancelToast(null), 2800);
+    return () => clearTimeout(t);
+  }, [cancelToast]);
+
+  const handleRequestCancelExtra = useCallback((meeting: Meeting) => {
+    setCancelConfirmMeeting(meeting);
+  }, []);
 
   const [activeTab, setActiveTab] = useState<MeetingTab>('upcoming');
   const [viewState, setViewState] = useState<ViewState>('list');
@@ -1058,6 +1251,24 @@ export default React.memo(function MeetingsScreen({ onClose, isMobile = false, e
     triggerSlide('right', activeTab, 'list', null);
   }, [activeTab, triggerSlide]);
 
+  // Storno bestätigen — cancel, Toast anzeigen, ggf. zurück zur Liste
+  const handleConfirmCancelExtra = useCallback(() => {
+    if (!cancelConfirmMeeting?.extraSessionId) return;
+    const { state } = getExtraCancelState(cancelConfirmMeeting.startAt, APP_NOW);
+    const refunded = state !== 'expired';
+    cancelledExtraSessionsStore.cancel(cancelConfirmMeeting.extraSessionId);
+    setCancelConfirmMeeting(null);
+    setCancelToast({
+      message: refunded
+        ? 'Termin abgesagt · Extra-Stunde wurde zurückgebucht'
+        : 'Termin abgesagt · Extra-Stunde nicht zurückerstattet',
+      refunded,
+    });
+    if (viewState === 'detail') {
+      handleBackToList();
+    }
+  }, [cancelConfirmMeeting, viewState, handleBackToList]);
+
   // Cleanup
   useEffect(() => () => { if (animTimeoutRef.current) clearTimeout(animTimeoutRef.current); }, []);
 
@@ -1070,7 +1281,7 @@ export default React.memo(function MeetingsScreen({ onClose, isMobile = false, e
 
   // Filter meetings by tab
   const tabMeetings = useMemo(() => {
-    return MOCK_MEETINGS.filter(m => {
+    return visibleMeetings.filter(m => {
       const status = getUIStatus(m);
       switch (activeTab) {
         case 'upcoming': return status === 'upcoming' || status === 'joinable' || status === 'waiting';
@@ -1120,9 +1331,9 @@ export default React.memo(function MeetingsScreen({ onClose, isMobile = false, e
   };
 
   const tabs: { key: MeetingTab; label: string; count: number }[] = [
-    { key: 'upcoming', label: 'Anstehend', count: MOCK_MEETINGS.filter(m => { const s = getUIStatus(m); return s === 'upcoming' || s === 'joinable' || s === 'waiting'; }).length },
-    { key: 'live', label: 'Live', count: MOCK_MEETINGS.filter(m => getUIStatus(m) === 'live').length },
-    { key: 'past', label: 'Vergangen', count: MOCK_MEETINGS.filter(m => { const s = getUIStatus(m); return s === 'past' || s === 'cancelled'; }).length },
+    { key: 'upcoming', label: 'Anstehend', count: visibleMeetings.filter(m => { const s = getUIStatus(m); return s === 'upcoming' || s === 'joinable' || s === 'waiting'; }).length },
+    { key: 'live', label: 'Live', count: visibleMeetings.filter(m => getUIStatus(m) === 'live').length },
+    { key: 'past', label: 'Vergangen', count: visibleMeetings.filter(m => { const s = getUIStatus(m); return s === 'past' || s === 'cancelled'; }).length },
   ];
 
   // Meeting Room or Lobby view (fullscreen)
@@ -1270,7 +1481,7 @@ export default React.memo(function MeetingsScreen({ onClose, isMobile = false, e
                 {tab.count > 0 && (
                   <span className={`min-w-[18px] h-[18px] rounded-full flex items-center justify-center text-[10px] ${poppins('SemiBold')} ${
                     isActive
-                      ? (tab.key === 'live' ? 'bg-[#FF4444]/20 text-[#FF4444]' : 'bg-white/[0.12] text-white/70')
+                      ? (tab.key === 'live' ? 'bg-[#00B894]/20 text-[#00B894]' : 'bg-white/[0.12] text-white/70')
                       : 'bg-white/[0.06] text-white/30'
                   }`}>
                     {tab.count}
@@ -1399,6 +1610,8 @@ export default React.memo(function MeetingsScreen({ onClose, isMobile = false, e
                 onJoinLobby={() => setViewState('lobby')}
                 ratingValue={getRating(selectedMeeting.id)?.rating}
                 onRate={() => setRatingModalMeeting(selectedMeeting)}
+                onOpenTutoringSession={onOpenTutoringSession}
+                onRequestCancelExtra={handleRequestCancelExtra}
               />
             ) : isLoading ? (
               <div className="space-y-3">
@@ -1457,6 +1670,130 @@ export default React.memo(function MeetingsScreen({ onClose, isMobile = false, e
     />
   );
 
+  // ===== STORNO CONFIRM DIALOG + TOAST =====
+  const cancelState = cancelConfirmMeeting ? getExtraCancelState(cancelConfirmMeeting.startAt, APP_NOW) : null;
+  const cancelRefunded = cancelState && cancelState.state !== 'expired';
+
+  const cancelDialog = cancelConfirmMeeting && cancelState && (
+    <div
+      className="fixed inset-0 z-[10000] flex items-center justify-center px-5"
+      style={{
+        background: 'rgba(0,0,0,0.55)',
+        backdropFilter: 'blur(8px)',
+        WebkitBackdropFilter: 'blur(8px)',
+      }}
+      onClick={() => setCancelConfirmMeeting(null)}
+    >
+      <div
+        className="w-full max-w-[340px] rounded-2xl p-5"
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          background: 'linear-gradient(180deg, #1e1e1e 0%, #141414 100%)',
+          border: '1px solid rgba(255,255,255,0.10)',
+          boxShadow: '0 20px 60px rgba(0,0,0,0.5)',
+        }}
+      >
+        <div className="flex items-center gap-3 mb-3">
+          <div
+            className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+            style={{
+              background: cancelRefunded ? 'rgba(255,159,67,0.12)' : 'rgba(255,107,107,0.12)',
+              border: `1px solid ${cancelRefunded ? 'rgba(255,159,67,0.25)' : 'rgba(255,107,107,0.25)'}`,
+            }}
+          >
+            <AlertTriangle
+              className="w-5 h-5"
+              style={{ color: cancelRefunded ? '#FF9F43' : '#FF6B6B' }}
+              strokeWidth={2.2}
+            />
+          </div>
+          <h3 className={`${poppins('SemiBold')} text-[16px] text-white leading-tight`}>
+            Extra-Stunde absagen?
+          </h3>
+        </div>
+
+        <div
+          className="rounded-xl px-3 py-2.5 mb-3"
+          style={{
+            background: 'rgba(255,255,255,0.03)',
+            border: '1px solid rgba(255,255,255,0.06)',
+          }}
+        >
+          <p className={`${poppins('SemiBold')} text-[12px] text-white leading-tight`}>
+            {cancelConfirmMeeting.subjectName} · {cancelConfirmMeeting.tutor.name}
+          </p>
+          <p className={`${poppins('Regular')} text-[11px] text-white/45 mt-0.5`}>
+            {formatDateTime(cancelConfirmMeeting.startAt)} · {formatTimeRange(cancelConfirmMeeting.startAt, cancelConfirmMeeting.endAt)}
+          </p>
+        </div>
+
+        <p className={`${poppins('Regular')} text-[12px] text-white/65 leading-[18px] mb-5`}>
+          {cancelRefunded ? (
+            <>
+              Die Extra-Stunde wird dir <span className={`${poppins('SemiBold')} text-white`}>zurückgebucht</span> und kann für einen neuen Termin genutzt werden.
+            </>
+          ) : (
+            <>
+              Die Storno-Frist (24 h vor Beginn) ist bereits angebrochen. Du kannst den Termin absagen, die Extra-Stunde wird jedoch <span className={`${poppins('SemiBold')}`} style={{ color: '#FF6B6B' }}>nicht zurückerstattet</span>.
+            </>
+          )}
+        </p>
+
+        <div className="flex gap-2.5">
+          <button
+            onClick={() => setCancelConfirmMeeting(null)}
+            className={`flex-1 h-[42px] rounded-xl ${poppins('Medium')} text-[13px] text-white/70 active:scale-[0.98] transition-all`}
+            style={{
+              background: 'rgba(255,255,255,0.05)',
+              border: '1px solid rgba(255,255,255,0.10)',
+              WebkitTapHighlightColor: 'transparent',
+            }}
+          >
+            Abbrechen
+          </button>
+          <button
+            onClick={handleConfirmCancelExtra}
+            className={`flex-1 h-[42px] rounded-xl ${poppins('SemiBold')} text-[13px] active:scale-[0.98] transition-all`}
+            style={{
+              color: cancelRefunded ? '#FF9F43' : '#FF6B6B',
+              background: cancelRefunded ? 'rgba(255,159,67,0.12)' : 'rgba(255,107,107,0.12)',
+              border: `1px solid ${cancelRefunded ? 'rgba(255,159,67,0.30)' : 'rgba(255,107,107,0.30)'}`,
+              WebkitTapHighlightColor: 'transparent',
+            }}
+          >
+            Ja, absagen
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
+  const cancelToastEl = cancelToast && (
+    <div
+      className="fixed left-1/2 -translate-x-1/2 rounded-xl px-4 py-3 flex items-center gap-2.5 z-[10001] max-w-[92%]"
+      style={{
+        bottom: 'calc(env(safe-area-inset-bottom, 0px) + 24px)',
+        background: cancelToast.refunded ? 'rgba(0,184,148,0.12)' : 'rgba(255,107,107,0.12)',
+        border: `1px solid ${cancelToast.refunded ? 'rgba(0,184,148,0.30)' : 'rgba(255,107,107,0.30)'}`,
+        backdropFilter: 'blur(20px)',
+        WebkitBackdropFilter: 'blur(20px)',
+        animation: 'meetingToastIn 0.25s ease-out',
+      }}
+    >
+      {cancelToast.refunded ? (
+        <CheckCircle2 className="w-4 h-4 flex-shrink-0" style={{ color: '#00B894' }} strokeWidth={2.2} />
+      ) : (
+        <AlertTriangle className="w-4 h-4 flex-shrink-0" style={{ color: '#FF6B6B' }} strokeWidth={2.2} />
+      )}
+      <span
+        className={`${poppins('Medium')} text-[12px] leading-tight`}
+        style={{ color: cancelToast.refunded ? '#00B894' : '#FF6B6B' }}
+      >
+        {cancelToast.message}
+      </span>
+    </div>
+  );
+
   // Use locked content when tutoring is not activated
   const activeContent = isTutoringLocked ? lockedContent : content;
 
@@ -1466,6 +1803,14 @@ export default React.memo(function MeetingsScreen({ onClose, isMobile = false, e
         style={{ WebkitOverflowScrolling: 'touch', overscrollBehavior: 'none' }}>
         {activeContent}
         {!isTutoringLocked && ratingModal}
+        {cancelDialog}
+        {cancelToastEl}
+        <style>{`
+          @keyframes meetingToastIn {
+            from { opacity: 0; transform: translate(-50%, 12px); }
+            to { opacity: 1; transform: translate(-50%, 0); }
+          }
+        `}</style>
       </div>
     );
   }
@@ -1474,6 +1819,14 @@ export default React.memo(function MeetingsScreen({ onClose, isMobile = false, e
     <div className="absolute inset-0 z-[60] bg-[#0a0a0a]">
       {activeContent}
       {!isTutoringLocked && ratingModal}
+      {cancelDialog}
+      {cancelToastEl}
+      <style>{`
+        @keyframes meetingToastIn {
+          from { opacity: 0; transform: translate(-50%, 12px); }
+          to { opacity: 1; transform: translate(-50%, 0); }
+        }
+      `}</style>
     </div>
   );
 });

@@ -29,7 +29,8 @@ import { MOCK_TUTORS, formatTutorName } from '@/mocks';
 import TutoringProgressWidget from './TutoringProgressWidget';
 import AllTutorsSheet from './AllTutorsSheet';
 import AllExtraSessionsSheet from './AllExtraSessionsSheet';
-import { MOCK_EXTRA_SESSIONS } from '@/mocks/extraSessions.mock';
+import { MOCK_EXTRA_SESSIONS, APP_NOW } from '@/mocks/extraSessions.mock';
+import { useCancelledExtraSessions } from '@/app/components/cancelledExtraSessionsStore';
 
 interface FlashcardSet {
   id: number;
@@ -120,6 +121,7 @@ export default React.memo(function HomeScreenMobile({
   const user = useUser();
   const [showAllTutors, setShowAllTutors] = useState(false);
   const [showAllExtraSessions, setShowAllExtraSessions] = useState(false);
+  const cancelledExtraSessionIds = useCancelledExtraSessions();
 
   // Notify parent when any bottom sheet opens/closes → hides MobileNavigation
   React.useEffect(() => {
@@ -993,7 +995,7 @@ export default React.memo(function HomeScreenMobile({
                 </div>
 
                 <div className="flex gap-3 overflow-x-auto snap-x snap-mandatory pb-2 -mx-5 px-5 scrollbar-hide" style={{ scrollPaddingLeft: '20px' }}>
-                  {MOCK_EXTRA_SESSIONS.filter(s => new Date(s.dateISO) >= new Date('2026-03-18')).slice(0, 3).map((session) => (
+                  {MOCK_EXTRA_SESSIONS.filter(s => new Date(s.startAtISO) >= APP_NOW && !cancelledExtraSessionIds.has(s.id)).slice(0, 3).map((session) => (
                     <div 
                       key={session.id} 
                       className="relative overflow-hidden bg-gradient-to-br from-white/[0.05] to-white/[0.02] border border-white/[0.08] rounded-2xl p-3 w-[190px] flex-shrink-0 snap-start transition-all duration-300 cursor-pointer active:scale-[0.98]"

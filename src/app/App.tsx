@@ -633,6 +633,10 @@ function AppContent({ userData, onLogout }: { userData: any; onLogout: () => voi
                 <MeetingsScreen
                   isMobile={true}
                   onOpenTutoringActivation={() => navigation.setShowTutoringActivation(true)}
+                  onOpenTutoringSession={(sessionId) => {
+                    navigation.setSelectedTutoringSessionId(sessionId);
+                    navigation.setShowTutoringSessionDetail(true);
+                  }}
                 />
               ),
             },
