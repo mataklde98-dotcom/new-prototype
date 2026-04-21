@@ -58,6 +58,7 @@ interface HomeScreenMobileProps {
   onOpenTutoringProgress?: () => void;
   onShowKlassenarbeiten?: () => void;
   onShowSchulaufgaben?: () => void;
+  onOpenStreakScreen?: () => void;
   allSets?: FlashcardSet[];
   onOpenFlashcardSet?: (set: FlashcardSet) => void;
   onCompletedExamClick?: (examId: string) => void;
@@ -82,6 +83,7 @@ export default React.memo(function HomeScreenMobile({
   onOpenTutoringProgress,
   onShowKlassenarbeiten,
   onShowSchulaufgaben,
+  onOpenStreakScreen,
   allSets = [],
   onOpenFlashcardSet,
   onCompletedExamClick,
@@ -140,7 +142,7 @@ export default React.memo(function HomeScreenMobile({
         `}</style>
 
         {/* Header with Profile */}
-        <MobileHeader />
+        <MobileHeader onStreakClick={onOpenStreakScreen} />
 
         <div className="px-5 pt-2">
           {/* Your ToDo's Section */}
@@ -485,7 +487,13 @@ export default React.memo(function HomeScreenMobile({
           </div>
 
           {/* Schnellzugriff — Runde Kreise, dezent */}
-          <div className="mb-6 flex items-start justify-around px-2">
+          <div className="mb-6">
+            <div className="flex items-center justify-between mb-3">
+              <p className="font-['Poppins:SemiBold',sans-serif] text-[13px] text-white">
+                Schnellzugriff
+              </p>
+            </div>
+            <div className="flex items-start justify-around px-2">
             <button
               onClick={onShowKlassenarbeiten}
               className="flex flex-col items-center gap-2 active:scale-[0.95] transition-transform"
@@ -540,6 +548,7 @@ export default React.memo(function HomeScreenMobile({
                 Meine<br />Karteikarten
               </span>
             </button>
+            </div>
           </div>
 
           {/* Recently used Flashcards - USING FlashcardItem */}
@@ -1003,8 +1012,8 @@ export default React.memo(function HomeScreenMobile({
             </>
           )}
 
-          {/* Lern-Streak + Lernzeit */}
-          <LernStreakSection />
+          {/* Lern-Streak + Lernzeit (volle Details) — klickbar öffnet Streak-Screen */}
+          <LernStreakSection onClick={onOpenStreakScreen} />
 
           {/* Promotional Banner */}
           <ReferralBannerHome />
@@ -1196,7 +1205,7 @@ function ReferralBannerHome() {
 }
 
 // ===== LERN-STREAK + LERNZEIT SECTION =====
-function LernStreakSection() {
+function LernStreakSection({ onClick }: { onClick?: () => void }) {
   // Mock weekly learning time (same data as was in ProfileAnalyticsScreen Übersicht)
   const weeklyHours = 4;
   const weeklyMins = 32;
@@ -1207,11 +1216,13 @@ function LernStreakSection() {
         <Flame className="w-4 h-4" />
         Lern-Streak
       </h3>
-      <div
-        className="rounded-2xl p-4"
+      <button
+        onClick={onClick}
+        className="w-full text-left rounded-2xl p-4 transition-all duration-200 active:scale-[0.98]"
         style={{
           background: 'linear-gradient(135deg, rgba(255,255,255,0.05), rgba(255,255,255,0.02))',
           border: '1px solid rgba(255,255,255,0.08)',
+          WebkitTapHighlightColor: 'transparent',
         }}
       >
         <div className="flex items-center justify-between mb-3">
@@ -1262,7 +1273,8 @@ function LernStreakSection() {
             );
           })}
         </div>
-      </div>
+      </button>
     </div>
   );
 }
+

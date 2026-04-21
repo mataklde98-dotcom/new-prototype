@@ -1,8 +1,9 @@
 import React from 'react';
 import { createPortal } from 'react-dom';
-import { Bell } from 'lucide-react';
+import { Bell, Flame } from 'lucide-react';
 import { useUser } from '@/contexts/UserContext';
 import NotificationPanel from '@/app/components/NotificationPanel';
+import { LEARNING_STREAK } from '@/app/components/ProfileAnalyticsScreen';
 import { imgBlur } from '@/imports/svg-1d2hv';
 
 /**
@@ -60,15 +61,51 @@ function AppleGlassButton({ onClick, children, badge }: { onClick: () => void; c
   );
 }
 
-export default function MobileHeader() {
+interface MobileHeaderProps {
+  onStreakClick?: () => void;
+}
+
+export default function MobileHeader({ onStreakClick }: MobileHeaderProps = {}) {
   const { profileImage, userName } = useUser();
   const firstName = userName.split(' ')[0];
   const initials = userName.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
   const [notifOpen, setNotifOpen] = React.useState(false);
   const hasCustomPhoto = profileImage && !profileImage.startsWith('data:image/svg+xml');
-  
+
+  // Streak-Animation: pulst nur beim ersten App-Öffnen an einem neuen Tag
+  const [streakPulsing, setStreakPulsing] = React.useState(false);
+  React.useEffect(() => {
+    const today = new Date().toDateString();
+    const lastPulse = typeof localStorage !== 'undefined' ? localStorage.getItem('lastStreakPulseDate') : null;
+    if (lastPulse !== today) {
+      // Kurze Verzögerung, damit die Animation nach dem Mount sichtbar ist
+      const startTimer = setTimeout(() => setStreakPulsing(true), 400);
+      const endTimer = setTimeout(() => setStreakPulsing(false), 2000);
+      try {
+        localStorage.setItem('lastStreakPulseDate', today);
+      } catch {}
+      return () => {
+        clearTimeout(startTimer);
+        clearTimeout(endTimer);
+      };
+    }
+  }, []);
+
   return (
     <div className="w-full px-5 pt-4 pb-5 relative">
+      <style>{`
+        @keyframes streakFlamePulse {
+          0%   { transform: scale(1) rotate(0deg); filter: drop-shadow(0 0 0 rgba(255,159,67,0)); }
+          25%  { transform: scale(1.35) rotate(-8deg); filter: drop-shadow(0 0 8px rgba(255,159,67,0.7)); }
+          50%  { transform: scale(1.15) rotate(6deg); filter: drop-shadow(0 0 6px rgba(255,159,67,0.5)); }
+          75%  { transform: scale(1.25) rotate(-4deg); filter: drop-shadow(0 0 7px rgba(255,159,67,0.5)); }
+          100% { transform: scale(1) rotate(0deg); filter: drop-shadow(0 0 0 rgba(255,159,67,0)); }
+        }
+        @keyframes streakPillGlow {
+          0%, 100% { box-shadow: 0 0 0 0 rgba(255,159,67,0); }
+          50%      { box-shadow: 0 0 0 4px rgba(255,159,67,0.18); }
+        }
+      `}</style>
       <div className="flex items-center justify-between">
         {/* Left: Greeting text */}
         <div className="flex flex-col min-w-0 flex-1">
@@ -80,8 +117,36 @@ export default function MobileHeader() {
           </span>
         </div>
 
-        {/* Right: Profile Picture + Apple Glass Bell */}
+        {/* Right: Streak + Profile Picture + Apple Glass Bell */}
         <div className="flex items-center gap-2.5 flex-shrink-0">
+          {/* Lern-Streak Pill — Motivations-Anker, immer sichtbar. Klick öffnet Detail-Screen. */}
+          <button
+            onClick={onStreakClick}
+            className="flex items-center gap-1.5 px-2.5 h-[30px] rounded-full active:scale-[0.95] transition-transform"
+            style={{
+              background: 'rgba(255,159,67,0.12)',
+              border: '1px solid rgba(255,159,67,0.25)',
+              animation: streakPulsing ? 'streakPillGlow 1.4s ease-out' : undefined,
+              WebkitTapHighlightColor: 'transparent',
+            }}
+          >
+            <Flame
+              className="w-[14px] h-[14px]"
+              style={{
+                color: '#FF9F43',
+                animation: streakPulsing ? 'streakFlamePulse 1.4s ease-out' : undefined,
+                transformOrigin: 'center',
+              }}
+              strokeWidth={2.2}
+            />
+            <span
+              className="font-['Poppins:SemiBold',sans-serif] text-[13px] leading-none"
+              style={{ color: '#FF9F43' }}
+            >
+              {LEARNING_STREAK} Tage
+            </span>
+          </button>
+
           {/* Profile Picture */}
           <div className="w-[44px] h-[44px] rounded-full bg-gradient-to-br from-white/[0.08] to-white/[0.03] p-[1.5px]">
             {hasCustomPhoto ? (

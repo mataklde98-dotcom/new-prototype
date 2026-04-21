@@ -29,6 +29,7 @@ import TutoringProgressScreen from "./components/TutoringProgressScreen";
 import TutoringSessionDetailScreen from "./components/TutoringSessionDetailScreen";
 import TutoringExplainScreen from "./components/TutoringExplainScreen";
 import ExtraSessionsScreen from "./components/ExtraSessionScreen";
+import LernStreakScreen from "./components/LernStreakScreen";
 import OnboardingTrialPopup from "./components/OnboardingTrialPopup";
 import AuthWrapper from "@/app/components/AuthWrapper";
 import { ScreenManager } from "@/app/components/ScreenManager";
@@ -562,6 +563,7 @@ function AppContent({ userData, onLogout }: { userData: any; onLogout: () => voi
                    onOpenTutoringProgress={() => navigation.setShowTutoringProgress(true)}
                    onShowKlassenarbeiten={() => navigation.setShowKlassenarbeiten(true)}
                    onShowSchulaufgaben={() => navigation.setShowSchulaufgaben(true)}
+                   onOpenStreakScreen={() => navigation.setShowLernStreak(true)}
                    allSets={allSets}
                    onOpenFlashcardSet={appHandlers.handleOpenFlashcardSet}
                    onCompletedExamClick={(examId) => appHandlers.handleCompletedExamClick(examId, 'Mobile')}
@@ -896,6 +898,16 @@ function AppContent({ userData, onLogout }: { userData: any; onLogout: () => voi
         <MobileRouteTransition isVisible={navigation.showExtraSessions}>
           <ExtraSessionsScreen
             onClose={() => navigation.setShowExtraSessions(false)}
+            externalTransition
+          />
+        </MobileRouteTransition>
+      )}
+
+      {/* Mobile Lern-Streak Detail Screen - Overlay with Slide-In/Out */}
+      {isMobile && (
+        <MobileRouteTransition isVisible={navigation.showLernStreak}>
+          <LernStreakScreen
+            onClose={() => navigation.setShowLernStreak(false)}
             externalTransition
           />
         </MobileRouteTransition>
