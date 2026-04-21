@@ -14,7 +14,7 @@
 //   Solange available >= 6 → Kauf blockiert bis runter konsumiert.
 
 import React, { useState } from 'react';
-import { ChevronLeft, ChevronRight, Plus, Minus, Check, BookOpen, CreditCard, Receipt, ShieldCheck } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, Minus, Check, BookOpen, CreditCard, ShieldCheck } from 'lucide-react';
 import { useUser, EXTRA_SESSION_CAP, EXTRA_SESSION_PRICE } from '@/contexts/UserContext';
 
 interface ExtraSessionsScreenProps {
@@ -34,13 +34,86 @@ interface PersonalData {
   city: string;
 }
 
+interface CardData {
+  holder: string;
+  number: string; // mit Spaces
+  expiry: string; // MM/YY
+  cvc: string;
+}
+
+// Nur Ziffern, gruppiert in 4er-Blöcken, max 19 Ziffern (23 Zeichen inkl. Spaces)
+const formatCardNumber = (v: string) =>
+  v.replace(/\D/g, '').slice(0, 19).replace(/(\d{4})(?=\d)/g, '$1 ');
+
+// MM/YY — automatischer Slash nach 2 Ziffern
+const formatExpiry = (v: string) => {
+  const digits = v.replace(/\D/g, '').slice(0, 4);
+  return digits.length > 2 ? `${digits.slice(0, 2)}/${digits.slice(2)}` : digits;
+};
+
+const formatCvc = (v: string) => v.replace(/\D/g, '').slice(0, 4);
+
 const PAYMENT_METHODS = [
   { id: 'paypal', label: 'PayPal', sublabel: 'Zahle mit deinem PayPal-Konto' },
   { id: 'klarna', label: 'Klarna', sublabel: 'Rechnung oder Ratenzahlung' },
   { id: 'creditcard', label: 'Kreditkarte', sublabel: 'Visa, Mastercard, Amex' },
   { id: 'sofort', label: 'Sofortüberweisung', sublabel: 'Direkt vom Bankkonto' },
-  { id: 'applepay', label: 'Apple Pay', sublabel: 'Schnell & sicher' },
 ];
+
+// Brand-Icons als Inline-SVG (simple-icons Pfade, CC0)
+const PayPalIcon = ({ className, style }: { className?: string; style?: React.CSSProperties }) => (
+  <svg viewBox="0 0 24 24" className={className} style={style} fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+    <path d="M7.076 21.337H2.47a.641.641 0 0 1-.633-.74L4.944.901C5.026.382 5.474 0 5.998 0h7.46c2.57 0 4.578.543 5.69 1.81 1.01 1.15 1.304 2.42 1.012 4.287-.023.143-.047.288-.077.437-.983 5.05-4.349 6.797-8.647 6.797h-2.19c-.524 0-.968.382-1.05.9l-1.12 7.106zm14.146-14.42a3.35 3.35 0 0 0-.607-.541c-.013.076-.026.175-.041.254-.93 4.778-4.005 7.201-9.138 7.201h-2.19a.563.563 0 0 0-.556.479l-1.187 7.527h-.506l-.24 1.516a.56.56 0 0 0 .554.647h3.882c.46 0 .85-.334.922-.788.06-.26.76-4.852.816-5.09a.932.932 0 0 1 .923-.788h.58c3.76 0 6.705-1.528 7.565-5.946.36-1.847.174-3.388-.777-4.471z"/>
+  </svg>
+);
+
+const KlarnaIcon = ({ className, style }: { className?: string; style?: React.CSSProperties }) => (
+  <span
+    className={className}
+    style={{
+      ...style,
+      display: 'inline-flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      fontFamily: "'Poppins:Bold', sans-serif",
+      fontWeight: 800,
+      fontSize: '18px',
+      lineHeight: 1,
+      letterSpacing: '-0.5px',
+    }}
+  >
+    K
+  </span>
+);
+
+// Input component ausserhalb der Hauptkomponente — sonst wird er bei jedem
+// Render neu erzeugt und das <input> verliert Focus nach jedem Tastendruck.
+interface InputProps {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
+  type?: string;
+}
+
+const Input = ({ label, value, onChange, placeholder, type = 'text' }: InputProps) => (
+  <div>
+    <label className="block font-['Poppins:Medium',sans-serif] text-[12px] text-white/55 mb-1.5">
+      {label}
+    </label>
+    <input
+      type={type}
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      placeholder={placeholder}
+      className="w-full h-[44px] px-4 rounded-xl font-['Poppins:Regular',sans-serif] text-[14px] text-white placeholder:text-white/25 outline-none transition-colors"
+      style={{
+        background: 'rgba(255,255,255,0.04)',
+        border: '1px solid rgba(255,255,255,0.08)',
+      }}
+    />
+  </div>
+);
 
 export default function ExtraSessionsScreen({ onClose }: ExtraSessionsScreenProps) {
   const {
@@ -66,6 +139,12 @@ export default function ExtraSessionsScreen({ onClose }: ExtraSessionsScreenProp
     city: '',
   });
   const [paymentMethod, setPaymentMethod] = useState<string>('paypal');
+  const [cardData, setCardData] = useState<CardData>({
+    holder: '',
+    number: '',
+    expiry: '',
+    cvc: '',
+  });
 
   const openWizard = () => {
     // Qty auf max 1 oder maxPurchasable clampen
@@ -108,14 +187,14 @@ export default function ExtraSessionsScreen({ onClose }: ExtraSessionsScreenProp
       <div
         className="rounded-2xl p-5 mb-4"
         style={{
-          background: 'linear-gradient(135deg, rgba(0,212,170,0.08), rgba(0,184,148,0.04))',
-          border: '1px solid rgba(0,212,170,0.18)',
+          background: 'linear-gradient(135deg, rgba(0,184,148,0.08), rgba(0,184,148,0.04))',
+          border: '1px solid rgba(0,184,148,0.18)',
         }}
       >
         <div className="flex items-center gap-4 mb-4">
           <div
             className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0"
-            style={{ background: 'linear-gradient(135deg, #00D4AA, #00B894)' }}
+            style={{ background: 'linear-gradient(135deg, #00B894, #009379)' }}
           >
             <BookOpen className="w-6 h-6 text-white" strokeWidth={2.2} />
           </div>
@@ -147,7 +226,7 @@ export default function ExtraSessionsScreen({ onClose }: ExtraSessionsScreenProp
           className="w-full h-[48px] rounded-xl font-['Poppins:SemiBold',sans-serif] text-[14px] transition-all duration-200 active:scale-[0.98] disabled:active:scale-100 disabled:opacity-50 disabled:cursor-not-allowed"
           style={{
             background: canPurchaseExtraSessions
-              ? 'linear-gradient(135deg, #00D4AA, #00B894)'
+              ? 'linear-gradient(135deg, #00B894, #009379)'
               : 'rgba(255,255,255,0.06)',
             color: canPurchaseExtraSessions ? '#ffffff' : 'rgba(255,255,255,0.35)',
           }}
@@ -184,66 +263,6 @@ export default function ExtraSessionsScreen({ onClose }: ExtraSessionsScreenProp
             · Max. {EXTRA_SESSION_CAP} Einheiten gleichzeitig im Bestand
           </li>
         </ul>
-      </div>
-
-      {/* Kauf-Historie */}
-      <div className="mb-4">
-        <h3 className="font-['Poppins:SemiBold',sans-serif] text-[12px] text-white/50 uppercase tracking-wide mb-2 px-1">
-          Deine Käufe
-        </h3>
-        {extraSessions.history.length === 0 ? (
-          <div
-            className="rounded-xl p-4 text-center"
-            style={{
-              background: 'rgba(255,255,255,0.02)',
-              border: '1px solid rgba(255,255,255,0.04)',
-            }}
-          >
-            <p className="font-['Poppins:Regular',sans-serif] text-[12px] text-white/30">
-              Noch keine Käufe getätigt.
-            </p>
-          </div>
-        ) : (
-          <div
-            className="rounded-xl overflow-hidden"
-            style={{
-              background: 'rgba(255,255,255,0.03)',
-              border: '1px solid rgba(255,255,255,0.06)',
-            }}
-          >
-            {extraSessions.history.map((h, i) => {
-              const d = new Date(h.date);
-              const dateStr = `${d.getDate().toString().padStart(2, '0')}.${(d.getMonth() + 1).toString().padStart(2, '0')}.${d.getFullYear()}`;
-              return (
-                <div
-                  key={h.id}
-                  className="px-4 py-3 flex items-center gap-3"
-                  style={{
-                    borderBottom: i < extraSessions.history.length - 1 ? '1px solid rgba(255,255,255,0.05)' : 'none',
-                  }}
-                >
-                  <div
-                    className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
-                    style={{ background: 'rgba(0,212,170,0.1)' }}
-                  >
-                    <Receipt className="w-4 h-4" style={{ color: '#00D4AA' }} strokeWidth={2} />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-['Poppins:Medium',sans-serif] text-[13px] text-white">
-                      {h.qty} {h.qty === 1 ? 'Stunde' : 'Stunden'}
-                    </p>
-                    <p className="font-['Poppins:Regular',sans-serif] text-[11px] text-white/35">
-                      {dateStr} · {PAYMENT_METHODS.find(p => p.id === h.paymentMethod)?.label || h.paymentMethod}
-                    </p>
-                  </div>
-                  <p className="font-['Poppins:SemiBold',sans-serif] text-[13px] text-white/80 flex-shrink-0">
-                    {h.total} €
-                  </p>
-                </div>
-              );
-            })}
-          </div>
-        )}
       </div>
 
       {/* Prototyp-Demo-Block */}
@@ -314,7 +333,7 @@ export default function ExtraSessionsScreen({ onClose }: ExtraSessionsScreenProp
             key={s}
             className="flex-1 h-1 rounded-full transition-all duration-300"
             style={{
-              background: done || active ? '#00D4AA' : 'rgba(255,255,255,0.08)',
+              background: done || active ? '#00B894' : 'rgba(255,255,255,0.08)',
             }}
           />
         );
@@ -363,11 +382,11 @@ export default function ExtraSessionsScreen({ onClose }: ExtraSessionsScreenProp
             disabled={purchaseQty >= maxPurchasableExtraSessions}
             className="w-12 h-12 rounded-full flex items-center justify-center transition-all active:scale-90 disabled:opacity-30 disabled:active:scale-100"
             style={{
-              background: 'rgba(0,212,170,0.12)',
-              border: '1px solid rgba(0,212,170,0.25)',
+              background: 'rgba(0,184,148,0.12)',
+              border: '1px solid rgba(0,184,148,0.25)',
             }}
           >
-            <Plus className="w-5 h-5" style={{ color: '#00D4AA' }} strokeWidth={2.5} />
+            <Plus className="w-5 h-5" style={{ color: '#00B894' }} strokeWidth={2.5} />
           </button>
         </div>
 
@@ -384,25 +403,6 @@ export default function ExtraSessionsScreen({ onClose }: ExtraSessionsScreenProp
         </div>
       </div>
     </>
-  );
-
-  const Input = ({ label, value, onChange, placeholder, type = 'text' }: { label: string; value: string; onChange: (v: string) => void; placeholder?: string; type?: string }) => (
-    <div>
-      <label className="block font-['Poppins:Medium',sans-serif] text-[12px] text-white/55 mb-1.5">
-        {label}
-      </label>
-      <input
-        type={type}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder}
-        className="w-full h-[44px] px-4 rounded-xl font-['Poppins:Regular',sans-serif] text-[14px] text-white placeholder:text-white/25 outline-none transition-colors"
-        style={{
-          background: 'rgba(255,255,255,0.04)',
-          border: '1px solid rgba(255,255,255,0.08)',
-        }}
-      />
-    </div>
   );
 
   const renderStep2 = () => (
@@ -469,42 +469,98 @@ export default function ExtraSessionsScreen({ onClose }: ExtraSessionsScreenProp
       <div className="space-y-2">
         {PAYMENT_METHODS.map((pm) => {
           const selected = paymentMethod === pm.id;
+          const isPayPal = pm.id === 'paypal';
+          const isKlarna = pm.id === 'klarna';
+          const isCredit = pm.id === 'creditcard';
+          const hasBrand = isPayPal || isKlarna;
+          const brandBg = isPayPal ? '#003087' : isKlarna ? '#FFB3C7' : undefined;
+          const brandFg = isPayPal ? '#FFFFFF' : isKlarna ? '#000000' : undefined;
+
           return (
-            <button
+            <div
               key={pm.id}
-              onClick={() => setPaymentMethod(pm.id)}
-              className="w-full flex items-center gap-3 p-4 rounded-xl transition-all active:scale-[0.99]"
+              className="rounded-xl overflow-hidden transition-all"
               style={{
-                background: selected ? 'rgba(0,212,170,0.08)' : 'rgba(255,255,255,0.03)',
-                border: selected ? '1.5px solid #00D4AA' : '1px solid rgba(255,255,255,0.06)',
+                background: selected ? 'rgba(0,184,148,0.08)' : 'rgba(255,255,255,0.03)',
+                border: selected ? '1.5px solid #00B894' : '1px solid rgba(255,255,255,0.06)',
               }}
             >
-              <div
-                className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0"
-                style={{
-                  background: selected ? 'rgba(0,212,170,0.15)' : 'rgba(255,255,255,0.05)',
-                }}
+              <button
+                onClick={() => setPaymentMethod(pm.id)}
+                className="w-full flex items-center gap-3 p-4 transition-all active:scale-[0.99]"
               >
-                <CreditCard className="w-5 h-5" style={{ color: selected ? '#00D4AA' : 'rgba(255,255,255,0.4)' }} strokeWidth={2} />
-              </div>
-              <div className="flex-1 text-left">
-                <p className="font-['Poppins:SemiBold',sans-serif] text-[14px] text-white">
-                  {pm.label}
-                </p>
-                <p className="font-['Poppins:Regular',sans-serif] text-[12px] text-white/40">
-                  {pm.sublabel}
-                </p>
-              </div>
-              <div
-                className="w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0"
-                style={{
-                  background: selected ? '#00D4AA' : 'transparent',
-                  border: selected ? 'none' : '1.5px solid rgba(255,255,255,0.15)',
-                }}
-              >
-                {selected && <Check className="w-3 h-3 text-white" strokeWidth={3} />}
-              </div>
-            </button>
+                <div
+                  className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0"
+                  style={{
+                    background: hasBrand
+                      ? brandBg
+                      : selected ? 'rgba(0,184,148,0.15)' : 'rgba(255,255,255,0.05)',
+                  }}
+                >
+                  {isPayPal ? (
+                    <PayPalIcon className="w-5 h-5" style={{ color: brandFg }} />
+                  ) : isKlarna ? (
+                    <KlarnaIcon className="w-5 h-5" style={{ color: brandFg }} />
+                  ) : (
+                    <CreditCard className="w-5 h-5" style={{ color: selected ? '#00B894' : 'rgba(255,255,255,0.4)' }} strokeWidth={2} />
+                  )}
+                </div>
+                <div className="flex-1 text-left">
+                  <p className="font-['Poppins:SemiBold',sans-serif] text-[14px] text-white">
+                    {pm.label}
+                  </p>
+                  <p className="font-['Poppins:Regular',sans-serif] text-[12px] text-white/40">
+                    {pm.sublabel}
+                  </p>
+                </div>
+                <div
+                  className="w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0"
+                  style={{
+                    background: selected ? '#00B894' : 'transparent',
+                    border: selected ? 'none' : '1.5px solid rgba(255,255,255,0.15)',
+                  }}
+                >
+                  {selected && <Check className="w-3 h-3 text-white" strokeWidth={3} />}
+                </div>
+              </button>
+
+              {/* Kreditkarten-Form — nur wenn Kreditkarte ausgewählt */}
+              {isCredit && selected && (
+                <div
+                  className="px-4 pb-4 pt-1 space-y-3"
+                  style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}
+                >
+                  <div className="pt-3">
+                    <Input
+                      label="Karteninhaber"
+                      value={cardData.holder}
+                      onChange={(v) => setCardData((d) => ({ ...d, holder: v }))}
+                      placeholder="Max Mustermann"
+                    />
+                  </div>
+                  <Input
+                    label="Kartennummer"
+                    value={cardData.number}
+                    onChange={(v) => setCardData((d) => ({ ...d, number: formatCardNumber(v) }))}
+                    placeholder="1234 5678 9012 3456"
+                  />
+                  <div className="grid grid-cols-2 gap-3">
+                    <Input
+                      label="Ablauf (MM/YY)"
+                      value={cardData.expiry}
+                      onChange={(v) => setCardData((d) => ({ ...d, expiry: formatExpiry(v) }))}
+                      placeholder="12/27"
+                    />
+                    <Input
+                      label="CVC"
+                      value={cardData.cvc}
+                      onChange={(v) => setCardData((d) => ({ ...d, cvc: formatCvc(v) }))}
+                      placeholder="123"
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
           );
         })}
       </div>
@@ -591,6 +647,9 @@ export default function ExtraSessionsScreen({ onClose }: ExtraSessionsScreenProp
           </p>
           <p className="font-['Poppins:Regular',sans-serif] text-[13px] text-white/70">
             {pm?.label}
+            {paymentMethod === 'creditcard' && cardData.number && (
+              <span className="text-white/40"> · •••• {cardData.number.replace(/\s/g, '').slice(-4)}</span>
+            )}
           </p>
         </div>
 
@@ -605,7 +664,7 @@ export default function ExtraSessionsScreen({ onClose }: ExtraSessionsScreenProp
     <div className="flex flex-col items-center justify-center text-center pt-12">
       <div
         className="w-20 h-20 rounded-full flex items-center justify-center mb-6"
-        style={{ background: 'linear-gradient(135deg, #00D4AA, #00B894)' }}
+        style={{ background: 'linear-gradient(135deg, #00B894, #009379)' }}
       >
         <Check className="w-10 h-10 text-white" strokeWidth={3} />
       </div>
@@ -617,10 +676,10 @@ export default function ExtraSessionsScreen({ onClose }: ExtraSessionsScreenProp
       </p>
       <div
         className="rounded-xl px-4 py-3 mb-8 flex items-center gap-2"
-        style={{ background: 'rgba(0,212,170,0.08)', border: '1px solid rgba(0,212,170,0.2)' }}
+        style={{ background: 'rgba(0,184,148,0.08)', border: '1px solid rgba(0,184,148,0.2)' }}
       >
-        <ShieldCheck className="w-4 h-4" style={{ color: '#00D4AA' }} />
-        <span className="font-['Poppins:Medium',sans-serif] text-[12px]" style={{ color: '#00D4AA' }}>
+        <ShieldCheck className="w-4 h-4" style={{ color: '#00B894' }} />
+        <span className="font-['Poppins:Medium',sans-serif] text-[12px]" style={{ color: '#00B894' }}>
           Neuer Bestand: {extraSessions.available} / {EXTRA_SESSION_CAP}
         </span>
       </div>
@@ -628,7 +687,7 @@ export default function ExtraSessionsScreen({ onClose }: ExtraSessionsScreenProp
         onClick={closeWizard}
         className="w-full h-[48px] rounded-xl font-['Poppins:SemiBold',sans-serif] text-[14px] transition-all active:scale-[0.98]"
         style={{
-          background: 'linear-gradient(135deg, #00D4AA, #00B894)',
+          background: 'linear-gradient(135deg, #00B894, #009379)',
           color: '#ffffff',
         }}
       >
@@ -639,9 +698,15 @@ export default function ExtraSessionsScreen({ onClose }: ExtraSessionsScreenProp
 
   // ===== WIZARD FOOTER (nur Step 1-4) =====
   const step2Valid = personalData.firstName.trim() && personalData.lastName.trim() && personalData.email.trim() && personalData.street.trim() && personalData.zip.trim() && personalData.city.trim();
+  const cardValid =
+    cardData.holder.trim().length > 1 &&
+    cardData.number.replace(/\s/g, '').length >= 13 &&
+    /^\d{2}\/\d{2}$/.test(cardData.expiry) &&
+    cardData.cvc.length >= 3;
+  const step3Valid = !!paymentMethod && (paymentMethod !== 'creditcard' || cardValid);
   const canAdvance = wizardStep === 1 ? purchaseQty > 0 && purchaseQty <= maxPurchasableExtraSessions
     : wizardStep === 2 ? step2Valid
-    : wizardStep === 3 ? !!paymentMethod
+    : wizardStep === 3 ? step3Valid
     : true;
 
   const renderWizardFooter = () => {
@@ -663,7 +728,7 @@ export default function ExtraSessionsScreen({ onClose }: ExtraSessionsScreenProp
               disabled={!canAdvance}
               className="w-full h-[48px] rounded-xl font-['Poppins:SemiBold',sans-serif] text-[14px] transition-all active:scale-[0.98] disabled:opacity-40 disabled:active:scale-100"
               style={{
-                background: canAdvance ? 'linear-gradient(135deg, #00D4AA, #00B894)' : 'rgba(255,255,255,0.06)',
+                background: canAdvance ? 'linear-gradient(135deg, #00B894, #009379)' : 'rgba(255,255,255,0.06)',
                 color: canAdvance ? '#ffffff' : 'rgba(255,255,255,0.35)',
               }}
             >
@@ -674,7 +739,7 @@ export default function ExtraSessionsScreen({ onClose }: ExtraSessionsScreenProp
               onClick={handleConfirmPurchase}
               className="w-full h-[48px] rounded-xl font-['Poppins:SemiBold',sans-serif] text-[14px] transition-all active:scale-[0.98]"
               style={{
-                background: 'linear-gradient(135deg, #00D4AA, #00B894)',
+                background: 'linear-gradient(135deg, #00B894, #009379)',
                 color: '#ffffff',
               }}
             >

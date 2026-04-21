@@ -466,9 +466,9 @@ export default React.memo(function ProfilScreenMobile({
               <MenuItem
                 icon={<BookOpen className="w-[22px] h-[22px]" strokeWidth={2} />}
                 label="Extra-Stunden"
-                iconColor="#00D4AA"
+                iconColor="#00B894"
                 badgeText={`${extraLessonsAvailable} Verfügbar`}
-                badgeColor="#00D4AA"
+                badgeColor="#00B894"
                 onClick={() => onOpenExtraSessions?.()}
                 isLast={true}
               />
