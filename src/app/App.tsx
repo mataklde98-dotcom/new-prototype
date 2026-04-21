@@ -560,6 +560,8 @@ function AppContent({ userData, onLogout }: { userData: any; onLogout: () => voi
                    onOpenTeacherProfile={navigation.openTeacherProfile}
                    onOpenTutoringActivation={() => navigation.setShowTutoringActivation(true)}
                    onOpenTutoringProgress={() => navigation.setShowTutoringProgress(true)}
+                   onShowKlassenarbeiten={() => navigation.setShowKlassenarbeiten(true)}
+                   onShowSchulaufgaben={() => navigation.setShowSchulaufgaben(true)}
                    allSets={allSets}
                    onOpenFlashcardSet={appHandlers.handleOpenFlashcardSet}
                    onCompletedExamClick={(examId) => appHandlers.handleCompletedExamClick(examId, 'Mobile')}

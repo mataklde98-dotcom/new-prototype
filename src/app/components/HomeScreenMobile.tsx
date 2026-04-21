@@ -11,7 +11,7 @@ import imgInformation2 from "figma:asset/e51112c4419b0e3840e36fc1512cdd56c4bab64
 import img5Be1B62F1B70E1Fb790B348D76Ddb4Becf81401B9B6732 from "figma:asset/49d3c05880ae6ac2ad58868ed10af9056db78537.png";
 import imgEllipse2 from "figma:asset/11a2b9c104f9ad331556dffc2e3e770195913d21.png";
 import { Sparkles, GraduationCap } from 'lucide-react';
-import { Flame, TrendingUp, TrendingDown, ChevronRight, Minus, Lock, Zap, CheckCircle2, Phone, Mail, Clock, Headset, Star, AlertTriangle, Target, Brain, ShieldAlert } from 'lucide-react';
+import { Flame, TrendingUp, TrendingDown, ChevronRight, Minus, Lock, Zap, CheckCircle2, Phone, Mail, Clock, Headset, Star, AlertTriangle, Target, Brain, ShieldAlert, ClipboardList, NotebookPen, Layers } from 'lucide-react';
 import { useUser } from '@/contexts/UserContext';
 import { LEARNING_STREAK } from "@/app/components/ProfileAnalyticsScreen";
 import { OVERALL_PROGRESS, MOCK_SUBJECTS, MOCK_ACTIVE_GOALS, MOCK_WEAKNESSES, MOCK_KNOWLEDGE_GAPS_SELF, MOCK_RISKS } from "@/app/components/ProfileAnalyticsScreen";
@@ -56,6 +56,8 @@ interface HomeScreenMobileProps {
   onOpenTeacherProfile?: (teacherId: string) => void;
   onOpenTutoringActivation?: () => void;
   onOpenTutoringProgress?: () => void;
+  onShowKlassenarbeiten?: () => void;
+  onShowSchulaufgaben?: () => void;
   allSets?: FlashcardSet[];
   onOpenFlashcardSet?: (set: FlashcardSet) => void;
   onCompletedExamClick?: (examId: string) => void;
@@ -78,7 +80,9 @@ export default React.memo(function HomeScreenMobile({
   onOpenTeacherProfile,
   onOpenTutoringActivation,
   onOpenTutoringProgress,
-  allSets = [], 
+  onShowKlassenarbeiten,
+  onShowSchulaufgaben,
+  allSets = [],
   onOpenFlashcardSet,
   onCompletedExamClick,
   refreshCompletedExams,
@@ -208,7 +212,7 @@ export default React.memo(function HomeScreenMobile({
 
             <div className="grid grid-cols-2 gap-3">
               {/* Generate Flashcards */}
-              <button 
+              <button
                 onClick={onNavigateToGenerateFlashcards}
                 className="relative overflow-hidden bg-gradient-to-br from-white/[0.05] to-white/[0.02] border border-white/[0.08] rounded-2xl h-[120px] flex flex-col items-center justify-center p-4 transition-all duration-300 active:scale-[0.98]"
                 style={{
@@ -228,7 +232,7 @@ export default React.memo(function HomeScreenMobile({
               </button>
 
               {/* Exam Simulation */}
-              <button 
+              <button
                 onClick={onNavigateToExamSimulation}
                 className="relative overflow-hidden bg-gradient-to-br from-white/[0.05] to-white/[0.02] border border-white/[0.08] rounded-2xl h-[120px] flex flex-col items-center justify-center p-4 transition-all duration-300 active:scale-[0.98]"
                 style={{
@@ -396,61 +400,6 @@ export default React.memo(function HomeScreenMobile({
 
               <div className="mx-4 h-px bg-white/[0.04]" />
 
-              {/* Row 5: Klausuren */}
-              {(() => {
-                const today = new Date('2026-03-18');
-                const upcoming = MOCK_UPCOMING_EXAMS
-                  .map(e => ({
-                    ...e,
-                    daysUntil: Math.ceil((new Date(e.date).getTime() - today.getTime()) / (1000 * 60 * 60 * 24)),
-                  }))
-                  .filter(e => e.daysUntil > 0)
-                  .sort((a, b) => a.daysUntil - b.daysUntil);
-                const nextExam = upcoming[0];
-                const otherCount = upcoming.length - 1;
-                // Severity-Farbe nach Dringlichkeit
-                const daysUntil = nextExam?.daysUntil ?? 0;
-                const pillColor = daysUntil <= 3 ? '#FF6B6B' : daysUntil <= 7 ? '#FFB800' : '#4A9EFF';
-                const pillBg = daysUntil <= 3 ? 'rgba(255,107,107,0.10)' : daysUntil <= 7 ? 'rgba(255,184,0,0.10)' : 'rgba(74,158,255,0.10)';
-                const pillBorder = daysUntil <= 3 ? 'rgba(255,107,107,0.20)' : daysUntil <= 7 ? 'rgba(255,184,0,0.20)' : 'rgba(74,158,255,0.20)';
-                return (
-                  <div className="px-4 py-3 flex items-center gap-3">
-                    <div
-                      className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
-                      style={{ background: 'rgba(74,158,255,0.08)' }}
-                    >
-                      <GraduationCap className="w-3.5 h-3.5" style={{ color: '#4A9EFF' }} />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      {nextExam ? (
-                        <>
-                          <p className="font-['Poppins:Medium',sans-serif] text-[12px] text-white leading-[16px] truncate">
-                            {nextExam.subject}-Klausur
-                          </p>
-                          <p className="font-['Poppins:Regular',sans-serif] text-[10px] text-white/40 leading-[13px] truncate">
-                            {nextExam.overallReadiness}% vorbereitet
-                          </p>
-                        </>
-                      ) : (
-                        <p className="font-['Poppins:Medium',sans-serif] text-[12px] text-white leading-[16px]">
-                          Keine anstehenden Klausuren
-                        </p>
-                      )}
-                    </div>
-                    {nextExam && (
-                      <span
-                        className="font-['Poppins:SemiBold',sans-serif] text-[11px] flex-shrink-0 px-2 py-0.5 rounded-full"
-                        style={{ color: pillColor, background: pillBg, border: `1px solid ${pillBorder}` }}
-                      >
-                        in {daysUntil} {daysUntil === 1 ? 'Tag' : 'Tagen'}
-                      </span>
-                    )}
-                  </div>
-                );
-              })()}
-
-              <div className="mx-4 h-px bg-white/[0.04]" />
-
               {/* Row 4: Lernziele */}
               <div className="px-4 py-3 flex items-center gap-3">
                 <div
@@ -465,6 +414,131 @@ export default React.memo(function HomeScreenMobile({
                   </p>
                 </div>
               </div>
+            </button>
+
+            {/* Hero Zoom-In: Nächste Prüfung — visuell mit Lernanalyse gekoppelt */}
+            {(() => {
+              const today = new Date('2026-03-18');
+              const upcoming = MOCK_UPCOMING_EXAMS
+                .map((e) => ({
+                  ...e,
+                  daysUntil: Math.ceil((new Date(e.date).getTime() - today.getTime()) / (1000 * 60 * 60 * 24)),
+                }))
+                .filter((e) => e.daysUntil > 0)
+                .sort((a, b) => a.daysUntil - b.daysUntil);
+              const nextExam = upcoming[0];
+              const daysUntil = nextExam?.daysUntil ?? 0;
+              const pillColor = daysUntil <= 3 ? '#FF6B6B' : daysUntil <= 7 ? '#FFB800' : '#4A9EFF';
+              const pillBg = daysUntil <= 3 ? 'rgba(255,107,107,0.10)' : daysUntil <= 7 ? 'rgba(255,184,0,0.10)' : 'rgba(74,158,255,0.10)';
+              const pillBorder = daysUntil <= 3 ? 'rgba(255,107,107,0.20)' : daysUntil <= 7 ? 'rgba(255,184,0,0.20)' : 'rgba(74,158,255,0.20)';
+
+              return (
+                <div
+                  className="mt-2 rounded-2xl overflow-hidden"
+                  style={{
+                    background: 'linear-gradient(135deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.01) 100%)',
+                    border: '1px solid rgba(255,255,255,0.06)',
+                  }}
+                >
+                  <div className="px-4 py-3.5 flex items-center gap-3">
+                    <div
+                      className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+                      style={{ background: nextExam ? pillBg : 'rgba(255,255,255,0.05)' }}
+                    >
+                      <GraduationCap
+                        className="w-5 h-5"
+                        style={{ color: nextExam ? pillColor : 'rgba(255,255,255,0.5)' }}
+                        strokeWidth={2}
+                      />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-['Poppins:Regular',sans-serif] text-[10px] text-white/40 uppercase tracking-wide mb-0.5">
+                        Nächste Prüfung
+                      </p>
+                      {nextExam ? (
+                        <>
+                          <p className="font-['Poppins:SemiBold',sans-serif] text-[14px] text-white leading-[18px] truncate">
+                            {nextExam.subject}
+                          </p>
+                          <p className="font-['Poppins:Regular',sans-serif] text-[11px] text-white/50 leading-[15px]">
+                            {nextExam.overallReadiness}% vorbereitet
+                          </p>
+                        </>
+                      ) : (
+                        <p className="font-['Poppins:Medium',sans-serif] text-[13px] text-white/60 leading-[17px]">
+                          Keine Prüfung geplant
+                        </p>
+                      )}
+                    </div>
+                    {nextExam && (
+                      <span
+                        className="font-['Poppins:SemiBold',sans-serif] text-[11px] flex-shrink-0 px-2.5 py-1 rounded-full"
+                        style={{ color: pillColor, background: pillBg, border: `1px solid ${pillBorder}` }}
+                      >
+                        in {daysUntil} {daysUntil === 1 ? 'Tag' : 'Tagen'}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              );
+            })()}
+          </div>
+
+          {/* Schnellzugriff — Runde Kreise, dezent */}
+          <div className="mb-6 flex items-start justify-around px-2">
+            <button
+              onClick={onShowKlassenarbeiten}
+              className="flex flex-col items-center gap-2 active:scale-[0.95] transition-transform"
+              style={{ WebkitTapHighlightColor: 'transparent' }}
+            >
+              <div
+                className="w-[56px] h-[56px] rounded-full flex items-center justify-center"
+                style={{
+                  background: 'rgba(255,255,255,0.04)',
+                  border: '1px solid rgba(255,255,255,0.08)',
+                }}
+              >
+                <ClipboardList className="w-5 h-5 text-white/75" strokeWidth={2} />
+              </div>
+              <span className="font-['Poppins:Medium',sans-serif] text-[11px] text-white/70 leading-tight text-center max-w-[80px]">
+                Klassen-<br />arbeiten
+              </span>
+            </button>
+            <button
+              onClick={onShowSchulaufgaben}
+              className="flex flex-col items-center gap-2 active:scale-[0.95] transition-transform"
+              style={{ WebkitTapHighlightColor: 'transparent' }}
+            >
+              <div
+                className="w-[56px] h-[56px] rounded-full flex items-center justify-center"
+                style={{
+                  background: 'rgba(255,255,255,0.04)',
+                  border: '1px solid rgba(255,255,255,0.08)',
+                }}
+              >
+                <NotebookPen className="w-5 h-5 text-white/75" strokeWidth={2} />
+              </div>
+              <span className="font-['Poppins:Medium',sans-serif] text-[11px] text-white/70 leading-tight text-center max-w-[80px]">
+                Schul-<br />aufgaben
+              </span>
+            </button>
+            <button
+              onClick={onNavigateToMyFlashcards}
+              className="flex flex-col items-center gap-2 active:scale-[0.95] transition-transform"
+              style={{ WebkitTapHighlightColor: 'transparent' }}
+            >
+              <div
+                className="w-[56px] h-[56px] rounded-full flex items-center justify-center"
+                style={{
+                  background: 'rgba(255,255,255,0.04)',
+                  border: '1px solid rgba(255,255,255,0.08)',
+                }}
+              >
+                <Layers className="w-5 h-5 text-white/75" strokeWidth={2} />
+              </div>
+              <span className="font-['Poppins:Medium',sans-serif] text-[11px] text-white/70 leading-tight text-center max-w-[80px]">
+                Meine<br />Karteikarten
+              </span>
             </button>
           </div>
 
