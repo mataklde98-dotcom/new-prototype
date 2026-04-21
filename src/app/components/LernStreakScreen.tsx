@@ -6,7 +6,7 @@
 // uppercase Section-Header mit Flame/Star/Clock).
 
 import React from 'react';
-import { ChevronLeft, Flame, Gift, Shield, Star, Clock, Zap, Trophy, Lock } from 'lucide-react';
+import { ChevronLeft, Flame, Gift, Shield, Clock, Zap, Trophy, Lock, Calendar, Snowflake } from 'lucide-react';
 import { LEARNING_STREAK } from '@/app/components/ProfileAnalyticsScreen';
 
 interface LernStreakScreenProps {
@@ -15,11 +15,10 @@ interface LernStreakScreenProps {
 }
 
 // ===== MOCK DATA =====
-const LONGEST_STREAK = 42;
 const STREAK_FREEZES_AVAILABLE = 1;
 const MAX_STREAK_FREEZES = 2;
-const WEEKLY_HOURS = 4;
-const WEEKLY_MINS = 32;
+const FREEZE_PURCHASE_COST = 50; // Credits pro Freeze
+const LONGEST_STREAK = 47; // Persönlicher Rekord (Mock — später aus User-Daten)
 
 interface Milestone {
   days: number;
@@ -34,8 +33,73 @@ const MILESTONES: Milestone[] = [
   { days: 30, credits: 75, label: 'Monats-Streak' },
   { days: 50, credits: 125 },
   { days: 100, credits: 300, label: 'Jahrhundert' },
+  { days: 180, credits: 600, label: 'Halbjahr' },
+  { days: 270, credits: 900, label: '9 Monate' },
   { days: 365, credits: 1500, label: 'Jahres-Champion' },
 ];
+
+// ===== MONATS-BONUS =====
+// Regel: Monat 1 (Start-Monat) → anteilig (gelaufene Tage / Monatslänge × 50).
+//        Ab Monat 2 → voller Bonus (+50) wenn Streak durchgehend vom 01. bis 01.
+const MONTHLY_BONUS_CREDITS = 50;
+// Mock: "Heute" im App-Universum — matcht andere Home-Berechnungen.
+const TODAY = new Date('2026-03-18');
+// Ableitbar aus LEARNING_STREAK: Start = heute minus (streak-1) Tage.
+const STREAK_START = new Date(TODAY);
+STREAK_START.setDate(TODAY.getDate() - (LEARNING_STREAK - 1));
+
+function getDaysInMonth(year: number, month: number): number {
+  return new Date(year, month + 1, 0).getDate();
+}
+
+interface MonthlyBonus {
+  credits: number;
+  isPartial: boolean;
+  payoutDate: Date; // immer der 01. des Folgemonats
+  daysInStreakThisMonth: number;
+  totalDaysThisMonth: number;
+}
+
+function calculateCurrentMonthBonus(today: Date, streakStart: Date, multiplierValue: number): MonthlyBonus {
+  const currentMonth = today.getMonth();
+  const currentYear = today.getFullYear();
+  const totalDaysThisMonth = getDaysInMonth(currentYear, currentMonth);
+  const payoutDate = new Date(currentYear, currentMonth + 1, 1);
+
+  const isFirstMonth =
+    streakStart.getMonth() === currentMonth && streakStart.getFullYear() === currentYear;
+
+  let daysInStreak: number;
+  if (isFirstMonth) {
+    // Von Streak-Start bis Monatsende, anteilig × Multiplier
+    daysInStreak = totalDaysThisMonth - streakStart.getDate() + 1;
+    const proportional = Math.round((daysInStreak / totalDaysThisMonth) * MONTHLY_BONUS_CREDITS * multiplierValue);
+    return {
+      credits: proportional,
+      isPartial: true,
+      payoutDate,
+      daysInStreakThisMonth: daysInStreak,
+      totalDaysThisMonth,
+    };
+  }
+
+  // Ab Monat 2: voller Bonus × Multiplier, wenn durchgehend
+  return {
+    credits: Math.round(MONTHLY_BONUS_CREDITS * multiplierValue),
+    isPartial: false,
+    payoutDate,
+    daysInStreakThisMonth: totalDaysThisMonth,
+    totalDaysThisMonth,
+  };
+}
+
+function formatPayoutDate(d: Date): string {
+  const months = [
+    'Januar', 'Februar', 'März', 'April', 'Mai', 'Juni',
+    'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember',
+  ];
+  return `1. ${months[d.getMonth()]}`;
+}
 
 function getMultiplier(streak: number): { value: number; label: string; nextAt?: number } {
   if (streak >= 100) return { value: 3, label: '3× Multiplier' };
@@ -48,11 +112,15 @@ export default function LernStreakScreen({ onClose }: LernStreakScreenProps) {
   const streak = LEARNING_STREAK;
   const multiplier = getMultiplier(streak);
   const nextMilestone = MILESTONES.find((m) => m.days > streak);
-  const prevMilestoneDays = MILESTONES.filter((m) => m.days <= streak).pop()?.days ?? 0;
-  const progressToNext = nextMilestone
-    ? ((streak - prevMilestoneDays) / (nextMilestone.days - prevMilestoneDays)) * 100
-    : 100;
   const daysToNext = nextMilestone ? nextMilestone.days - streak : 0;
+
+  // Monats-Bonus — wird vom Multiplier erhöht
+  const monthlyBonus = calculateCurrentMonthBonus(TODAY, STREAK_START, multiplier.value);
+  const daysUntilPayout = Math.ceil(
+    (monthlyBonus.payoutDate.getTime() - TODAY.getTime()) / (1000 * 60 * 60 * 24),
+  );
+  const monthProgress =
+    (monthlyBonus.daysInStreakThisMonth / monthlyBonus.totalDaysThisMonth) * 100;
 
   return (
     <div className="size-full flex flex-col bg-[#0a0a0a] overflow-hidden overscroll-none">
@@ -106,9 +174,30 @@ export default function LernStreakScreen({ onClose }: LernStreakScreenProps) {
               Tage
             </span>
           </div>
-          <p className="font-['Poppins:Regular',sans-serif] text-[13px] text-white/50 mb-4">
+          <p className="font-['Poppins:Regular',sans-serif] text-[13px] text-white/50 mb-3">
             Du bist seit {streak} Tagen am Ball — weiter so!
           </p>
+
+          {/* Persönlicher Rekord */}
+          {streak >= LONGEST_STREAK ? (
+            <div className="flex items-center justify-center gap-1.5 mb-4">
+              <Trophy className="w-3.5 h-3.5" style={{ color: '#FF9F43' }} strokeWidth={2.2} />
+              <span
+                className="font-['Poppins:SemiBold',sans-serif] text-[11px]"
+                style={{ color: '#FF9F43' }}
+              >
+                Neuer persönlicher Rekord!
+              </span>
+            </div>
+          ) : (
+            <div className="flex items-center justify-center gap-1.5 mb-4">
+              <Trophy className="w-3 h-3 text-white/35" strokeWidth={2} />
+              <span className="font-['Poppins:Medium',sans-serif] text-[11px] text-white/45">
+                Persönlicher Rekord: {LONGEST_STREAK} Tage
+              </span>
+            </div>
+          )}
+
           <div
             className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full"
             style={{
@@ -129,58 +218,91 @@ export default function LernStreakScreen({ onClose }: LernStreakScreenProps) {
               Ab {multiplier.nextAt} Tagen: {getMultiplier(multiplier.nextAt).label}
             </p>
           )}
+          <p className="font-['Poppins:Regular',sans-serif] text-[11px] text-white/45 mt-3 leading-[15px] max-w-[280px] mx-auto">
+            Dein Multiplier erhöht deinen monatlichen Bonus.
+          </p>
         </div>
 
-        {/* ===== NEXT MILESTONE ===== */}
-        {nextMilestone && (
-          <div>
-            <h3 className="font-['Poppins:SemiBold',sans-serif] text-[11px] text-white/40 uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
-              <Gift className="w-4 h-4" />
-              Nächste Belohnung
-            </h3>
-            <div
-              className="rounded-2xl p-4"
-              style={{
-                background: 'linear-gradient(135deg, rgba(255,255,255,0.05), rgba(255,255,255,0.02))',
-                border: '1px solid rgba(255,255,255,0.08)',
-              }}
-            >
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-3">
-                  <div
-                    className="w-10 h-10 rounded-xl flex items-center justify-center"
-                    style={{ background: 'rgba(255,159,67,0.12)' }}
-                  >
-                    <Gift className="w-5 h-5" style={{ color: '#FF9F43' }} strokeWidth={2} />
-                  </div>
-                  <div>
-                    <p className="font-['Poppins:SemiBold',sans-serif] text-[14px] text-white">
-                      +{nextMilestone.credits} Credits
-                    </p>
-                    <p className="font-['Poppins:Regular',sans-serif] text-[11px] text-white/40">
-                      {nextMilestone.days} Tage{nextMilestone.label ? ` · ${nextMilestone.label}` : ''}
-                    </p>
-                  </div>
-                </div>
-                <span
-                  className="font-['Poppins:SemiBold',sans-serif] text-[12px]"
-                  style={{ color: '#FF9F43' }}
+        {/* ===== MONATS-BONUS ===== */}
+        <div>
+          <h3 className="font-['Poppins:SemiBold',sans-serif] text-[11px] text-white/40 uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
+            <Calendar className="w-4 h-4" />
+            Monats-Bonus
+          </h3>
+          <div
+            className="rounded-2xl p-4"
+            style={{
+              background: 'linear-gradient(135deg, rgba(255,255,255,0.05), rgba(255,255,255,0.02))',
+              border: '1px solid rgba(255,255,255,0.08)',
+            }}
+          >
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-3">
+                <div
+                  className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+                  style={{ background: 'rgba(255,159,67,0.12)' }}
                 >
-                  noch {daysToNext} {daysToNext === 1 ? 'Tag' : 'Tage'}
+                  <Calendar className="w-5 h-5" style={{ color: '#FF9F43' }} strokeWidth={2} />
+                </div>
+                <div className="min-w-0">
+                  <p className="font-['Poppins:SemiBold',sans-serif] text-[14px] text-white">
+                    +{monthlyBonus.credits} Credits
+                    {monthlyBonus.isPartial && (
+                      <span className="font-['Poppins:Regular',sans-serif] text-[11px] text-white/45 ml-1.5">
+                        (anteilig)
+                      </span>
+                    )}
+                  </p>
+                  <p className="font-['Poppins:Regular',sans-serif] text-[11px] text-white/40">
+                    Auszahlung am {formatPayoutDate(monthlyBonus.payoutDate)}
+                  </p>
+                </div>
+              </div>
+              <span
+                className="font-['Poppins:SemiBold',sans-serif] text-[11px] flex-shrink-0 px-2 py-0.5 rounded-full"
+                style={{
+                  color: '#FF9F43',
+                  background: 'rgba(255,159,67,0.10)',
+                  border: '1px solid rgba(255,159,67,0.25)',
+                }}
+              >
+                noch {daysUntilPayout} {daysUntilPayout === 1 ? 'Tag' : 'Tage'}
+              </span>
+            </div>
+
+            {/* Fortschritt diesen Monat */}
+            <div className="mb-3">
+              <div className="flex items-center justify-between mb-1.5">
+                <span className="font-['Poppins:Regular',sans-serif] text-[11px] text-white/40">
+                  Tage im Streak diesen Monat
+                </span>
+                <span className="font-['Poppins:SemiBold',sans-serif] text-[11px] text-white/70">
+                  {monthlyBonus.daysInStreakThisMonth} / {monthlyBonus.totalDaysThisMonth}
                 </span>
               </div>
-              <div className="w-full h-[6px] rounded-full bg-white/[0.06] overflow-hidden">
+              <div className="w-full h-[5px] rounded-full bg-white/[0.06] overflow-hidden">
                 <div
                   className="h-full rounded-full transition-all duration-500 ease-out"
                   style={{
-                    width: `${Math.min(Math.max(progressToNext, 0), 100)}%`,
+                    width: `${Math.min(Math.max(monthProgress, 0), 100)}%`,
                     background: 'linear-gradient(to right, #FF9F43, #FFB84D)',
                   }}
                 />
               </div>
             </div>
+
+            {/* Einführungs-Text mit Uhr-Icon — unter Progress-Bar */}
+            <div
+              className="flex items-start gap-2 pt-3"
+              style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}
+            >
+              <Clock className="w-3.5 h-3.5 text-white/30 flex-shrink-0 mt-0.5" />
+              <p className="font-['Poppins:Regular',sans-serif] text-[11px] text-white/50 leading-[15px]">
+                Für jeden Monat, den du komplett im Streak bleibst, bekommst du am 01. des Folgemonats <span className="text-white/75 font-['Poppins:Medium',sans-serif]">+50 Credits × Multiplier</span>.
+              </p>
+            </div>
           </div>
-        )}
+        </div>
 
         {/* ===== STREAK-SCHUTZ ===== */}
         <div>
@@ -210,16 +332,21 @@ export default function LernStreakScreen({ onClose }: LernStreakScreenProps) {
                   Schützt deinen Streak automatisch, wenn du einen Tag verpasst
                 </p>
               </div>
-              <div className="flex items-center gap-0.5">
-                {Array.from({ length: MAX_STREAK_FREEZES }).map((_, i) => (
-                  <div
-                    key={i}
-                    className="w-2 h-2 rounded-full"
-                    style={{
-                      background: i < STREAK_FREEZES_AVAILABLE ? '#4A9EFF' : 'rgba(255,255,255,0.1)',
-                    }}
-                  />
-                ))}
+              <div className="flex items-center gap-1">
+                {Array.from({ length: MAX_STREAK_FREEZES }).map((_, i) => {
+                  const isAvailable = i < STREAK_FREEZES_AVAILABLE;
+                  return (
+                    <Snowflake
+                      key={i}
+                      className="w-4 h-4"
+                      style={{
+                        color: isAvailable ? '#4A9EFF' : 'rgba(255,255,255,0.15)',
+                        filter: isAvailable ? 'drop-shadow(0 0 4px rgba(74,158,255,0.4))' : undefined,
+                      }}
+                      strokeWidth={2}
+                    />
+                  );
+                })}
               </div>
             </div>
             <div
@@ -231,15 +358,85 @@ export default function LernStreakScreen({ onClose }: LernStreakScreenProps) {
                 Alle 14 Tage erhältst du einen neuen Freeze (max. {MAX_STREAK_FREEZES})
               </p>
             </div>
+
+            {/* Kauf-Button — nur aktiv wenn unter MAX */}
+            {(() => {
+              const atMax = STREAK_FREEZES_AVAILABLE >= MAX_STREAK_FREEZES;
+              return (
+                <button
+                  disabled={atMax}
+                  className="w-full mt-3 h-[40px] rounded-xl font-['Poppins:SemiBold',sans-serif] text-[13px] transition-all active:scale-[0.98] disabled:active:scale-100 flex items-center justify-center gap-1.5"
+                  style={{
+                    background: atMax ? 'rgba(255,255,255,0.04)' : 'rgba(74,158,255,0.12)',
+                    border: `1px solid ${atMax ? 'rgba(255,255,255,0.06)' : 'rgba(74,158,255,0.25)'}`,
+                    color: atMax ? 'rgba(255,255,255,0.35)' : '#4A9EFF',
+                    WebkitTapHighlightColor: 'transparent',
+                  }}
+                >
+                  {atMax ? (
+                    <>Maximum erreicht</>
+                  ) : (
+                    <>
+                      <Snowflake className="w-4 h-4" strokeWidth={2.2} />
+                      Freeze aufladen · {FREEZE_PURCHASE_COST} Credits
+                    </>
+                  )}
+                </button>
+              );
+            })()}
           </div>
         </div>
 
-        {/* ===== MEILENSTEINE TIMELINE ===== */}
+        {/* ===== MEILENSTEINE (inkl. Nächste Belohnung Fortschritt) ===== */}
         <div>
           <h3 className="font-['Poppins:SemiBold',sans-serif] text-[11px] text-white/40 uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
             <Trophy className="w-4 h-4" />
             Meilensteine
           </h3>
+
+          {/* Nächste Belohnung — Info-Card */}
+          {nextMilestone && (
+            <div
+              className="rounded-2xl p-4 mb-3"
+              style={{
+                background: 'linear-gradient(135deg, rgba(255,255,255,0.05), rgba(255,255,255,0.02))',
+                border: '1px solid rgba(255,255,255,0.08)',
+              }}
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div
+                    className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+                    style={{ background: 'rgba(255,159,67,0.12)' }}
+                  >
+                    <Gift className="w-5 h-5" style={{ color: '#FF9F43' }} strokeWidth={2} />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="font-['Poppins:Regular',sans-serif] text-[11px] text-white/50 leading-tight">
+                      Nächste Belohnung
+                    </p>
+                    <p className="font-['Poppins:SemiBold',sans-serif] text-[14px] text-white leading-tight mt-0.5">
+                      +{nextMilestone.credits} Credits
+                    </p>
+                    <p className="font-['Poppins:Regular',sans-serif] text-[11px] text-white/40 mt-0.5">
+                      {nextMilestone.days} Tage{nextMilestone.label ? ` · ${nextMilestone.label}` : ''}
+                    </p>
+                  </div>
+                </div>
+                <span
+                  className="font-['Poppins:SemiBold',sans-serif] text-[11px] flex-shrink-0 px-2 py-0.5 rounded-full"
+                  style={{
+                    color: '#FF9F43',
+                    background: 'rgba(255,159,67,0.10)',
+                    border: '1px solid rgba(255,159,67,0.25)',
+                  }}
+                >
+                  noch {daysToNext} {daysToNext === 1 ? 'Tag' : 'Tage'}
+                </span>
+              </div>
+            </div>
+          )}
+
           <div
             className="rounded-2xl overflow-hidden"
             style={{
@@ -314,72 +511,6 @@ export default function LernStreakScreen({ onClose }: LernStreakScreenProps) {
           </div>
         </div>
 
-        {/* ===== STATS: Rekord + Wochenzeit + 7-Tage-Grid ===== */}
-        <div>
-          <h3 className="font-['Poppins:SemiBold',sans-serif] text-[11px] text-white/40 uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
-            <Star className="w-4 h-4" />
-            Deine Woche
-          </h3>
-          <div
-            className="rounded-2xl p-4"
-            style={{
-              background: 'linear-gradient(135deg, rgba(255,255,255,0.05), rgba(255,255,255,0.02))',
-              border: '1px solid rgba(255,255,255,0.08)',
-            }}
-          >
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-1.5">
-                <Star className="w-3.5 h-3.5 text-white/25" />
-                <span className="font-['Poppins:Regular',sans-serif] text-[11px] text-white/30">
-                  Längste:{' '}
-                  <span className="text-white/60">{LONGEST_STREAK} Tage</span>
-                </span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <Clock className="w-3.5 h-3.5 text-white/25" />
-                <span className="font-['Poppins:Medium',sans-serif] text-[11px] text-white/40">
-                  {WEEKLY_HOURS > 0 ? `${WEEKLY_HOURS}h ` : ''}
-                  {WEEKLY_MINS}min
-                </span>
-              </div>
-            </div>
-            <div className="flex items-center gap-1.5">
-              {['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'].map((day, i) => {
-                const isActive = i < streak && i < 7;
-                const isToday = i === 0;
-                return (
-                  <div key={day} className="flex-1 flex flex-col items-center gap-1">
-                    <div
-                      className="w-full aspect-square rounded-lg flex items-center justify-center transition-colors"
-                      style={{
-                        background: isActive
-                          ? isToday
-                            ? 'rgba(255,159,67,0.20)'
-                            : 'rgba(255,159,67,0.10)'
-                          : 'rgba(255,255,255,0.03)',
-                        border: isToday ? '1px solid rgba(255,159,67,0.35)' : '1px solid transparent',
-                      }}
-                    >
-                      {isActive && (
-                        <Flame
-                          className="w-3 h-3"
-                          style={{ color: isToday ? '#FF9F43' : 'rgba(255,159,67,0.50)' }}
-                        />
-                      )}
-                    </div>
-                    <span
-                      className="font-['Poppins:Medium',sans-serif] text-[9px]"
-                      style={{ color: isToday ? '#FF9F43' : 'rgba(255,255,255,0.25)' }}
-                    >
-                      {day}
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-
         {/* ===== INFO: So funktioniert's ===== */}
         <div
           className="rounded-2xl p-4"
@@ -402,7 +533,10 @@ export default function LernStreakScreen({ onClose }: LernStreakScreenProps) {
               · Ein Streak-Freeze schützt dich automatisch bei verpassten Tagen
             </li>
             <li className="font-['Poppins:Regular',sans-serif] text-[12px] text-white/55 leading-[17px]">
-              · Längere Streaks = höherer Multiplier für tägliche Bonus-Credits
+              · Dein Multiplier erhöht deinen monatlichen Bonus — je länger der Streak, desto höher
+            </li>
+            <li className="font-['Poppins:Regular',sans-serif] text-[12px] text-white/55 leading-[17px]">
+              · Für jeden vollständigen Monat im Streak gibt's Bonus-Credits (+50 × Multiplier) am 01. des Folgemonats
             </li>
             <li className="font-['Poppins:Regular',sans-serif] text-[12px] text-white/55 leading-[17px]">
               · Nach einem Bruch: 24h-Window zur Reaktivierung (1× pro Monat gratis)

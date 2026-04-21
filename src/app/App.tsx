@@ -262,6 +262,7 @@ function AppContent({ userData, onLogout }: { userData: any; onLogout: () => voi
     showTutoringProgress: navigation.showTutoringProgress,
     showHomeBottomSheet: homeBottomSheetOpen,
     showExtraSessions: navigation.showExtraSessions,
+    showLernStreak: navigation.showLernStreak,
     onToggleSidebar: uiState.toggleSidebar,
     onHomeClick: navigation.navigateToHome,
     onMyFlashcardsClick: () => {

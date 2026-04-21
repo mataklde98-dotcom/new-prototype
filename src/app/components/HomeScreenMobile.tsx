@@ -145,6 +145,27 @@ export default React.memo(function HomeScreenMobile({
         <MobileHeader onStreakClick={onOpenStreakScreen} />
 
         <div className="px-5 pt-2">
+          {/* Gesamtfortschritt Progress-Bar */}
+          <div className="mb-5">
+            <div className="flex items-center justify-between mb-2">
+              <span className="font-['Poppins:Medium',sans-serif] text-[13px] text-white/70">
+                Gesamtfortschritt
+              </span>
+              <span className="font-['Poppins:SemiBold',sans-serif] text-[14px] text-white">
+                {OVERALL_PROGRESS}%
+              </span>
+            </div>
+            <div className="w-full h-[8px] rounded-full bg-white/[0.06] overflow-hidden">
+              <div
+                className="h-full rounded-full transition-all duration-500 ease-out"
+                style={{
+                  width: `${OVERALL_PROGRESS}%`,
+                  background: 'linear-gradient(to right, #00D4AA, #00B894)',
+                }}
+              />
+            </div>
+          </div>
+
           {/* Your ToDo's Section */}
           <div className="mb-5">
             {/* Section Header */}
@@ -1072,7 +1093,13 @@ function ReferralBannerHome() {
   };
 
   return (
-    <>
+    <div className="mb-3">
+      {/* Section Header */}
+      <h3 className="font-['Poppins:SemiBold',sans-serif] text-[11px] text-white/40 uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
+        <Gift className="w-4 h-4" />
+        Credits & Belohnungen
+      </h3>
+
       {/* Card 1: Freunde einladen */}
       <div
         className="mb-3 rounded-2xl p-4"
@@ -1200,7 +1227,7 @@ function ReferralBannerHome() {
           </button>
         </div>
       </div>
-    </>
+    </div>
   );
 }
 
@@ -1212,17 +1239,25 @@ function LernStreakSection({ onClick }: { onClick?: () => void }) {
 
   return (
     <div className="mb-3">
-      <h3 className="font-['Poppins:SemiBold',sans-serif] text-[11px] text-white/40 uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
-        <Flame className="w-4 h-4" />
-        Lern-Streak
-      </h3>
-      <button
-        onClick={onClick}
-        className="w-full text-left rounded-2xl p-4 transition-all duration-200 active:scale-[0.98]"
+      <div className="flex items-center justify-between mb-2.5">
+        <h3 className="font-['Poppins:SemiBold',sans-serif] text-[11px] text-white/40 uppercase tracking-wider flex items-center gap-1.5">
+          <Flame className="w-4 h-4" />
+          Lern-Streak
+        </h3>
+        <button
+          onClick={onClick}
+          className="flex items-center gap-0.5 active:opacity-70 transition-opacity"
+          style={{ WebkitTapHighlightColor: 'transparent' }}
+        >
+          <p className="font-['Poppins:Bold',sans-serif] text-[11px] text-white">Details</p>
+          <ChevronRight className="w-3.5 h-3.5 text-white/50" />
+        </button>
+      </div>
+      <div
+        className="w-full text-left rounded-2xl p-4"
         style={{
           background: 'linear-gradient(135deg, rgba(255,255,255,0.05), rgba(255,255,255,0.02))',
           border: '1px solid rgba(255,255,255,0.08)',
-          WebkitTapHighlightColor: 'transparent',
         }}
       >
         <div className="flex items-center justify-between mb-3">
@@ -1273,7 +1308,23 @@ function LernStreakSection({ onClick }: { onClick?: () => void }) {
             );
           })}
         </div>
-      </button>
+
+        {/* Footer CTA — orange Pill-Button (einziges klickbares Element in der Card) */}
+        <button
+          onClick={onClick}
+          className="w-full mt-4 flex items-center justify-center gap-1.5 h-[36px] rounded-xl transition-all active:scale-[0.98]"
+          style={{
+            background: 'rgba(255,159,67,0.10)',
+            border: '1px solid rgba(255,159,67,0.20)',
+            WebkitTapHighlightColor: 'transparent',
+          }}
+        >
+          <span className="font-['Poppins:SemiBold',sans-serif] text-[12px]" style={{ color: '#FF9F43' }}>
+            Zum Lern-Streak
+          </span>
+          <ChevronRight className="w-3.5 h-3.5" style={{ color: '#FF9F43' }} />
+        </button>
+      </div>
     </div>
   );
 }
