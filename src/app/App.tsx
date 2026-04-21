@@ -28,7 +28,7 @@ import TutoringActivationFlow from "./components/TutoringActivationFlow";
 import TutoringProgressScreen from "./components/TutoringProgressScreen";
 import TutoringSessionDetailScreen from "./components/TutoringSessionDetailScreen";
 import TutoringExplainScreen from "./components/TutoringExplainScreen";
-import ExtraSessionsScreen from "./components/ExtraSessionsScreen";
+import ExtraSessionsScreen from "./components/ExtraSessionScreen";
 import OnboardingTrialPopup from "./components/OnboardingTrialPopup";
 import AuthWrapper from "@/app/components/AuthWrapper";
 import { ScreenManager } from "@/app/components/ScreenManager";
