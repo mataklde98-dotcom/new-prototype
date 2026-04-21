@@ -1,21 +1,16 @@
-import { defineConfig, type Plugin } from 'vite'
+import { defineConfig } from 'vite'
 import path from 'path'
 import tailwindcss from '@tailwindcss/vite'
 import react from '@vitejs/plugin-react'
 
-// Resolves figma:asset/ imports to a 1x1 transparent placeholder PNG
-function figmaAssetPlaceholder(): Plugin {
+
+function figmaAssetResolver() {
   return {
-    name: 'figma-asset-placeholder',
-    resolveId(source) {
-      if (source.startsWith('figma:asset/')) {
-        return `\0${source}`
-      }
-    },
-    load(id) {
-      if (id.startsWith('\0figma:asset/')) {
-        // 1x1 transparent PNG as data URL
-        return `export default "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVQIHWNgAAIABQABNjN9GQAAAAlFTkSuQmCC"`
+    name: 'figma-asset-resolver',
+    resolveId(id) {
+      if (id.startsWith('figma:asset/')) {
+        const filename = id.replace('figma:asset/', '')
+        return path.resolve(__dirname, 'src/assets', filename)
       }
     },
   }
@@ -23,7 +18,7 @@ function figmaAssetPlaceholder(): Plugin {
 
 export default defineConfig({
   plugins: [
-    figmaAssetPlaceholder(),
+    figmaAssetResolver(),
     // The React and Tailwind plugins are both required for Make, even if
     // Tailwind is not being actively used – do not remove them
     react({

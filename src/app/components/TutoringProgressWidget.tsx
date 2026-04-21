@@ -6,12 +6,14 @@
 import React from 'react';
 import {
   Sparkles, ChevronRight, AlertTriangle, Target,
-  Calendar, TrendingUp, Flame, BookOpen, Zap,
+  Calendar, TrendingUp, BookOpen, Zap, ArrowUpRight, ArrowDownRight, Minus,
 } from 'lucide-react';
 import {
   MOCK_SESSIONS,
   MOCK_OVERALL_STATS,
   MOCK_KNOWLEDGE_GAPS,
+  MOCK_ACTIVE_WEAKNESSES,
+  MOCK_RESOLVED_WEAKNESSES_COUNT,
 } from '@/mocks/tutoringProgress.mock';
 import { useTeacherTasks } from '@/hooks/useTeacherTasks';
 
@@ -22,8 +24,9 @@ interface TutoringProgressWidgetProps {
 export default React.memo(function TutoringProgressWidget({ onOpenProgress }: TutoringProgressWidgetProps) {
   const stats = MOCK_OVERALL_STATS;
   const topWeaknesses = MOCK_SESSIONS.flatMap(s => s.weaknesses).filter(w => w.severity === 'high').slice(0, 2);
-  const pendingRecommendations = MOCK_SESSIONS.flatMap(s => s.recommendations).filter(r => !r.completed).length;
   const criticalGaps = MOCK_KNOWLEDGE_GAPS.filter(g => g.severity === 'critical').length;
+  const activeWeaknesses = MOCK_ACTIVE_WEAKNESSES.filter(w => w.isActive);
+  const resolvedCount = MOCK_RESOLVED_WEAKNESSES_COUNT;
   const teacherTasks = useTeacherTasks();
   const pendingTeacherTasks = teacherTasks.filter(t => t.status !== 'completed').length;
 
@@ -115,87 +118,37 @@ export default React.memo(function TutoringProgressWidget({ onOpenProgress }: Tu
               </div>
               <div className="w-px h-7 bg-white/[0.06]" />
               <div className="text-center">
-                <p className="font-['Poppins:SemiBold',sans-serif] text-[16px] text-[#4A9EFF] leading-[20px]">
-                  {pendingRecommendations}
+                <p className="font-['Poppins:SemiBold',sans-serif] text-[16px] text-[#4ADE80] leading-[20px]">
+                  {resolvedCount}
                 </p>
                 <p className="font-['Poppins:Regular',sans-serif] text-[9px] text-white/25">
-                  Übungen
+                  Behoben
                 </p>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Badges Row: Streak + Teacher Tasks + Warm-Up */}
-        {(stats.streak.isActive || pendingTeacherTasks > 0 || warmUpAvailable) && (
-          <>
-            <div className="mx-4 h-px bg-white/[0.04]" />
-            <div className="px-4 py-2.5 flex items-center gap-2 flex-wrap">
-              {/* Streak Badge */}
-              {stats.streak.isActive && (
-                <div
-                  className="flex items-center gap-1.5 px-2.5 py-1 rounded-full"
-                  style={{ background: 'rgba(255,140,0,0.08)', border: '1px solid rgba(255,140,0,0.15)' }}
-                >
-                  <Flame className="w-3 h-3" style={{ color: '#FF8C00' }} />
-                  <span className="font-['Poppins:SemiBold',sans-serif] text-[10px]" style={{ color: '#FF8C00' }}>
-                    {stats.streak.currentStreak}-Tage Streak
-                  </span>
-                </div>
-              )}
-
-              {/* Teacher Tasks Badge */}
-              {pendingTeacherTasks > 0 && (
-                <div
-                  className="flex items-center gap-1.5 px-2.5 py-1 rounded-full"
-                  style={{ background: 'rgba(74,158,255,0.08)', border: '1px solid rgba(74,158,255,0.15)' }}
-                >
-                  <BookOpen className="w-3 h-3" style={{ color: '#4A9EFF' }} />
-                  <span className="font-['Poppins:SemiBold',sans-serif] text-[10px]" style={{ color: '#4A9EFF' }}>
-                    {pendingTeacherTasks} neue Aufgaben vom Lehrer
-                  </span>
-                </div>
-              )}
-
-              {/* Warm-Up Badge */}
-              {warmUpAvailable && (
-                <div
-                  className="flex items-center gap-1.5 px-2.5 py-1 rounded-full"
-                  style={{
-                    background: 'linear-gradient(135deg, rgba(0,184,148,0.12), rgba(74,158,255,0.10))',
-                    border: '1px solid rgba(0,184,148,0.20)',
-                  }}
-                >
-                  <Zap className="w-3 h-3" style={{ color: '#00D4AA' }} />
-                  <span className="font-['Poppins:SemiBold',sans-serif] text-[10px]" style={{ color: '#00D4AA' }}>
-                    Warm-Up bereit
-                  </span>
-                </div>
-              )}
-            </div>
-          </>
-        )}
-
         {/* Divider */}
         <div className="mx-4 h-px bg-white/[0.04]" />
 
         {/* Bottom Row: AI Insight + Next Session */}
         <div className="px-4 py-3 flex items-center gap-3">
-          {/* AI Insight */}
-          {topWeaknesses.length > 0 ? (
+          {/* Teacher Tasks Info */}
+          {pendingTeacherTasks > 0 ? (
             <div className="flex items-center gap-2 flex-1 min-w-0">
               <div
                 className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
-                style={{ background: 'rgba(255,107,107,0.08)' }}
+                style={{ background: 'rgba(74,158,255,0.08)' }}
               >
-                <AlertTriangle className="w-3.5 h-3.5" style={{ color: '#FF6B6B' }} />
+                <BookOpen className="w-3.5 h-3.5" style={{ color: '#4A9EFF' }} />
               </div>
               <div className="flex-1 min-w-0">
                 <p className="font-['Poppins:Medium',sans-serif] text-[11px] text-white/50 leading-[14px] truncate">
-                  {topWeaknesses[0].title}
+                  {pendingTeacherTasks} neue Aufgaben
                 </p>
                 <p className="font-['Poppins:Regular',sans-serif] text-[9px] text-white/25 leading-[12px]">
-                  Schwäche erkannt
+                  vom Lehrer
                 </p>
               </div>
             </div>
@@ -208,13 +161,10 @@ export default React.memo(function TutoringProgressWidget({ onOpenProgress }: Tu
                 <TrendingUp className="w-3.5 h-3.5" style={{ color: '#00D4AA' }} />
               </div>
               <p className="font-['Poppins:Medium',sans-serif] text-[11px] text-white/50 leading-[14px]">
-                Guter Fortschritt!
+                Keine offenen Aufgaben
               </p>
             </div>
           )}
-
-          {/* Separator */}
-          <div className="w-px h-6 bg-white/[0.06] flex-shrink-0" />
 
           {/* Next Session / Warm-Up */}
           <div className="flex items-center gap-2 flex-shrink-0">

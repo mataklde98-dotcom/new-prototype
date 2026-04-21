@@ -32,6 +32,16 @@ export interface CompletedExam {
   userGrade?: string; // Klassenstufe
   // 🏆 Generation Number (wie bei Flashcards - permanente Badge-Nummer)
   generationNumber?: number; // #1, #2, #3, etc. - zeigt X-te Prüfung zum selben Thema
+  // 🆕 Multi-category exam scope (new exam selection model)
+  examScope?: ExamScopeCategory[];
+}
+
+export interface ExamScopeCategory {
+  name: string;
+  topics: {
+    name: string;
+    subtopics: string[];
+  }[];
 }
 
 // ✅ STORAGE KEY - User-Scoped (same as old system)

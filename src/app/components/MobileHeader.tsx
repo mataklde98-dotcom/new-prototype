@@ -3,7 +3,62 @@ import { createPortal } from 'react-dom';
 import { Bell } from 'lucide-react';
 import { useUser } from '@/contexts/UserContext';
 import NotificationPanel from '@/app/components/NotificationPanel';
-import { OVERALL_PROGRESS } from '@/app/components/ProfileAnalyticsScreen';
+import { imgBlur } from '@/imports/svg-1d2hv';
+
+/**
+ * Apple iOS Button — 1:1 from Figma, adapted for dark (#0a0a0a) background.
+ * Structure: BG (Blur mask + Fill + Glass Effect) → Icon → Badge
+ */
+function AppleGlassButton({ onClick, children, badge }: { onClick: () => void; children: React.ReactNode; badge?: boolean }) {
+  return (
+    <button
+      onClick={onClick}
+      className="relative w-[44px] h-[44px] rounded-full flex items-center justify-center active:scale-[0.92] transition-transform"
+      style={{ WebkitTapHighlightColor: 'transparent' }}
+    >
+      {/* === Apple Frosted Glass — faithful to Figma structure === */}
+
+      {/* Layer 1: Backdrop blur — light, not foggy */}
+      <div
+        className="absolute inset-0 rounded-full"
+        style={{
+          backdropFilter: 'blur(2px)',
+          WebkitBackdropFilter: 'blur(2px)',
+        }}
+      />
+
+      {/* Layer 2: Solid dark fill */}
+      <div
+        className="absolute inset-0 rounded-full"
+        style={{
+          background: '#1c1c1e',
+        }}
+      />
+
+      {/* Layer 3: Edge definition + directional lighting */}
+      <div
+        className="absolute inset-0 rounded-full"
+        style={{
+          boxShadow: `
+            0 0 0 0.5px rgba(255,255,255,0.12),
+            inset 0.5px 0.5px 1px 0 rgba(255,255,255,0.06),
+            0 1px 3px 0 rgba(0,0,0,0.4)
+          `,
+        }}
+      />
+
+      {/* Icon */}
+      <div className="relative z-10 flex items-center justify-center">
+        {children}
+      </div>
+
+      {/* Notification badge */}
+      {badge && (
+        <div className="absolute top-[6px] right-[6px] w-[9px] h-[9px] rounded-full bg-[#4ADE80] border-[2px] border-[#0a0a0a] z-20" />
+      )}
+    </button>
+  );
+}
 
 export default function MobileHeader() {
   const { profileImage, userName } = useUser();
@@ -11,16 +66,24 @@ export default function MobileHeader() {
   const initials = userName.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
   const [notifOpen, setNotifOpen] = React.useState(false);
   const hasCustomPhoto = profileImage && !profileImage.startsWith('data:image/svg+xml');
-
-  const overallProgress = OVERALL_PROGRESS;
   
   return (
-    <div className="w-full px-5 py-3 pb-5 relative">
-      {/* Line 1: Greeting + Bell */}
-      <div className="flex items-center gap-3.5 mb-2.5">
-        {/* Profile Picture - Initials fallback */}
-        <div className="flex-shrink-0">
-          <div className="w-[52px] h-[52px] rounded-full bg-gradient-to-br from-white/[0.08] to-white/[0.03] p-[2px]">
+    <div className="w-full px-5 pt-4 pb-5 relative">
+      <div className="flex items-center justify-between">
+        {/* Left: Greeting text */}
+        <div className="flex flex-col min-w-0 flex-1">
+          <span className="font-['Poppins:Regular',sans-serif] text-[13px] text-white/50 leading-tight">
+            Hi, {firstName}!
+          </span>
+          <span className="font-['Poppins:SemiBold',sans-serif] text-[22px] text-white leading-tight mt-0.5">
+            Willkommen zurück!
+          </span>
+        </div>
+
+        {/* Right: Profile Picture + Apple Glass Bell */}
+        <div className="flex items-center gap-2.5 flex-shrink-0">
+          {/* Profile Picture */}
+          <div className="w-[44px] h-[44px] rounded-full bg-gradient-to-br from-white/[0.08] to-white/[0.03] p-[1.5px]">
             {hasCustomPhoto ? (
               <img 
                 alt="Profile" 
@@ -29,50 +92,15 @@ export default function MobileHeader() {
               />
             ) : (
               <div className="w-full h-full rounded-full bg-[#00D4AA] flex items-center justify-center">
-                <span className="font-['Poppins:Bold',sans-serif] text-[18px] text-white leading-none">{initials}</span>
+                <span className="font-['Poppins:Bold',sans-serif] text-[15px] text-white leading-none">{initials}</span>
               </div>
             )}
           </div>
-        </div>
 
-        {/* Name */}
-        <p className="font-['Poppins:SemiBold',sans-serif] text-[16px] text-white leading-tight truncate flex-1 min-w-0">
-          Hallo, {firstName}!
-        </p>
-
-        {/* Notification Bell - Far Right */}
-        <button 
-          className="flex-shrink-0 w-[24px] h-[24px] relative active:scale-90 transition-transform mr-[16px]"
-          onClick={() => setNotifOpen(true)}
-          style={{ WebkitTapHighlightColor: 'transparent' }}
-        >
-          <Bell className="w-full h-full text-white/50" strokeWidth={1.8} />
-          {/* Notification dot */}
-          <div className="absolute -top-0.5 -right-0.5 w-[7px] h-[7px] rounded-full bg-[#4ADE80] border border-[#0a0a0a]" />
-        </button>
-      </div>
-
-      {/* Line 2: Label + Percentage */}
-      <div className="flex items-center justify-between px-1 mb-1.5">
-        <span className="font-['Poppins:Regular',sans-serif] text-[12px] text-white/60">
-          Gesamtfortschritt
-        </span>
-        <span className="font-['Poppins:SemiBold',sans-serif] text-[12px] text-white/60">
-          {overallProgress}%
-        </span>
-      </div>
-
-      {/* Line 3: Progress Bar */}
-      <div className="px-1">
-        <div className="relative w-full h-[6px] rounded-full bg-white/[0.06] overflow-hidden">
-          <div 
-            className="absolute inset-y-0 left-0 rounded-full"
-            style={{ 
-              width: `${overallProgress}%`,
-              background: 'linear-gradient(90deg, #00B894, #00D4AA)',
-              transition: 'width 0.8s ease',
-            }}
-          />
+          {/* Apple-style Glass Notification Button */}
+          <AppleGlassButton onClick={() => setNotifOpen(true)} badge>
+            <Bell className="w-[18px] h-[18px] text-white/80" strokeWidth={1.8} />
+          </AppleGlassButton>
         </div>
       </div>
 

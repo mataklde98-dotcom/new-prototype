@@ -54,7 +54,8 @@ export default React.memo(function CompletedExamsScreenMobile({ onClose, onExamC
       badgeNumber: getTopicBadgeNumber(exam.topicName, exam.id),
       subtopicNames: exam.subtopicNames,
       aiGenerated: false, // TODO: Track if subtopics were AI generated
-      grade: exam.grade // ✅ German grade 1.0-6.0
+      grade: exam.grade, // ✅ German grade 1.0-6.0
+      examScope: exam.examScope,
     }));
     console.log('[CompletedExams] Loaded exam cards with badges:', examCards.map(e => ({ 
       topic: e.topicName, 
@@ -336,7 +337,7 @@ export default React.memo(function CompletedExamsScreenMobile({ onClose, onExamC
             ) : (
               <>
                 {/* Exam Cards Grid */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-3">
                   {filteredExams.map(exam => (
                     <CompletedExamCard
                       key={exam.id}

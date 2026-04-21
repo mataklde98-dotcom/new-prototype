@@ -12,7 +12,7 @@ import CloseButton from '@/app/components/CloseButton';
 import SearchButton from '@/app/components/SearchButton';
 import OptionsButton from '@/app/components/OptionsButton';
 import { useUser } from '@/contexts/UserContext';
-import { Lock, GraduationCap, Send } from 'lucide-react';
+import { Lock, GraduationCap, Send, Clock } from 'lucide-react';
 
 interface MyFlashcardsScreenMobileProps {
   // Window dimensions
@@ -358,7 +358,7 @@ export default React.memo(function MyFlashcardsScreenMobile(props: MyFlashcardsS
                           Dein Nachhilfelehrer kann dir individuelle Karteikarten-Sets zuschicken, die genau auf deine Schwächen abgestimmt sind.
                         </p>
                         <p className="font-['Poppins:Regular',sans-serif] text-[12px] text-white/25 max-w-[260px] leading-relaxed">
-                          Aktiviere die Nachhilfe, um diese Funktion freizuschalten.
+                          {tutoringStatus === 'requestSent' ? '' : 'Aktiviere die Nachhilfe, um diese Funktion freizuschalten.'}
                         </p>
                         <button
                           onClick={() => {
@@ -370,16 +370,33 @@ export default React.memo(function MyFlashcardsScreenMobile(props: MyFlashcardsS
                           }}
                           className="mt-6 px-5 py-2.5 rounded-xl flex items-center gap-2 active:scale-[0.97] transition-all duration-200"
                           style={{
-                            background: 'rgba(0,184,148,0.07)',
-                            border: '1px solid rgba(0,184,148,0.25)',
+                            background: tutoringStatus === 'requestSent' ? 'rgba(255,184,77,0.07)' : 'rgba(0,184,148,0.07)',
+                            border: tutoringStatus === 'requestSent' ? '1px solid rgba(255,184,77,0.2)' : '1px solid rgba(0,184,148,0.25)',
                             WebkitTapHighlightColor: 'transparent',
+                            pointerEvents: tutoringStatus === 'requestSent' ? 'none' : 'auto',
                           }}
                         >
-                          <GraduationCap className="w-4 h-4 text-white/70" strokeWidth={2} />
-                          <span className="font-['Poppins:Medium',sans-serif] text-[13px] text-white/90">
-                            Nachhilfe aktivieren
-                          </span>
+                          {tutoringStatus === 'requestSent' ? (
+                            <>
+                              <Clock className="w-4 h-4 text-[#FFB84D]" strokeWidth={2} />
+                              <span className="font-['Poppins:Medium',sans-serif] text-[13px] text-[#FFB84D]">
+                                Anfrage gesendet
+                              </span>
+                            </>
+                          ) : (
+                            <>
+                              <GraduationCap className="w-4 h-4 text-white/70" strokeWidth={2} />
+                              <span className="font-['Poppins:Medium',sans-serif] text-[13px] text-white/90">
+                                Nachhilfe aktivieren
+                              </span>
+                            </>
+                          )}
                         </button>
+                        {tutoringStatus === 'requestSent' && (
+                          <p className="font-['Poppins:Regular',sans-serif] text-[11px] text-white/20 mt-3 text-center">
+                            Dies kann bis zu 48 Stunden dauern.
+                          </p>
+                        )}
                       </>
                     )}
                   </div>

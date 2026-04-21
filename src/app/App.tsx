@@ -28,6 +28,7 @@ import TutoringActivationFlow from "./components/TutoringActivationFlow";
 import TutoringProgressScreen from "./components/TutoringProgressScreen";
 import TutoringSessionDetailScreen from "./components/TutoringSessionDetailScreen";
 import TutoringExplainScreen from "./components/TutoringExplainScreen";
+import ExtraSessionsScreen from "./components/ExtraSessionsScreen";
 import OnboardingTrialPopup from "./components/OnboardingTrialPopup";
 import AuthWrapper from "@/app/components/AuthWrapper";
 import { ScreenManager } from "@/app/components/ScreenManager";
@@ -116,7 +117,10 @@ function AppContent({ userData, onLogout }: { userData: any; onLogout: () => voi
   
   // Create Own Set Modal State
   const [showCreateOwnSetModal, setShowCreateOwnSetModal] = useState(false);
-  
+
+  // Track if Home's bottom sheet is open (AllTutors / AllExtraSessions) — used to hide MobileNavigation
+  const [homeBottomSheetOpen, setHomeBottomSheetOpen] = useState(false);
+
   // Track if we need to refresh Completed Exams list after closing exam modal
   const [refreshCompletedExams, setRefreshCompletedExams] = useState(0);
 
@@ -255,6 +259,8 @@ function AppContent({ userData, onLogout }: { userData: any; onLogout: () => voi
     showLernanalyse: navigation.showLernanalyse,
     showTutoringActivation: navigation.showTutoringActivation,
     showTutoringProgress: navigation.showTutoringProgress,
+    showHomeBottomSheet: homeBottomSheetOpen,
+    showExtraSessions: navigation.showExtraSessions,
     onToggleSidebar: uiState.toggleSidebar,
     onHomeClick: navigation.navigateToHome,
     onMyFlashcardsClick: () => {
@@ -567,6 +573,7 @@ function AppContent({ userData, onLogout }: { userData: any; onLogout: () => voi
                      examCountBeforeOpenRef.current = getCompletedExams().length;
                      navigation.openExamSimulation();
                    }}
+                   onBottomSheetChange={setHomeBottomSheetOpen}
                  />
               ),
             },
@@ -601,6 +608,7 @@ function AppContent({ userData, onLogout }: { userData: any; onLogout: () => voi
                   onShowSchuleUndKlasse={navigation.setShowSchuleUndKlasse}
                   onOpenTutoringActivation={() => navigation.setShowTutoringActivation(true)}
                   onOpenTutoringProgress={() => navigation.setShowTutoringProgress(true)}
+                  onOpenExtraSessions={() => navigation.setShowExtraSessions(true)}
                 />
               ),
             },
@@ -876,6 +884,16 @@ function AppContent({ userData, onLogout }: { userData: any; onLogout: () => voi
           <TutoringExplainScreen
             sessionId={navigation.selectedTutoringSessionId}
             onClose={() => navigation.setShowTutoringExplain(false)}
+            externalTransition
+          />
+        </MobileRouteTransition>
+      )}
+
+      {/* Mobile Extra Sessions (Nachhilfe Stunden kaufen) - Overlay with Slide-In/Out */}
+      {isMobile && (
+        <MobileRouteTransition isVisible={navigation.showExtraSessions}>
+          <ExtraSessionsScreen
+            onClose={() => navigation.setShowExtraSessions(false)}
             externalTransition
           />
         </MobileRouteTransition>

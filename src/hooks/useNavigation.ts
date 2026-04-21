@@ -53,6 +53,7 @@ export function useNavigation() {
   const [showTutoringProgress, setShowTutoringProgress] = useState(false);
   const [showTutoringSessionDetail, setShowTutoringSessionDetail] = useState(false);
   const [showTutoringExplain, setShowTutoringExplain] = useState(false);
+  const [showExtraSessions, setShowExtraSessions] = useState(false);
   const [selectedTutoringSessionId, setSelectedTutoringSessionId] = useState<string | null>(null);
   const [mobileActiveTab, setMobileActiveTab] = useState('Home');
   
@@ -624,6 +625,7 @@ export function useNavigation() {
     showTutoringProgress,
     showTutoringSessionDetail,
     showTutoringExplain,
+    showExtraSessions,
     selectedTutoringSessionId,
     mobileActiveTab,
     transitionDirection,
@@ -670,6 +672,7 @@ export function useNavigation() {
     setShowTutoringProgress,
     setShowTutoringSessionDetail,
     setShowTutoringExplain,
+    setShowExtraSessions,
     setSelectedTutoringSessionId,
     
     // ToDo-Management Navigation

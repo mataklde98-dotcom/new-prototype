@@ -22,6 +22,8 @@ interface LayoutPropsInput {
   showTutoringActivation: boolean;
   showTutoringProgress: boolean;
   showMeetings?: boolean;
+  showHomeBottomSheet?: boolean;
+  showExtraSessions?: boolean;
   onToggleSidebar: () => void;
   onHomeClick: () => void;
   onMyFlashcardsClick: () => void;
@@ -63,6 +65,8 @@ export function useLayoutProps(input: LayoutPropsInput) {
     showTutoringActivation: input.showTutoringActivation && input.isMobile,
     showTutoringProgress: input.showTutoringProgress && input.isMobile,
     showMeetings: (input.showMeetings ?? false) && input.isMobile,
+    showHomeBottomSheet: (input.showHomeBottomSheet ?? false) && input.isMobile,
+    showExtraSessions: (input.showExtraSessions ?? false) && input.isMobile,
     onToggleSidebar: input.onToggleSidebar,
     onHomeClick: input.onHomeClick,
     onMyFlashcardsClick: input.onMyFlashcardsClick,
@@ -93,6 +97,8 @@ export function useLayoutProps(input: LayoutPropsInput) {
     input.showTutoringActivation,
     input.showTutoringProgress,
     input.showMeetings,
+    input.showHomeBottomSheet,
+    input.showExtraSessions,
     input.onToggleSidebar,
     input.onHomeClick,
     input.onMyFlashcardsClick,

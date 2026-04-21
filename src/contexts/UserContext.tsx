@@ -29,6 +29,25 @@ export interface TutoringRequestData {
   requestDate: string;
 }
 
+// ===== EXTRA SESSIONS (Nachhilfe zusätzliche Stunden) =====
+// Cap: max. 6 verfügbare Stunden gleichzeitig kaufbar.
+// Ausnahme: Stornierungen dürfen den Cap übersteigen — danach muss auf <6 runter konsumiert werden.
+export const EXTRA_SESSION_CAP = 6;
+export const EXTRA_SESSION_PRICE = 24; // € pro 45min
+
+export interface ExtraSessionPurchase {
+  id: string;
+  date: string;   // ISO
+  qty: number;
+  total: number;  // €
+  paymentMethod: string;
+}
+
+export interface ExtraSessionsState {
+  available: number;              // kann temporär > CAP sein (nur durch Stornos)
+  history: ExtraSessionPurchase[];
+}
+
 interface UserContextType {
   profileImage: string;
   setProfileImage: (image: string) => void;
@@ -40,6 +59,14 @@ interface UserContextType {
   setTutoringStatus: (status: TutoringStatus) => void;
   tutoringRequestData: TutoringRequestData | null;
   setTutoringRequestData: (data: TutoringRequestData | null) => void;
+  // Extra Sessions
+  extraSessions: ExtraSessionsState;
+  purchaseExtraSessions: (qty: number, paymentMethod: string) => void;
+  consumeExtraSession: () => void;      // −1 (geplante Stunde verbraucht)
+  cancelExtraSession: () => void;       // +1 (Storno, darf Cap übersteigen)
+  resetExtraSessions: () => void;       // Demo-Reset auf 2
+  canPurchaseExtraSessions: boolean;    // available < CAP
+  maxPurchasableExtraSessions: number;  // max(0, CAP − available)
 }
 
 const UserContext = createContext<UserContextType | undefined>(undefined);
@@ -58,25 +85,42 @@ const DEFAULT_ACCOUNT_DATA: UserAccountData = {
   grade: '10'
 };
 
+const DEFAULT_EXTRA_SESSIONS: ExtraSessionsState = {
+  available: 2,
+  history: [],
+};
+
 export const UserProvider = ({ children }: { children: ReactNode }) => {
   const [profileImage, setProfileImageState] = useState<string>(DEFAULT_AVATAR);
   const [userName, setUserNameState] = useState<string>('Alexander Johannes Baum');
   const [accountData, setAccountDataState] = useState<UserAccountData>(DEFAULT_ACCOUNT_DATA);
   const [tutoringStatus, setTutoringStatusState] = useState<TutoringStatus>('notActivated');
   const [tutoringRequestData, setTutoringRequestDataState] = useState<TutoringRequestData | null>(null);
+  const [extraSessions, setExtraSessionsState] = useState<ExtraSessionsState>(DEFAULT_EXTRA_SESSIONS);
 
   // Load from localStorage on mount
   useEffect(() => {
     const savedImage = localStorage.getItem('userProfileImage');
     const savedName = localStorage.getItem('userName');
     const savedAccountData = localStorage.getItem('userAccountData');
-    
+
     // Load tutoring state
     const savedTutoringStatus = localStorage.getItem('tutoringStatus') as TutoringStatus | null;
     const savedTutoringRequestData = localStorage.getItem('tutoringRequestData');
     if (savedTutoringStatus) setTutoringStatusState(savedTutoringStatus);
     if (savedTutoringRequestData) {
       try { setTutoringRequestDataState(JSON.parse(savedTutoringRequestData)); } catch (e) { /* ignore */ }
+    }
+
+    // Load extra sessions state
+    const savedExtraSessions = localStorage.getItem('extraSessions');
+    if (savedExtraSessions) {
+      try {
+        const parsed = JSON.parse(savedExtraSessions);
+        if (typeof parsed.available === 'number' && Array.isArray(parsed.history)) {
+          setExtraSessionsState(parsed);
+        }
+      } catch (e) { /* ignore */ }
     }
 
     // ✅ Use centralized auth utils
@@ -181,8 +225,68 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
+  // ===== EXTRA SESSIONS MUTATORS =====
+  const persistExtraSessions = (next: ExtraSessionsState) => {
+    setExtraSessionsState(next);
+    localStorage.setItem('extraSessions', JSON.stringify(next));
+  };
+
+  const purchaseExtraSessions = (qty: number, paymentMethod: string) => {
+    if (qty <= 0) return;
+    const newAvailable = extraSessions.available + qty;
+    // Harter Cap auf Kauf: darf nicht überschritten werden
+    if (newAvailable > EXTRA_SESSION_CAP) return;
+    const purchase: ExtraSessionPurchase = {
+      id: `purchase-${Date.now()}`,
+      date: new Date().toISOString(),
+      qty,
+      total: qty * EXTRA_SESSION_PRICE,
+      paymentMethod,
+    };
+    persistExtraSessions({
+      available: newAvailable,
+      history: [purchase, ...extraSessions.history],
+    });
+  };
+
+  const consumeExtraSession = () => {
+    if (extraSessions.available <= 0) return;
+    persistExtraSessions({
+      ...extraSessions,
+      available: extraSessions.available - 1,
+    });
+  };
+
+  const cancelExtraSession = () => {
+    // Storno darf Cap übersteigen (Edge-Case)
+    persistExtraSessions({
+      ...extraSessions,
+      available: extraSessions.available + 1,
+    });
+  };
+
+  const resetExtraSessions = () => {
+    persistExtraSessions(DEFAULT_EXTRA_SESSIONS);
+  };
+
+  const canPurchaseExtraSessions = extraSessions.available < EXTRA_SESSION_CAP;
+  const maxPurchasableExtraSessions = Math.max(0, EXTRA_SESSION_CAP - extraSessions.available);
+
   return (
-    <UserContext.Provider value={{ profileImage, setProfileImage, userName, setUserName, accountData, setAccountData, tutoringStatus, setTutoringStatus, tutoringRequestData, setTutoringRequestData }}>
+    <UserContext.Provider value={{
+      profileImage, setProfileImage,
+      userName, setUserName,
+      accountData, setAccountData,
+      tutoringStatus, setTutoringStatus,
+      tutoringRequestData, setTutoringRequestData,
+      extraSessions,
+      purchaseExtraSessions,
+      consumeExtraSession,
+      cancelExtraSession,
+      resetExtraSessions,
+      canPurchaseExtraSessions,
+      maxPurchasableExtraSessions,
+    }}>
       {children}
     </UserContext.Provider>
   );
@@ -203,6 +307,13 @@ export const useUser = () => {
       setTutoringStatus: () => {},
       tutoringRequestData: null,
       setTutoringRequestData: () => {},
+      extraSessions: DEFAULT_EXTRA_SESSIONS,
+      purchaseExtraSessions: () => {},
+      consumeExtraSession: () => {},
+      cancelExtraSession: () => {},
+      resetExtraSessions: () => {},
+      canPurchaseExtraSessions: true,
+      maxPurchasableExtraSessions: EXTRA_SESSION_CAP - DEFAULT_EXTRA_SESSIONS.available,
     } as UserContextType;
   }
   return context;

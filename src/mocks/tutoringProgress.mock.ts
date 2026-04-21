@@ -670,6 +670,8 @@ export const MOCK_OVERALL_STATS = {
   nextSessionTopic: 'Lineare Gleichungssysteme',
   nextSessionTeacher: 'Frau Schmidt',
   streak: { currentStreak: 5, longestStreak: 12, isActive: true } as ProgressStreak,
+  trend: 'up' as 'up' | 'stable' | 'down',
+  trendDelta: 12,
   pendingTeacherTasks: MOCK_TEACHER_TASKS.filter(t => t.status !== 'completed').length,
   completedTeacherTasks: MOCK_TEACHER_TASKS.filter(t => t.status === 'completed').length,
   savedTopicRequest: {

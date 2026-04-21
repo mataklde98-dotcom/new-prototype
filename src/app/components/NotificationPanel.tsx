@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, Sparkles, ChevronLeft, BadgeCheck, Bell } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { useUser } from '@/contexts/UserContext';
 
 interface Notification {
   id: string;
@@ -258,13 +259,13 @@ function SectionHeader({ label, first }: { label: string; first?: boolean }) {
   );
 }
 
-function FilterChips({ active, onChange }: { active: FilterKey; onChange: (k: FilterKey) => void }) {
+function FilterChips({ active, onChange, filters: filtersList }: { active: FilterKey; onChange: (k: FilterKey) => void; filters: { key: FilterKey; label: string }[] }) {
   return (
     <div
       className="flex gap-2 overflow-x-auto scrollbar-hide"
       style={{ padding: '12px 16px 4px 16px' }}
     >
-      {filters.map((f) => {
+      {filtersList.map((f) => {
         const isActive = f.key === active;
         return (
           <button
@@ -308,10 +309,26 @@ interface SectionData {
 
 function NotificationContent({ mobile }: { mobile?: boolean }) {
   const [activeFilter, setActiveFilter] = useState<FilterKey>('alle');
+  const user = useUser();
+  const tutoringActive = user.tutoringStatus === 'activated';
+
+  // Dynamische Filter-Liste: Nachhilfe nur wenn Tutoring aktiviert
+  const visibleFilters = tutoringActive
+    ? filters
+    : filters.filter((f) => f.key !== 'nachhilfe');
+
+  // Auto-Reset: wenn Filter "nachhilfe" aktiv ist und Tutoring deaktiviert wird
+  useEffect(() => {
+    if (!tutoringActive && activeFilter === 'nachhilfe') {
+      setActiveFilter('alle');
+    }
+  }, [tutoringActive, activeFilter]);
 
   const filterList = (list: Notification[]) => {
-    if (activeFilter === 'alle') return list;
-    return list.filter((n) => n.category === activeFilter);
+    // Wenn Tutoring nicht aktiviert: Nachhilfe-Kategorie komplett rausfiltern
+    const base = tutoringActive ? list : list.filter((n) => n.category !== 'nachhilfe');
+    if (activeFilter === 'alle') return base;
+    return base.filter((n) => n.category === activeFilter);
   };
 
   const sections: SectionData[] = [
@@ -325,7 +342,7 @@ function NotificationContent({ mobile }: { mobile?: boolean }) {
 
   return (
     <div className="pb-6">
-      <FilterChips active={activeFilter} onChange={setActiveFilter} />
+      <FilterChips active={activeFilter} onChange={setActiveFilter} filters={visibleFilters} />
 
       {isEmpty ? (
         <EmptyState />

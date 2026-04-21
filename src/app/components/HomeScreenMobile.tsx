@@ -11,10 +11,10 @@ import imgInformation2 from "figma:asset/e51112c4419b0e3840e36fc1512cdd56c4bab64
 import img5Be1B62F1B70E1Fb790B348D76Ddb4Becf81401B9B6732 from "figma:asset/49d3c05880ae6ac2ad58868ed10af9056db78537.png";
 import imgEllipse2 from "figma:asset/11a2b9c104f9ad331556dffc2e3e770195913d21.png";
 import { Sparkles, GraduationCap } from 'lucide-react';
-import { Flame, TrendingUp, TrendingDown, ChevronRight, Minus, Lock, Zap, CheckCircle2, Phone, Mail, Clock, Headset, Star } from 'lucide-react';
+import { Flame, TrendingUp, TrendingDown, ChevronRight, Minus, Lock, Zap, CheckCircle2, Phone, Mail, Clock, Headset, Star, AlertTriangle, Target, Brain, ShieldAlert } from 'lucide-react';
 import { useUser } from '@/contexts/UserContext';
 import { LEARNING_STREAK } from "@/app/components/ProfileAnalyticsScreen";
-import { OVERALL_PROGRESS, MOCK_SUBJECTS, MOCK_ACTIVE_GOALS } from "@/app/components/ProfileAnalyticsScreen";
+import { OVERALL_PROGRESS, MOCK_SUBJECTS, MOCK_ACTIVE_GOALS, MOCK_WEAKNESSES, MOCK_KNOWLEDGE_GAPS_SELF, MOCK_RISKS } from "@/app/components/ProfileAnalyticsScreen";
 import { MOCK_UPCOMING_EXAMS } from "@/app/components/profileAnalyticsMockExams";
 import { Gift, Users, Copy, Check } from 'lucide-react';
 
@@ -27,6 +27,9 @@ import type { CompletedExam } from '@/examapp/utils/completedExamsStorage';
 import CompletedExamCard, { CompletedExamCardData } from '@/app/components/CompletedExamCard';
 import { MOCK_TUTORS, formatTutorName } from '@/mocks';
 import TutoringProgressWidget from './TutoringProgressWidget';
+import AllTutorsSheet from './AllTutorsSheet';
+import AllExtraSessionsSheet from './AllExtraSessionsSheet';
+import { MOCK_EXTRA_SESSIONS } from '@/mocks/extraSessions.mock';
 
 interface FlashcardSet {
   id: number;
@@ -60,6 +63,8 @@ interface HomeScreenMobileProps {
   /** Prep-todo callbacks for TodoCardsSection */
   onGenerateForWeakness?: (context: any) => void;
   onStartExamSimulation?: (context: any) => void;
+  /** Notifies parent when a bottom sheet opens/closes — used to hide MobileNavigation */
+  onBottomSheetChange?: (open: boolean) => void;
 }
 
 export default React.memo(function HomeScreenMobile({ 
@@ -79,6 +84,7 @@ export default React.memo(function HomeScreenMobile({
   refreshCompletedExams,
   onGenerateForWeakness,
   onStartExamSimulation,
+  onBottomSheetChange,
 }: HomeScreenMobileProps) {
   const [selectedDate, setSelectedDate] = useState<{ day: string; date: string; fullDate: Date; isManual?: boolean } | null>(null);
   const [showFilterPopup, setShowFilterPopup] = useState(false);
@@ -106,6 +112,13 @@ export default React.memo(function HomeScreenMobile({
   }, []);
 
   const user = useUser();
+  const [showAllTutors, setShowAllTutors] = useState(false);
+  const [showAllExtraSessions, setShowAllExtraSessions] = useState(false);
+
+  // Notify parent when any bottom sheet opens/closes → hides MobileNavigation
+  React.useEffect(() => {
+    onBottomSheetChange?.(showAllTutors || showAllExtraSessions);
+  }, [showAllTutors, showAllExtraSessions, onBottomSheetChange]);
 
   return (
     <div className="relative w-full h-full bg-[#0a0a0a] flex flex-col pt-safe">
@@ -236,107 +249,222 @@ export default React.memo(function HomeScreenMobile({
             </div>
           </div>
 
-          {/* 🎯 Auf einen Blick Card – Dynamic priority-based items + Gesamtleistung */}
+          {/* 🎯 Lernanalyse Quick Access – 4 Rows */}
           <div className="mb-6">
+            {/* Section Header */}
+            <div className="flex items-center justify-between mb-3">
+              <p className="font-['Poppins:SemiBold',sans-serif] text-[13px] text-white">
+                Lernanalyse
+              </p>
+              <button onClick={onNavigateToLernanalyse} className="flex items-center gap-0.5">
+                <p className="font-['Poppins:Bold',sans-serif] text-[11px] text-white">Alle zeigen</p>
+                <ChevronRight className="w-3.5 h-3.5 text-white/50" />
+              </button>
+            </div>
+
             <button
               onClick={onNavigateToLernanalyse}
-              className="w-full relative overflow-hidden rounded-2xl p-4 transition-all duration-300 active:scale-[0.98] text-left"
+              className="w-full rounded-2xl overflow-hidden text-left transition-all duration-200 active:scale-[0.98]"
               style={{
                 background: 'linear-gradient(135deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.01) 100%)',
-                border: '1px solid rgba(255,255,255,0.08)',
+                border: '1px solid rgba(255,255,255,0.06)',
                 WebkitTapHighlightColor: 'transparent',
-                willChange: 'transform',
-                transform: 'translateZ(0)',
-                isolation: 'isolate',
               }}
             >
-              {/* Header: Gesamtfortschritt + Lernanalyse link */}
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-1.5">
-                  <span className="font-['Poppins:Regular',sans-serif] text-[11px] text-white/40">Gesamtfortschritt</span>
-                  <span className="font-['Poppins:SemiBold',sans-serif] text-[13px] text-white">{OVERALL_PROGRESS}%</span>
-                  {(() => {
-                    const overallTrend = Math.round(MOCK_SUBJECTS.reduce((s: number, sub: any) => s + sub.trend, 0) / MOCK_SUBJECTS.length);
-                    if (overallTrend === 0) return <Minus className="w-3.5 h-3.5 text-white/30" />;
-                    return overallTrend > 0
-                      ? <TrendingUp className="w-3.5 h-3.5 text-emerald-400" />
-                      : <TrendingDown className="w-3.5 h-3.5 text-[#FF4444]" />;
-                  })()}
-                </div>
-                <div className="flex items-center gap-1">
-                  <span className="font-['Poppins:Medium',sans-serif] text-[11px] text-white/40">Lernanalyse</span>
-                  <ChevronRight className="w-3.5 h-3.5 text-white/40" />
-                </div>
-              </div>
-
-              {/* Divider */}
-              <div className="w-full h-px bg-white/[0.06] mb-3" />
-
-              {/* Auf einen Blick */}
-              <p className="font-['Poppins:SemiBold',sans-serif] text-[11px] text-white/50 mb-2.5 tracking-wide uppercase">
-                Dein Fokus
-              </p>
-              <div className="flex flex-col gap-2">
-                {(() => {
-                  const today = new Date('2026-03-18');
-                  const items: { priority: number; label: string; dotColor: string; badge: string; badgeColor: string; subtitle: string }[] = [];
-
-                  // Priority 1 & 3 & 7: Upcoming exams by days
-                  for (const exam of MOCK_UPCOMING_EXAMS) {
-                    const days = Math.ceil((new Date(exam.date).getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-                    if (days <= 0) continue;
-                    const sub = `Klassenarbeit · ${exam.subject}`;
-                    if (days <= 3) {
-                      items.push({ priority: 1, label: `${exam.subject}-Klausur`, dotColor: '#FF4444', badge: `In ${days} ${days === 1 ? 'Tag' : 'Tagen'}`, badgeColor: '#FF4444', subtitle: sub });
-                    } else if (days <= 7) {
-                      items.push({ priority: 3, label: `${exam.subject}-Klausur`, dotColor: '#FFB800', badge: `In ${days} ${days === 1 ? 'Tag' : 'Tagen'}`, badgeColor: '#FFB800', subtitle: sub });
-                    } else {
-                      items.push({ priority: 7, label: `${exam.subject}-Klausur`, dotColor: '#00D4AA', badge: `In ${days} ${days === 1 ? 'Tag' : 'Tagen'}`, badgeColor: '#00D4AA', subtitle: sub });
-                    }
-                  }
-
-                  // Priority 2, 4, 8: Learning goals
-                  for (const goal of MOCK_ACTIVE_GOALS) {
-                    const sub = `Lernziel · ${goal.subject}`;
-                    if (goal.status === 'at-risk') {
-                      items.push({ priority: 2, label: `${goal.topic}`, dotColor: '#FF4444', badge: 'Gefährdet', badgeColor: '#FF4444', subtitle: sub });
-                    } else if (goal.status === 'extended') {
-                      items.push({ priority: 4, label: `${goal.topic}`, dotColor: '#FFB800', badge: 'Verschoben', badgeColor: '#FFB800', subtitle: sub });
-                    } else if (goal.status === 'on-track') {
-                      items.push({ priority: 8, label: `${goal.topic}`, dotColor: '#00D4AA', badge: 'Auf Kurs', badgeColor: '#00D4AA', subtitle: sub });
-                    }
-                  }
-
-                  // Priority 5 & 6: Subject trends
-                  for (const subj of MOCK_SUBJECTS) {
-                    if (subj.trend <= -5) {
-                      items.push({ priority: 5, label: `${subj.name}`, dotColor: '#FF4444', badge: `${subj.progress}% ↘`, badgeColor: '#FF4444', subtitle: `Fach-Trend · ${subj.name}` });
-                    } else if (subj.trend < 0 && subj.trend > -5) {
-                      items.push({ priority: 6, label: `${subj.name}`, dotColor: '#FFB800', badge: `${subj.progress}% ↕`, badgeColor: '#FFB800', subtitle: `Fach-Trend · ${subj.name}` });
-                    }
-                  }
-
-                  items.sort((a, b) => a.priority - b.priority);
-                  return items.slice(0, 3).map((item, idx) => (
-                    <div key={idx} className="flex items-start justify-between">
-                      <div className="flex items-start gap-2.5 min-w-0 flex-1">
-                        <div className="w-1.5 h-1.5 rounded-full flex-shrink-0 mt-[6px]" style={{ backgroundColor: item.dotColor }} />
-                        <div className="min-w-0 flex-1">
-                          <span className="font-['Poppins:Medium',sans-serif] text-[12px] text-white truncate block">{item.label}</span>
-                          <span className="font-['Poppins:Regular',sans-serif] text-[10px] text-white/30 block mt-0.5 truncate">{item.subtitle}</span>
-                        </div>
-                      </div>
-                      <span
-                        className="font-['Poppins:Medium',sans-serif] text-[10px] flex-shrink-0 ml-3 mt-[2px] px-2 py-0.5 rounded-full"
-                        style={{ color: item.badgeColor, background: `${item.badgeColor}12`, border: `1px solid ${item.badgeColor}25` }}
-                      >
-                        {item.badge}
-                      </span>
+              {/* Row 1: Gesamtfortschritt */}
+              {(() => {
+                const overallTrend = Math.round(
+                  MOCK_SUBJECTS.reduce((s: number, sub: any) => s + sub.trend, 0) / MOCK_SUBJECTS.length
+                );
+                return (
+                  <div className="px-4 py-3 flex items-center gap-3">
+                    <div
+                      className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
+                      style={{ background: 'rgba(0,212,170,0.08)' }}
+                    >
+                      <TrendingUp className="w-3.5 h-3.5" style={{ color: '#00D4AA' }} />
                     </div>
-                  ));
-                })()}
-              </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-['Poppins:Medium',sans-serif] text-[12px] text-white leading-[16px] truncate">
+                        Gesamtfortschritt
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-1.5 flex-shrink-0">
+                      <span className="font-['Poppins:SemiBold',sans-serif] text-[13px] text-white">
+                        {OVERALL_PROGRESS}%
+                      </span>
+                      {overallTrend > 0 && <TrendingUp className="w-3.5 h-3.5 text-emerald-400" />}
+                      {overallTrend < 0 && <TrendingDown className="w-3.5 h-3.5" style={{ color: '#FF4444' }} />}
+                      {overallTrend === 0 && <Minus className="w-3.5 h-3.5 text-white/30" />}
+                    </div>
+                  </div>
+                );
+              })()}
 
+              <div className="mx-4 h-px bg-white/[0.04]" />
+
+              {/* Row 2: Schwächen */}
+              {(() => {
+                const weaknessCount = MOCK_WEAKNESSES.length;
+                const criticalCount = MOCK_WEAKNESSES.filter(w => w.severity === 'critical').length;
+                return (
+                  <div className="px-4 py-3 flex items-center gap-3">
+                    <div
+                      className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
+                      style={{ background: 'rgba(255,107,107,0.08)' }}
+                    >
+                      <AlertTriangle className="w-3.5 h-3.5" style={{ color: '#FF6B6B' }} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-['Poppins:Medium',sans-serif] text-[12px] text-white leading-[16px] truncate">
+                        {weaknessCount} {weaknessCount === 1 ? 'Schwäche' : 'Schwächen'}
+                      </p>
+                    </div>
+                    {criticalCount > 0 && (
+                      <span
+                        className="font-['Poppins:SemiBold',sans-serif] text-[11px] flex-shrink-0 px-2 py-0.5 rounded-full"
+                        style={{ color: '#FF6B6B', background: 'rgba(255,107,107,0.10)', border: '1px solid rgba(255,107,107,0.20)' }}
+                      >
+                        {criticalCount} kritisch
+                      </span>
+                    )}
+                  </div>
+                );
+              })()}
+
+              <div className="mx-4 h-px bg-white/[0.04]" />
+
+              {/* Row 3: Wissenslücken */}
+              {(() => {
+                const gapCount = MOCK_KNOWLEDGE_GAPS_SELF.length;
+                const criticalGaps = MOCK_KNOWLEDGE_GAPS_SELF.filter((g: any) => g.severity === 'critical').length;
+                return (
+                  <div className="px-4 py-3 flex items-center gap-3">
+                    <div
+                      className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
+                      style={{ background: 'rgba(45,158,120,0.10)' }}
+                    >
+                      <Brain className="w-3.5 h-3.5" style={{ color: '#2D9E78' }} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-['Poppins:Medium',sans-serif] text-[12px] text-white leading-[16px] truncate">
+                        {gapCount} {gapCount === 1 ? 'Wissenslücke' : 'Wissenslücken'}
+                      </p>
+                    </div>
+                    {criticalGaps > 0 && (
+                      <span
+                        className="font-['Poppins:SemiBold',sans-serif] text-[11px] flex-shrink-0 px-2 py-0.5 rounded-full"
+                        style={{ color: '#2D9E78', background: 'rgba(45,158,120,0.10)', border: '1px solid rgba(45,158,120,0.25)' }}
+                      >
+                        {criticalGaps} kritisch
+                      </span>
+                    )}
+                  </div>
+                );
+              })()}
+
+              <div className="mx-4 h-px bg-white/[0.04]" />
+
+              {/* Row 4: Risiken */}
+              {(() => {
+                const riskCount = MOCK_RISKS.length;
+                const highRisks = MOCK_RISKS.filter((r: any) => r.riskLevel === 'high').length;
+                return (
+                  <div className="px-4 py-3 flex items-center gap-3">
+                    <div
+                      className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
+                      style={{ background: 'rgba(255,184,77,0.10)' }}
+                    >
+                      <ShieldAlert className="w-3.5 h-3.5" style={{ color: '#FFB84D' }} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-['Poppins:Medium',sans-serif] text-[12px] text-white leading-[16px] truncate">
+                        {riskCount} {riskCount === 1 ? 'Risiko' : 'Risiken'}
+                      </p>
+                    </div>
+                    {highRisks > 0 && (
+                      <span
+                        className="font-['Poppins:SemiBold',sans-serif] text-[11px] flex-shrink-0 px-2 py-0.5 rounded-full"
+                        style={{ color: '#FFB84D', background: 'rgba(255,184,77,0.10)', border: '1px solid rgba(255,184,77,0.25)' }}
+                      >
+                        {highRisks} hoch
+                      </span>
+                    )}
+                  </div>
+                );
+              })()}
+
+              <div className="mx-4 h-px bg-white/[0.04]" />
+
+              {/* Row 5: Klausuren */}
+              {(() => {
+                const today = new Date('2026-03-18');
+                const upcoming = MOCK_UPCOMING_EXAMS
+                  .map(e => ({
+                    ...e,
+                    daysUntil: Math.ceil((new Date(e.date).getTime() - today.getTime()) / (1000 * 60 * 60 * 24)),
+                  }))
+                  .filter(e => e.daysUntil > 0)
+                  .sort((a, b) => a.daysUntil - b.daysUntil);
+                const nextExam = upcoming[0];
+                const otherCount = upcoming.length - 1;
+                // Severity-Farbe nach Dringlichkeit
+                const daysUntil = nextExam?.daysUntil ?? 0;
+                const pillColor = daysUntil <= 3 ? '#FF6B6B' : daysUntil <= 7 ? '#FFB800' : '#4A9EFF';
+                const pillBg = daysUntil <= 3 ? 'rgba(255,107,107,0.10)' : daysUntil <= 7 ? 'rgba(255,184,0,0.10)' : 'rgba(74,158,255,0.10)';
+                const pillBorder = daysUntil <= 3 ? 'rgba(255,107,107,0.20)' : daysUntil <= 7 ? 'rgba(255,184,0,0.20)' : 'rgba(74,158,255,0.20)';
+                return (
+                  <div className="px-4 py-3 flex items-center gap-3">
+                    <div
+                      className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
+                      style={{ background: 'rgba(74,158,255,0.08)' }}
+                    >
+                      <GraduationCap className="w-3.5 h-3.5" style={{ color: '#4A9EFF' }} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      {nextExam ? (
+                        <>
+                          <p className="font-['Poppins:Medium',sans-serif] text-[12px] text-white leading-[16px] truncate">
+                            {nextExam.subject}-Klausur
+                          </p>
+                          <p className="font-['Poppins:Regular',sans-serif] text-[10px] text-white/40 leading-[13px] truncate">
+                            {nextExam.overallReadiness}% vorbereitet
+                          </p>
+                        </>
+                      ) : (
+                        <p className="font-['Poppins:Medium',sans-serif] text-[12px] text-white leading-[16px]">
+                          Keine anstehenden Klausuren
+                        </p>
+                      )}
+                    </div>
+                    {nextExam && (
+                      <span
+                        className="font-['Poppins:SemiBold',sans-serif] text-[11px] flex-shrink-0 px-2 py-0.5 rounded-full"
+                        style={{ color: pillColor, background: pillBg, border: `1px solid ${pillBorder}` }}
+                      >
+                        in {daysUntil} {daysUntil === 1 ? 'Tag' : 'Tagen'}
+                      </span>
+                    )}
+                  </div>
+                );
+              })()}
+
+              <div className="mx-4 h-px bg-white/[0.04]" />
+
+              {/* Row 4: Lernziele */}
+              <div className="px-4 py-3 flex items-center gap-3">
+                <div
+                  className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
+                  style={{ background: 'rgba(167,139,250,0.08)' }}
+                >
+                  <Target className="w-3.5 h-3.5" style={{ color: '#A78BFA' }} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-['Poppins:Medium',sans-serif] text-[12px] text-white leading-[16px] truncate">
+                    {MOCK_ACTIVE_GOALS.length} {MOCK_ACTIVE_GOALS.length === 1 ? 'aktives Lernziel' : 'aktive Lernziele'}
+                  </p>
+                </div>
+              </div>
             </button>
           </div>
 
@@ -580,7 +708,71 @@ export default React.memo(function HomeScreenMobile({
                   </div>
                 </div>
                 <p className="font-['Poppins:Regular',sans-serif] text-[11px] text-white/30 mt-2 text-center">
-                  Aktiviere Nachhilfe, um diese Funktion zu nutzen.
+                  {user.tutoringStatus === 'requestSent' ? 'Anfrage gesendet – du wirst benachrichtigt.' : 'Aktiviere Nachhilfe, um diese Funktion zu nutzen.'}
+                </p>
+              </div>
+
+              {/* Locked: Nachhilfe-Fortschritt */}
+              <div className="mb-6 relative">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <p className="font-['Poppins:SemiBold',sans-serif] text-[13px] text-white/40">Nachhilfe-Fortschritt</p>
+                    <Lock className="w-3.5 h-3.5 text-white/20" />
+                  </div>
+                </div>
+                <div
+                  className="relative rounded-2xl overflow-hidden"
+                  style={{
+                    filter: 'blur(3px)',
+                    opacity: 0.35,
+                    pointerEvents: 'none',
+                    background: 'rgba(255,255,255,0.04)',
+                    border: '1px solid rgba(255,255,255,0.08)',
+                  }}
+                >
+                  {/* Hero row skeleton: Ring + Title + Stats */}
+                  <div className="px-4 pt-4 pb-3 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-12 h-12 rounded-full bg-white/[0.08]" />
+                      <div>
+                        <div className="h-3 w-24 rounded bg-white/10 mb-1.5" />
+                        <div className="h-2 w-20 rounded bg-white/[0.08]" />
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <div className="flex flex-col items-center gap-1">
+                        <div className="w-5 h-5 rounded bg-white/10" />
+                        <div className="h-2 w-10 rounded bg-white/[0.08]" />
+                      </div>
+                      <div className="w-px h-7 bg-white/[0.06]" />
+                      <div className="flex flex-col items-center gap-1">
+                        <div className="w-5 h-5 rounded bg-white/10" />
+                        <div className="h-2 w-10 rounded bg-white/[0.08]" />
+                      </div>
+                    </div>
+                  </div>
+                  {/* Divider */}
+                  <div className="mx-4 h-px bg-white/[0.04]" />
+                  {/* Bottom row skeleton: Aufgaben + Sitzung */}
+                  <div className="px-4 py-3 flex items-center gap-3">
+                    <div className="flex items-center gap-2 flex-1 min-w-0">
+                      <div className="w-7 h-7 rounded-lg bg-white/[0.06] flex-shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <div className="h-2.5 w-20 rounded bg-white/10 mb-1" />
+                        <div className="h-2 w-12 rounded bg-white/[0.08]" />
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 flex-1 min-w-0">
+                      <div className="w-7 h-7 rounded-lg bg-white/[0.06] flex-shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <div className="h-2.5 w-20 rounded bg-white/10 mb-1" />
+                        <div className="h-2 w-12 rounded bg-white/[0.08]" />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <p className="font-['Poppins:Regular',sans-serif] text-[11px] text-white/30 mt-2 text-center">
+                  {user.tutoringStatus === 'requestSent' ? 'Anfrage gesendet – du wirst benachrichtigt.' : 'Aktiviere Nachhilfe, um diese Funktion zu nutzen.'}
                 </p>
               </div>
 
@@ -607,31 +799,7 @@ export default React.memo(function HomeScreenMobile({
                   </div>
                 </div>
                 <p className="font-['Poppins:Regular',sans-serif] text-[11px] text-white/30 mt-2 text-center">
-                  Aktiviere Nachhilfe, um diese Funktion zu nutzen.
-                </p>
-              </div>
-
-              {/* Locked: Recently viewed Documents */}
-              <div className="mb-6 relative">
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-2">
-                    <p className="font-['Poppins:SemiBold',sans-serif] text-[13px] text-white/40">Kürzlich angesehene Dokumente</p>
-                    <Lock className="w-3.5 h-3.5 text-white/20" />
-                  </div>
-                </div>
-                <div className="relative rounded-2xl overflow-hidden" style={{ filter: 'blur(3px)', opacity: 0.35, pointerEvents: 'none' }}>
-                  <div className="flex gap-3 px-1 pb-2">
-                    <div className="rounded-2xl p-3 w-[280px] flex-shrink-0 flex items-center gap-3" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}>
-                      <div className="w-11 h-11 rounded-[10px] bg-white/10" />
-                      <div className="flex-1">
-                        <div className="h-3 w-32 rounded bg-white/10 mb-1.5" />
-                        <div className="h-2 w-24 rounded bg-white/[0.08]" />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                <p className="font-['Poppins:Regular',sans-serif] text-[11px] text-white/30 mt-2 text-center">
-                  Aktiviere Nachhilfe, um diese Funktion zu nutzen.
+                  {user.tutoringStatus === 'requestSent' ? 'Anfrage gesendet – du wirst benachrichtigt.' : 'Aktiviere Nachhilfe, um diese Funktion zu nutzen.'}
                 </p>
               </div>
             </>
@@ -646,7 +814,7 @@ export default React.memo(function HomeScreenMobile({
                   <p className="font-['Poppins:SemiBold',sans-serif] text-[13px] text-white">
                     Deine Nachhilfelehrer
                   </p>
-                  <button>
+                  <button onClick={() => setShowAllTutors(true)}>
                     <p className="font-['Poppins:Bold',sans-serif] text-[11px] text-white">
                       Alle
                     </p>
@@ -713,7 +881,7 @@ export default React.memo(function HomeScreenMobile({
                   <p className="font-['Poppins:SemiBold',sans-serif] text-[13px] text-white">
                     Extra-Stunden
                   </p>
-                  <button>
+                  <button onClick={() => setShowAllExtraSessions(true)}>
                     <p className="font-['Poppins:Bold',sans-serif] text-[11px] text-white">
                       Alle
                     </p>
@@ -721,12 +889,9 @@ export default React.memo(function HomeScreenMobile({
                 </div>
 
                 <div className="flex gap-3 overflow-x-auto snap-x snap-mandatory pb-2 -mx-5 px-5 scrollbar-hide" style={{ scrollPaddingLeft: '20px' }}>
-                  {[
-                    { name: 'Sebastian Müller', topic: 'Algebra + Differentialrechnung', date: '10. September', time: '18:00 - 19:00' },
-                    { name: 'Sebastian Müller', topic: 'Logarithmisch + Logarithmusfunktionen', date: '13. September', time: '16:00 - 17:30' },
-                  ].map((session, idx) => (
+                  {MOCK_EXTRA_SESSIONS.filter(s => new Date(s.dateISO) >= new Date('2026-03-18')).slice(0, 3).map((session) => (
                     <div 
-                      key={idx} 
+                      key={session.id} 
                       className="relative overflow-hidden bg-gradient-to-br from-white/[0.05] to-white/[0.02] border border-white/[0.08] rounded-2xl p-3 w-[190px] flex-shrink-0 snap-start transition-all duration-300 cursor-pointer active:scale-[0.98]"
                       style={{
                         willChange: 'transform',
@@ -739,16 +904,16 @@ export default React.memo(function HomeScreenMobile({
                       <div className="relative z-10">
                         <div className="flex items-center gap-2 mb-2">
                           <img 
-                            src={imgEllipse2} 
-                            alt={session.name} 
+                            src={session.avatar} 
+                            alt={session.tutorName} 
                             className="w-[32px] h-[32px] rounded-full object-cover"
                           />
                           <p className="font-['Poppins:SemiBold',sans-serif] text-[10px] text-white leading-tight">
-                            {session.name}
+                            {session.tutorName}
                           </p>
                         </div>
-                        <p className="font-['Poppins:SemiBold',sans-serif] text-[11px] text-white mb-2 leading-tight">
-                          {session.topic}
+                        <p className="font-['Poppins:SemiBold',sans-serif] text-[11px] text-white mb-1 leading-tight">
+                          {session.subject}
                         </p>
                         <p className="font-['Poppins:Regular',sans-serif] text-[10px] text-white/50 leading-tight">
                           {session.date}
@@ -761,50 +926,6 @@ export default React.memo(function HomeScreenMobile({
                   ))}
                 </div>
               </div>
-
-              {/* Recently viewed Documents */}
-              <div className="mb-6">
-                <div className="flex items-center justify-between mb-3">
-                  <p className="font-['Poppins:SemiBold',sans-serif] text-[13px] text-white">
-                    Kürzlich angesehene Dokumente
-                  </p>
-                  <button>
-                    <p className="font-['Poppins:Bold',sans-serif] text-[11px] text-white">
-                      Alle
-                    </p>
-                  </button>
-                </div>
-
-                <div className="flex gap-3 overflow-x-auto snap-x snap-mandatory pb-2 -mx-5 px-5 scrollbar-hide" style={{ scrollPaddingLeft: '20px' }}>
-                  <div 
-                    className="relative overflow-hidden bg-gradient-to-br from-white/[0.05] to-white/[0.02] border border-white/[0.08] rounded-2xl p-3 w-[280px] flex-shrink-0 snap-start flex items-center gap-3 transition-all duration-300 cursor-pointer active:scale-[0.98]"
-                    style={{
-                      WebkitTapHighlightColor: 'transparent',
-                      willChange: 'transform',
-                      transform: 'translateZ(0)',
-                      isolation: 'isolate',
-                      zIndex: 1
-                    }}
-                  >
-                    <div className="relative z-10 w-[45px] h-[45px] rounded-[10px] bg-white/[0.06] flex items-center justify-center flex-shrink-0">
-                      <svg className="w-6 h-6" fill="white" viewBox="0 0 24 24">
-                        <path d="M14 2H6C4.9 2 4 2.9 4 4V20C4 21.1 4.9 22 6 22H18C19.1 22 20 21.1 20 20V8L14 2ZM6 4H13V9H18V20H6V4Z" />
-                      </svg>
-                    </div>
-                    <div className="relative z-10 flex-1 min-w-0">
-                      <p className="font-['Poppins:SemiBold',sans-serif] text-[12px] text-white mb-1 leading-tight">
-                        Quantenmechanik Notizen
-                      </p>
-                      <p className="font-['Poppins:Regular',sans-serif] text-[10px] text-white/50 mb-0.5 leading-tight">
-                        Lehrer • Richard Stark
-                      </p>
-                      <p className="font-['Poppins:Regular',sans-serif] text-[9px] text-white/30 leading-tight">
-                        Mathematik • 15. Dezember 2024
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </div>
             </>
           )}
 
@@ -815,6 +936,19 @@ export default React.memo(function HomeScreenMobile({
           <ReferralBannerHome />
         </div>
       </div>
+
+      {/* All Tutors Bottom Sheet */}
+      <AllTutorsSheet
+        isOpen={showAllTutors}
+        onClose={() => setShowAllTutors(false)}
+        onOpenTeacherProfile={onOpenTeacherProfile}
+      />
+
+      {/* All Extra Sessions Bottom Sheet */}
+      <AllExtraSessionsSheet
+        isOpen={showAllExtraSessions}
+        onClose={() => setShowAllExtraSessions(false)}
+      />
     </div>
   );
 });

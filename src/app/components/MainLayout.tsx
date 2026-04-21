@@ -65,6 +65,8 @@ interface MainLayoutProps {
   showTutoringActivation?: boolean;
   showTutoringProgress?: boolean;
   showMeetings?: boolean;
+  showHomeBottomSheet?: boolean;
+  showExtraSessions?: boolean;
   onToggleSidebar: () => void;
   onHomeClick: () => void;
   onMyFlashcardsClick: () => void;
@@ -98,6 +100,8 @@ export default function MainLayout({
   showTutoringActivation = false,
   showTutoringProgress = false,
   showMeetings = false,
+  showHomeBottomSheet = false,
+  showExtraSessions = false,
   onToggleSidebar,
   onHomeClick,
   onMyFlashcardsClick,
@@ -161,7 +165,7 @@ export default function MainLayout({
         <div
           className="flex-1 flex flex-col"
           style={{
-            paddingBottom: !showMyFlashcards && !showCompletedExams && !showAccountEdit && !showTodoManagement && !showKlassenarbeiten && !showSchulaufgaben && !showSchuleUndKlasse && !showLernanalyse && !showTutoringActivation && !showTutoringProgress ? "80px" : 0,
+            paddingBottom: !showMyFlashcards && !showCompletedExams && !showAccountEdit && !showTodoManagement && !showKlassenarbeiten && !showSchulaufgaben && !showSchuleUndKlasse && !showLernanalyse && !showTutoringActivation && !showTutoringProgress && !showExtraSessions ? "80px" : 0,
             overflow: "hidden",
           }}
         >
@@ -174,7 +178,7 @@ export default function MainLayout({
 
       {/* Bottom Navigation Bar - Mobile Only — ALWAYS MOUNTED, visibility via CSS transform */}
       {isMobile && (() => {
-        const hideBottomNav = showMyFlashcards || showCompletedExams || showChats || showAccountEdit || showTodoManagement || showKlassenarbeiten || showSchulaufgaben || showSchuleUndKlasse || showLernanalyse || showTutoringActivation || showTutoringProgress;
+        const hideBottomNav = showMyFlashcards || showCompletedExams || showChats || showAccountEdit || showTodoManagement || showKlassenarbeiten || showSchulaufgaben || showSchuleUndKlasse || showLernanalyse || showTutoringActivation || showTutoringProgress || showHomeBottomSheet || showExtraSessions;
         return (
           <div
             className="fixed bottom-0 left-0 right-0 z-[60] px-5 pb-[max(env(safe-area-inset-bottom,8px),8px)]"

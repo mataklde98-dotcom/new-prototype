@@ -447,20 +447,42 @@ export default React.memo(function ChatScreenDesktop({ onClose, initialTeacherId
                   <div className="absolute inset-0 flex flex-col items-center justify-center" style={{ pointerEvents: 'auto' }}>
                     <Lock className="w-5 h-5 text-white/30 mb-2" />
                     <p className="font-['Poppins:Regular',sans-serif] text-[12px] text-white/40 text-center px-8 mb-4">
-                      Aktiviere Nachhilfe, um mit deinen Lehrern zu chatten.
+                      {tutoringStatus === 'requestSent'
+                        ? 'Deine Anfrage wurde eingereicht. Du wirst benachrichtigt, sobald die Nachhilfe freigeschaltet ist.'
+                        : 'Aktiviere Nachhilfe, um mit deinen Lehrern zu chatten.'}
                     </p>
-                    <button
-                      onClick={onOpenTutoringActivation}
-                      className="px-5 py-2.5 rounded-xl transition-all duration-200 hover:brightness-110 active:scale-[0.97]"
-                      style={{
-                        background: 'rgba(0,184,148,0.07)',
-                        border: '1px solid rgba(0,184,148,0.25)',
-                      }}
-                    >
-                      <span className="font-['Poppins:Medium',sans-serif] text-[13px] text-[#00B894]">
-                        Nachhilfe aktivieren
-                      </span>
-                    </button>
+                    {tutoringStatus === 'requestSent' ? (
+                      <div
+                        className="px-5 py-2.5 rounded-xl flex items-center gap-2"
+                        style={{
+                          background: 'rgba(255,184,77,0.07)',
+                          border: '1px solid rgba(255,184,77,0.2)',
+                        }}
+                      >
+                        <Clock className="w-3.5 h-3.5 text-[#FFB84D]" strokeWidth={2} />
+                        <span className="font-['Poppins:Medium',sans-serif] text-[13px] text-[#FFB84D]">
+                          Anfrage gesendet
+                        </span>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={onOpenTutoringActivation}
+                        className="px-5 py-2.5 rounded-xl transition-all duration-200 hover:brightness-110 active:scale-[0.97]"
+                        style={{
+                          background: 'rgba(0,184,148,0.07)',
+                          border: '1px solid rgba(0,184,148,0.25)',
+                        }}
+                      >
+                        <span className="font-['Poppins:Medium',sans-serif] text-[13px] text-[#00B894]">
+                          Nachhilfe aktivieren
+                        </span>
+                      </button>
+                    )}
+                    {tutoringStatus === 'requestSent' && (
+                      <p className="font-['Poppins:Regular',sans-serif] text-[11px] text-white/20 mt-3 text-center">
+                        Dies kann bis zu 48 Stunden dauern.
+                      </p>
+                    )}
                   </div>
                 )}
               </div>

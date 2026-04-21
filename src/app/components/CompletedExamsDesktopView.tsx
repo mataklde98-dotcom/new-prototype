@@ -83,7 +83,8 @@ export default function CompletedExamsDesktopView({
       badgeNumber: getTopicBadgeNumber(exam.topicName, exam.id),
       subtopicNames: exam.subtopicNames,
       aiGenerated: false,
-      grade: exam.grade
+      grade: exam.grade,
+      examScope: exam.examScope,
     }));
     setCompletedExams(examCards);
     setIsLoading(false);

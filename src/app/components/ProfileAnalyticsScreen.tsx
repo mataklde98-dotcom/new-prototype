@@ -108,7 +108,7 @@ interface UnifiedSummary {
 }
 
 // ===== MOCK DATA =====
-const MOCK_WEAKNESSES: WeaknessItem[] = [
+export const MOCK_WEAKNESSES: WeaknessItem[] = [
   { id: 'w1', topic: 'Quadratische Funktionen & Textaufgaben', subject: 'Mathematik', score: 28, severity: 'critical', recommendation: 'Scheitelpunktform und Nullstellen intensiv üben – besonders die Umformung von Textaufgaben in mathematische Gleichungen bereitet noch Schwierigkeiten', criticalActions: ['Grundlagen-Quiz wiederholen', 'Übungsblatt Scheitelpunktform'] },
   { id: 'w2', topic: 'Passé Composé mit unregelmäßigen Verben', subject: 'Französisch', score: 35, severity: 'critical', recommendation: 'Hilfsverben être/avoir wiederholen', criticalActions: ['Konjugationstabelle lernen', 'Lückentext-Übungen'] },
   { id: 'w3', topic: 'Zellatmung', subject: 'Biologie', score: 42, severity: 'warning', recommendation: 'Glykolyse und Citratzyklus Schritte lernen', criticalActions: [] },
@@ -279,7 +279,7 @@ export const MOCK_SUBJECTS: SubjectProgress[] = [
 // Exported so KIToolsScreen can show the same value in the progress ring
 export const OVERALL_PROGRESS = Math.round(MOCK_SUBJECTS.reduce((s, sub) => s + sub.progress, 0) / MOCK_SUBJECTS.length);
 
-const MOCK_RISKS: RiskItem[] = [
+export const MOCK_RISKS: RiskItem[] = [
   { id: 'r1', topic: 'Stochastik', subject: 'Mathematik', score: 15, riskLevel: 'high', reason: 'Klausur in 2 Wochen, Score aktuell bei 41%' },
   { id: 'r2', topic: 'Genetik', subject: 'Biologie', score: 20, riskLevel: 'high', reason: 'Nur 2 Versuche, stark fallender Trend' },
   { id: 'r3', topic: 'Conditional Sentences', subject: 'Englisch', score: 38, riskLevel: 'medium', reason: 'Grundlagen fehlen, baut auf für B2-Level' },
@@ -410,7 +410,7 @@ interface KnowledgeGapItem {
   severity: 'critical' | 'warning' | 'moderate';
 }
 
-const MOCK_KNOWLEDGE_GAPS_SELF: KnowledgeGapItem[] = [
+export const MOCK_KNOWLEDGE_GAPS_SELF: KnowledgeGapItem[] = [
   {
     id: 'sg1',
     title: 'Grundlagen der Termumformung',

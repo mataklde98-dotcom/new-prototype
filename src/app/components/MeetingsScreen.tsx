@@ -1181,26 +1181,43 @@ export default React.memo(function MeetingsScreen({ onClose, isMobile = false, e
             <Zap className="w-8 h-8 text-[#00B894]" />
           </div>
           <h2 className={`${poppins('SemiBold')} text-[20px] text-white mb-2`}>
-            Nachhilfe nicht aktiviert
+            {tutoringStatus === 'requestSent' ? 'Anfrage gesendet' : 'Nachhilfe nicht aktiviert'}
           </h2>
           <p className={`${poppins('Regular')} text-[14px] text-white/45 mb-8 leading-relaxed`}>
-            Um deine Nachhilfestunden und Meetings sehen zu können, aktiviere zuerst die Nachhilfe-Funktion.
+            {tutoringStatus === 'requestSent'
+              ? 'Deine Anfrage wurde erfolgreich gesendet. Du wirst benachrichtigt, sobald die Nachhilfe freigeschaltet ist.'
+              : 'Um deine Nachhilfestunden und Meetings sehen zu können, aktiviere zuerst die Nachhilfe-Funktion.'}
           </p>
           {/* CTA */}
-          <button
-            onClick={() => onOpenTutoringActivation?.()}
-            className={`px-6 py-3 rounded-xl ${poppins('SemiBold')} text-[14px] text-white transition-all active:scale-[0.97]`}
-            style={{
-              background: 'rgba(0,184,148,0.07)',
-              border: '1px solid rgba(0,184,148,0.25)',
-              WebkitTapHighlightColor: 'transparent',
-            }}
-          >
-            Nachhilfe aktivieren
-          </button>
+          {tutoringStatus === 'requestSent' ? (
+            <div
+              className={`px-6 py-3 rounded-xl ${poppins('SemiBold')} text-[14px] flex items-center gap-2`}
+              style={{
+                background: 'rgba(255,184,77,0.07)',
+                border: '1px solid rgba(255,184,77,0.2)',
+              }}
+            >
+              <Clock className="w-4 h-4 text-[#FFB84D]" strokeWidth={2} />
+              <span className="text-[#FFB84D]">Anfrage gesendet</span>
+            </div>
+          ) : (
+            <button
+              onClick={() => onOpenTutoringActivation?.()}
+              className={`px-6 py-3 rounded-xl ${poppins('SemiBold')} text-[14px] text-white transition-all active:scale-[0.97]`}
+              style={{
+                background: 'rgba(0,184,148,0.07)',
+                border: '1px solid rgba(0,184,148,0.25)',
+                WebkitTapHighlightColor: 'transparent',
+              }}
+            >
+              Nachhilfe aktivieren
+            </button>
+          )}
           {/* Subtle hint */}
           <p className={`${poppins('Regular')} text-[11px] text-white/20 mt-4`}>
-            Nach der Aktivierung werden deine geplanten Meetings hier angezeigt.
+            {tutoringStatus === 'requestSent'
+              ? 'Dies kann bis zu 48 Stunden dauern.'
+              : 'Nach der Aktivierung werden deine geplanten Meetings hier angezeigt.'}
           </p>
         </div>
       </div>

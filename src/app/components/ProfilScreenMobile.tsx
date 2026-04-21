@@ -31,6 +31,7 @@ interface ProfilScreenMobileProps {
   onShowSchuleUndKlasse?: (show: boolean) => void;
   onOpenTutoringActivation?: () => void;
   onOpenTutoringProgress?: () => void;
+  onOpenExtraSessions?: () => void;
 }
 
 export default React.memo(function ProfilScreenMobile({
@@ -45,12 +46,13 @@ export default React.memo(function ProfilScreenMobile({
   onShowSchuleUndKlasse,
   onOpenTutoringActivation,
   onOpenTutoringProgress,
+  onOpenExtraSessions,
 }: ProfilScreenMobileProps) {
   // Use UserContext for centralized state
-  const { profileImage, setProfileImage, userName, accountData, tutoringStatus, setTutoringStatus, tutoringRequestData } = useUser();
-  
-  // Extra lessons available
-  const extraLessonsAvailable = 2;
+  const { profileImage, setProfileImage, userName, accountData, tutoringStatus, setTutoringStatus, tutoringRequestData, extraSessions } = useUser();
+
+  // Extra lessons available (from UserContext)
+  const extraLessonsAvailable = extraSessions.available;
 
   // Profile Picture Editor State
   const [tempImageForEditing, setTempImageForEditing] = useState<string | null>(null);
@@ -467,7 +469,7 @@ export default React.memo(function ProfilScreenMobile({
                 iconColor="#00D4AA"
                 badgeText={`${extraLessonsAvailable} Verfügbar`}
                 badgeColor="#00D4AA"
-                onClick={() => console.log('Extra-Lessons clicked')}
+                onClick={() => onOpenExtraSessions?.()}
                 isLast={true}
               />
             </SectionContainer>
