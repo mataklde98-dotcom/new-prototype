@@ -904,12 +904,13 @@ const getTopicScore = (topic: string, type: string): number => {
 };
 
 // ===== STANDARDIZED CARD (neutral GlassCard + progress bar – used everywhere) =====
-const StandardCard = ({ subject, topic, detail, score, severityColor, severityLabel, severity, source, onGenerate, onStartExam, onOpenLinkedFlashcardSet, showFlashcards = true, showExam = true }: {
+const StandardCard = ({ subject, topic, detail, score, severityColor, severityLabel, severity, source, onGenerate, onStartExam, onOpenLinkedFlashcardSet, allSets, showFlashcards = true, showExam = true }: {
   subject: string; topic: string; detail: string; score: number;
   severityColor: string; severityLabel: string;
   severity?: string; source?: 'weakness' | 'risk' | 'knowledge-gap' | 'recommendation';
   onGenerate?: (ctx?: any) => void; onStartExam?: (ctx?: any) => void;
   onOpenLinkedFlashcardSet?: (setId: string) => void;
+  allSets?: FlashcardSet[];
   showFlashcards?: boolean; showExam?: boolean;
 }) => {
   const severityBg = severityColor === '#FF6B6B' ? 'rgba(255,107,107,0.12)' : severityColor === '#FFB84D' ? 'rgba(255,184,77,0.12)' : 'rgba(0,212,170,0.12)';
@@ -944,13 +945,14 @@ const StandardCard = ({ subject, topic, detail, score, severityColor, severityLa
         onGenerate={(ctx) => onGenerate?.(ctx)}
         onStartExam={(ctx) => onStartExam?.(ctx)}
         onOpenLinkedFlashcardSet={onOpenLinkedFlashcardSet}
+        allSets={allSets}
       />
     </GlassCard>
   );
 };
 
 // ===== WEAKNESS CARD (Reusable across Übersicht & KI-Prognose) =====
-const WeaknessCard = ({ item, onGenerate, onStartExam, onOpenLinkedFlashcardSet }: { item: WeaknessItem; showCriticality?: boolean; onGenerate?: (ctx?: any) => void; onStartExam?: (ctx?: any) => void; onOpenLinkedFlashcardSet?: (setId: string) => void; subjectColor?: string }) => {
+const WeaknessCard = ({ item, onGenerate, onStartExam, onOpenLinkedFlashcardSet, allSets }: { item: WeaknessItem; showCriticality?: boolean; onGenerate?: (ctx?: any) => void; onStartExam?: (ctx?: any) => void; onOpenLinkedFlashcardSet?: (setId: string) => void; subjectColor?: string; allSets?: FlashcardSet[] }) => {
   const severityColor = item.severity === 'critical' ? '#FF6B6B' : item.severity === 'warning' ? '#FFB84D' : '#00D4AA';
   const severityLabel = item.severity === 'critical' ? 'Kritisch' : item.severity === 'warning' ? 'Mittel' : 'Gering';
   const severityBg = item.severity === 'critical' ? 'rgba(255,107,107,0.12)' : item.severity === 'warning' ? 'rgba(255,184,77,0.12)' : 'rgba(0,212,170,0.12)';
@@ -993,6 +995,7 @@ const WeaknessCard = ({ item, onGenerate, onStartExam, onOpenLinkedFlashcardSet 
         onGenerate={(ctx) => onGenerate?.(ctx)}
         onStartExam={(ctx) => onStartExam?.(ctx)}
         onOpenLinkedFlashcardSet={onOpenLinkedFlashcardSet}
+        allSets={allSets}
       />
     </GlassCard>
   );
@@ -1893,6 +1896,7 @@ export default React.memo(function ProfileAnalyticsScreen({ isClosing, onClose, 
           onGenerate={(ctx) => onGenerateForWeakness?.(ctx)}
           onStartExam={(ctx) => onStartExamSimulation?.(ctx)}
           onOpenLinkedFlashcardSet={onOpenLinkedFlashcardSet}
+          allSets={allSets}
         />
       </GlassCard>
     );
@@ -1942,6 +1946,7 @@ export default React.memo(function ProfileAnalyticsScreen({ isClosing, onClose, 
           onGenerate={(ctx) => onGenerateForWeakness?.(ctx)}
           onStartExam={(ctx) => onStartExamSimulation?.(ctx)}
           onOpenLinkedFlashcardSet={onOpenLinkedFlashcardSet}
+          allSets={allSets}
         />
       </GlassCard>
     );
@@ -1978,7 +1983,7 @@ export default React.memo(function ProfileAnalyticsScreen({ isClosing, onClose, 
           </p>
           <div className="space-y-2">
             {MOCK_WEAKNESSES.slice(0, INITIAL_PREVIEW_COUNT).map(w => (
-              <WeaknessCard key={w.id} item={w} subjectColor={subjectColors[w.subject]} showCriticality={w.severity === 'critical'} onGenerate={() => onGenerateForWeakness?.({ topic: w.topic, subject: w.subject, severity: w.severity, recommendation: w.recommendation, source: 'weakness' })} onStartExam={() => onStartExamSimulation?.({ topic: w.topic, subject: w.subject, severity: w.severity, recommendation: w.recommendation, source: 'weakness' })} />
+              <WeaknessCard key={w.id} item={w} subjectColor={subjectColors[w.subject]} showCriticality={w.severity === 'critical'} onGenerate={() => onGenerateForWeakness?.({ topic: w.topic, subject: w.subject, severity: w.severity, recommendation: w.recommendation, source: 'weakness' })} onStartExam={() => onStartExamSimulation?.({ topic: w.topic, subject: w.subject, severity: w.severity, recommendation: w.recommendation, source: 'weakness' })} onOpenLinkedFlashcardSet={onOpenLinkedFlashcardSet} allSets={allSets} />
             ))}
           </div>
           {MOCK_WEAKNESSES.length > INITIAL_PREVIEW_COUNT && (
@@ -3358,7 +3363,7 @@ export default React.memo(function ProfileAnalyticsScreen({ isClosing, onClose, 
               ) : (
                 <div className="space-y-2">
                   {filteredWeaknesses.map(w => (
-                    <WeaknessCard key={w.id} item={w} subjectColor={subjectColors[w.subject]} showCriticality={w.severity === 'critical'} onGenerate={() => onGenerateForWeakness?.({ topic: w.topic, subject: w.subject, severity: w.severity, recommendation: w.recommendation, source: 'weakness' })} onStartExam={() => onStartExamSimulation?.({ topic: w.topic, subject: w.subject, severity: w.severity, recommendation: w.recommendation, source: 'weakness' })} />
+                    <WeaknessCard key={w.id} item={w} subjectColor={subjectColors[w.subject]} showCriticality={w.severity === 'critical'} onGenerate={() => onGenerateForWeakness?.({ topic: w.topic, subject: w.subject, severity: w.severity, recommendation: w.recommendation, source: 'weakness' })} onStartExam={() => onStartExamSimulation?.({ topic: w.topic, subject: w.subject, severity: w.severity, recommendation: w.recommendation, source: 'weakness' })} onOpenLinkedFlashcardSet={onOpenLinkedFlashcardSet} allSets={allSets} />
                   ))}
                 </div>
               )}

@@ -728,7 +728,12 @@ function AppContent({ userData, onLogout }: { userData: any; onLogout: () => voi
             onOpenFlashcardSet={appHandlers.handleOpenFlashcardSet}
             onOpenLinkedFlashcardSet={(setId) => {
               const set = allSets.find(s => String(s.id) === String(setId));
-              if (set) appHandlers.handleOpenFlashcardSet(set);
+              if (set) {
+                appHandlers.handleOpenFlashcardSet(set);
+              } else {
+                // Orphaned link — set was deleted. Clean up store so UI resets to "erstellen".
+                weaknessCardStore.unlinkBySetId(String(setId));
+              }
             }}
             pendingPrepTaskLink={pendingPrepTaskLink}
             onRequestUpload={(examId, subject, grade) => {

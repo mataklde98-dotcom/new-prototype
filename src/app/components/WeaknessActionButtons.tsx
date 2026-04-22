@@ -3,7 +3,7 @@
 // Handles KI-locked card count/exam duration, button text lifecycle,
 // grade badges, and progress display.
 
-import { useSyncExternalStore } from 'react';
+import { useSyncExternalStore, useEffect } from 'react';
 import { Layers, ClipboardCheck, Play } from 'lucide-react';
 import {
   weaknessCardStore,
@@ -12,6 +12,7 @@ import {
   getKIExamDuration,
   type WeaknessCardState,
 } from './weaknessCardStore';
+import type { FlashcardSet } from '@/types/flashcard';
 
 interface WeaknessActionButtonsProps {
   source: 'weakness' | 'risk' | 'knowledge-gap' | 'recommendation';
@@ -25,6 +26,8 @@ interface WeaknessActionButtonsProps {
   onGenerate: (ctx: any) => void;
   onStartExam: (ctx: any) => void;
   onOpenLinkedFlashcardSet?: (setId: string) => void;
+  /** All available flashcard sets — needed to validate link existence */
+  allSets?: FlashcardSet[];
   /** Optional: className for the wrapper */
   className?: string;
 }
@@ -40,6 +43,7 @@ export default function WeaknessActionButtons({
   onGenerate,
   onStartExam,
   onOpenLinkedFlashcardSet,
+  allSets,
   className = '',
 }: WeaknessActionButtonsProps) {
   // Subscribe to store changes
@@ -53,10 +57,25 @@ export default function WeaknessActionButtons({
   const kiCardCount = getKICardCount(severity);
   const kiExamDuration = getKIExamDuration(severity);
 
-  // Button text logic for Karteikarten
-  const hasLinkedSet = !!card?.linkedFlashcardSetId;
-  const progress = card?.flashcardSetProgress ?? 0;
+  // Validate: does the linked set still exist in allSets?
+  // If allSets is undefined, we trust the store (backwards compat).
+  // If allSets is an array, we check existence.
+  const linkedSetId = card?.linkedFlashcardSetId ?? null;
+  const linkedSetExists = linkedSetId != null && (
+    allSets === undefined ||
+    allSets.some((s) => String(s.id) === String(linkedSetId))
+  );
+  const hasLinkedSet = linkedSetExists;
+  const progress = hasLinkedSet ? (card?.flashcardSetProgress ?? 0) : 0;
   const setComplete = hasLinkedSet && progress >= 100;
+
+  // Self-heal: if store claims a link but the set is gone, clean up the orphaned link.
+  // This ensures the next render shows "Karteikarten erstellen" again.
+  useEffect(() => {
+    if (linkedSetId != null && allSets !== undefined && !linkedSetExists) {
+      weaknessCardStore.unlinkBySetId(String(linkedSetId));
+    }
+  }, [linkedSetId, linkedSetExists, allSets]);
 
   let flashcardButtonText = 'Karteikarten erstellen';
   let flashcardIcon = <Layers className="w-3 h-3" />;
@@ -111,24 +130,6 @@ export default function WeaknessActionButtons({
 
   return (
     <div className={`flex flex-col gap-2 ${className}`}>
-      {/* Progress bar for linked flashcard set */}
-      {showFlashcards && hasLinkedSet && !setComplete && (
-        <div className="flex items-center gap-2">
-          <div className="flex-1 h-[4px] rounded-full bg-white/[0.06] overflow-hidden">
-            <div
-              className="h-full rounded-full transition-all duration-300"
-              style={{
-                width: `${progress}%`,
-                background: 'linear-gradient(90deg, #00D4AA, #00B894)',
-              }}
-            />
-          </div>
-          <span className="font-['Poppins:Medium',sans-serif] text-[10px] text-white/40">
-            {progress}%
-          </span>
-        </div>
-      )}
-
       {/* Grade badge for completed exam */}
       {/* REMOVED: Grades are NEVER shown on weakness/gap/risk/recommendation cards */}
 

@@ -97,6 +97,18 @@ export const weaknessCardStore = {
     }
   },
 
+  /** Clean up all cards pointing to a specific set ID (e.g. set was deleted) */
+  unlinkBySetId(setId: string) {
+    let changed = false;
+    for (const key of Object.keys(cards)) {
+      if (cards[key].linkedFlashcardSetId === setId) {
+        cards[key] = { ...cards[key], linkedFlashcardSetId: null, flashcardSetProgress: 0 };
+        changed = true;
+      }
+    }
+    if (changed) notify();
+  },
+
   // ── Subscribe ──
   subscribe(listener: Listener): () => void {
     listeners.add(listener);
