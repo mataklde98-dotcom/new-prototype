@@ -1,0 +1,464 @@
+/**
+ * iOS 26 Design Tokens — Dark-Mode only
+ *
+ * Extracted from Apple's official "iOS and iPadOS 26" Figma UI Kit.
+ * File key:    UaR1FS8C2W8eVtb3rpApoF
+ * Library key: lk-a5b98decf0fb24381005421a2986b813149fcf20f37a1169316d44e2802c483494c6fc98ab8e083540a73bd5e45cf892a38123ee61981aee097d5f4eb8487a17
+ * Generated:   2026-04-23 (refined 2026-04-23 via Plugin-API Dark-mode resolve)
+ * Tool chain:  Figma MCP — search_design_system, get_design_context,
+ *              get_variable_defs, get_metadata, use_figma (Plugin API for
+ *              Dark-mode variable resolution, Sheet/Liquid-Glass Kit values)
+ *
+ * Conventions
+ * -----------
+ *   - Structure values (typography sizes/weights/line-heights, button paddings,
+ *     touch targets, Liquid-Glass variables, fixed radii) are VERIFIED from
+ *     Figma MCP — see docs/design-migration/tokens-report.md for source nodes.
+ *   - Typography (11 text styles) is VERIFIED against source node 224:56261
+ *     "Text Styles and Dynamic Type — Large Default".
+ *   - Color tokens in Dark-Mode are VERIFIED via use_figma Plugin-API —
+ *     read directly from valuesByMode on Apple's Colors collection (mode "Dark").
+ *   - Sheet radii and Liquid-Glass Medium/Large parameters are VERIFIED from
+ *     Kit collection variables.
+ *   - Brand colors (SoStudy green) are preserved untouched and are the only
+ *     hard-coded colors in this file aside from Apple's Liquid-Glass-internal
+ *     rgba() mixers that come directly from Figma.
+ *   - Dark-Mode is the only mode. No `@media (prefers-color-scheme: light)`.
+ */
+
+@import "tailwindcss";
+
+@theme {
+  /* =====================================================================
+   * FONT FAMILIES
+   * Per user decision 2026-04-23: SF Pro replaces Poppins entirely.
+   * SF Pro Display is prioritized for 20pt and above (Apple HIG rule).
+   * ===================================================================== */
+  --font-sans: -apple-system, 'SF Pro Text', 'SF Pro', system-ui, BlinkMacSystemFont, sans-serif;
+  --font-display: -apple-system, 'SF Pro Display', 'SF Pro', system-ui, BlinkMacSystemFont, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, monospace;
+
+  /* =====================================================================
+   * TYPOGRAPHY TOKENS — iOS 26 iPhone Text Styles
+   *
+   * All 11 styles VERIFIED — Source Node 224:56261 (Text Styles and Dynamic
+   * Type, Large Default) in Apple's iOS-26 UI kit, cross-verified against
+   * text-style definitions in the Liquid-Glass and Button specimens.
+   *
+   * font-weights as numeric SF Pro axis values:
+   *   400 = Regular, 510 = Medium, 590 = Semibold, 700 = Bold
+   *
+   * Schema per style:
+   *   --text-<name>:                  font-size
+   *   --text-<name>--line-height:     line-height
+   *   --text-<name>--letter-spacing:  letter-spacing (tracking)
+   *   --text-<name>--font-weight:     numeric weight
+   * ===================================================================== */
+
+  /* Caption 2 — VERIFIED — Source Node 224:56261 */
+  --text-caption-2: 11px;
+  --text-caption-2--line-height: 13px;
+  --text-caption-2--letter-spacing: 0.06px;
+  --text-caption-2--font-weight: 400;
+
+  /* Caption 1 — VERIFIED — Source Node 224:56261 */
+  --text-caption-1: 12px;
+  --text-caption-1--line-height: 16px;
+  --text-caption-1--letter-spacing: 0px;
+  --text-caption-1--font-weight: 400;
+
+  /* Footnote — VERIFIED — Source Node 224:56261 */
+  --text-footnote: 13px;
+  --text-footnote--line-height: 18px;
+  --text-footnote--letter-spacing: -0.08px;
+  --text-footnote--font-weight: 400;
+
+  /* Subheadline/Regular — VERIFIED — Source Node 224:56261 */
+  --text-subheadline: 15px;
+  --text-subheadline--line-height: 20px;
+  --text-subheadline--letter-spacing: -0.23px;
+  --text-subheadline--font-weight: 400;
+
+  /* Callout — VERIFIED — Source Node 224:56261 */
+  --text-callout: 16px;
+  --text-callout--line-height: 21px;
+  --text-callout--letter-spacing: -0.31px;
+  --text-callout--font-weight: 400;
+
+  /* Body/Regular — VERIFIED — Source Node 224:56261 */
+  --text-body: 17px;
+  --text-body--line-height: 22px;
+  --text-body--letter-spacing: -0.43px;
+  --text-body--font-weight: 400;
+
+  /* Headline — VERIFIED — Source Node 224:56261 (17/22 @ 590 Semibold) */
+  --text-headline: 17px;
+  --text-headline--line-height: 22px;
+  --text-headline--letter-spacing: -0.43px;
+  --text-headline--font-weight: 590;
+
+  /* Title 3 — VERIFIED — Source Node 224:56261 */
+  --text-title-3: 20px;
+  --text-title-3--line-height: 25px;
+  --text-title-3--letter-spacing: -0.45px;
+  --text-title-3--font-weight: 400;
+  --text-title-3--font-family: var(--font-display);
+
+  /* Title 2 — VERIFIED — Source Node 224:56261 */
+  --text-title-2: 22px;
+  --text-title-2--line-height: 28px;
+  --text-title-2--letter-spacing: -0.26px;
+  --text-title-2--font-weight: 400;
+  --text-title-2--font-family: var(--font-display);
+
+  /* Title 1 — VERIFIED — Source Node 224:56261 */
+  --text-title-1: 28px;
+  --text-title-1--line-height: 34px;
+  --text-title-1--letter-spacing: 0.38px;
+  --text-title-1--font-weight: 400;
+  --text-title-1--font-family: var(--font-display);
+
+  /* Large Title — VERIFIED — Source Node 224:56261 */
+  --text-large-title: 34px;
+  --text-large-title--line-height: 41px;
+  --text-large-title--letter-spacing: 0.40px;
+  --text-large-title--font-weight: 400;
+  --text-large-title--font-family: var(--font-display);
+
+  /* Liquid-Glass control label — VERIFIED from node 5522:11870
+   * (19/22 Semibold 590 with font-variation wdth 100 + font-feature ss16) */
+  --text-control: 19px;
+  --text-control--line-height: 22px;
+  --text-control--letter-spacing: 0px;
+  --text-control--font-weight: 590;
+
+  /* =====================================================================
+   * COLOR TOKENS — DARK MODE
+   *
+   * BRAND (preserved from SOSTUDY_DESIGN_SYSTEM.md — HARDCODED by design)
+   * ===================================================================== */
+  --color-brand-primary: #00B894;
+  --color-brand-primary-bright: #00D4AA;
+  --color-brand-primary-dark: #009379;
+  --color-brand-primary-darker: #007a63;
+  --color-brand-bg: #0a0a0a;
+
+  /* =====================================================================
+   * BRAND POLICY (user-fixed 2026-04-23)
+   *
+   * Brand-Green (--color-brand-primary #00B894) is the ONLY primary
+   * accent for ALL interactive surfaces: Buttons, Links, active states,
+   * Selections, Focus Rings, interactive quotes, etc.
+   *
+   * Apple's system accent --color-accent-blue is available in the token
+   * set but is NOT used for any SoStudy interactive affordance. It exists
+   * only as a reference for rare iOS-native patterns where the user
+   * explicitly requests the platform look (currently: none).
+   * ===================================================================== */
+
+  /* =====================================================================
+   * APPLE SYSTEM COLORS — Dark Mode
+   * Variable names preserved (Colors/<Name>) from Apple's iOS-26 kit.
+   * Values VERIFIED via use_figma Plugin-API — read directly from
+   * valuesByMode on Colors collection (mode "Dark", modeId 404:1).
+   * ===================================================================== */
+
+  /* Accents — VERIFIED — Colors collection Dark mode (2026-04-23)
+   * NOTE: Apple's Dark-mode Blue in this specific kit resolves to #0091FF
+   * (not the commonly-cited #0A84FF from older HIG docs — that's iOS 17). */
+  --color-accent-blue:   #0091FF;  /* VERIFIED — variable 1bcdfd8cbbc9c11df055d6740dd6cec1910bf72b */
+  --color-accent-red:    #FF4245;  /* VERIFIED — variable 037cab88c5111bc37aa01c432e59d409e644687d */
+  --color-accent-orange: #FF9230;  /* VERIFIED — variable e24ecbd8d28861b0eed46bf917d21ed36325c9a8 */
+  --color-accent-yellow: #FFD600;  /* VERIFIED — variable 7b2a3515e0b5f62f056416d3b2ca69767995284c */
+  --color-accent-green:  #30D158;  /* VERIFIED — variable 5dbe96008f37a9ae79ab8200263518c930a255c9 */
+  --color-accent-mint:   #00DAC3;  /* VERIFIED — variable e8ebcfcdb8344d2bc3f44485507bc9a73cc35175 */
+  --color-accent-teal:   #00D2E0;  /* VERIFIED — variable e90a36cb01e9d326d232bf501852c59cce80ec53 */
+  --color-accent-cyan:   #3CD3FE;  /* VERIFIED — variable 7331eeda0ac32211b601a5e790732ca26868f89b */
+  --color-accent-indigo: #6D7CFF;  /* VERIFIED — variable 4b68044152aaca4dfb5787433b30bb0c0024d801 */
+  --color-accent-purple: #DB34F2;  /* VERIFIED — variable 245928d355a93546b3e68a5a15ff3199b28b3914 */
+  --color-accent-pink:   #FF375F;  /* VERIFIED — variable 9f285b310b41a60580937256152b9bc48fe13e25 */
+  --color-accent-brown:  #B78A66;  /* VERIFIED — variable e8b45207f2b6831131bd3285aabd167dbaf1676f */
+  --color-accent-gray:   #8E8E93;  /* VERIFIED — from Grays/Gray ca65b27e97fd70d12bb694ced90b98567ba1cf63 (Apple has no separate Accents/Gray) */
+
+  /* =====================================================================
+   * SEMANTIC COLORS — iOS 26 Dark
+   * Clear separation from brand accent:
+   *   Brand-Green (#00B894) = Primary-Accent (tappable, action)
+   *   Success-Green         = iOS System Green Dark (#30D158)
+   * Both are green, but visually distinct (brand is cooler/teal-leaning,
+   * iOS Success is pure saturated green). Users intuit "tappable" vs
+   * "succeeded" without labels.
+   * ===================================================================== */
+  --color-success: #30D158;  /* iOS System Green, Dark */
+  --color-warning: #FF9F0A;  /* iOS System Orange, Dark */
+  --color-error:   #FF453A;  /* iOS System Red, Dark */
+  --color-info:    #64D2FF;  /* iOS System Blue light, Dark */
+
+  /* Labels — VERIFIED — Colors collection Dark mode
+   * Apple's Dark-mode Secondary/Tertiary/Quaternary use off-white
+   * rgb(235,235,245) with progressively lower alpha. */
+  --color-label-primary:    #FFFFFF;                         /* VERIFIED — variable 7b9c5dad211926bb87dc3f1ded8217fb41c9ad0c */
+  --color-label-secondary:  rgba(235, 235, 245, 0.70);       /* VERIFIED — variable 44ee87c6cd2363351bfe41b3274d55cefb34daa6 */
+  --color-label-tertiary:   rgba(235, 235, 245, 0.30);       /* VERIFIED — variable 7fd07899ec1a69c8d9e28313c93f2fc5b107916a */
+  --color-label-quaternary: rgba(235, 235, 245, 0.16);       /* VERIFIED — variable dc6805b79dc1c706de1abc661cc0882383971860 */
+
+  /* Labels - Vibrant (used above Liquid Glass / blur surfaces) — VERIFIED
+   * NOTE: Apple's Dark-mode Vibrant labels are SOLID grays (not alphas)
+   * — the vibrancy is produced by the underlying blur surface, not by
+   * the text color itself. */
+  --color-label-vibrant-primary:    #F5F5F5;  /* VERIFIED — variable 1fde5394488aba8632e5c620dc262cf9967752cd */
+  --color-label-vibrant-secondary:  #8A8A8A;  /* VERIFIED — variable 7c8349cb2accad3ca3d9a9c40249133ae5acae09 */
+  --color-label-vibrant-tertiary:   #404040;  /* VERIFIED — variable 429566248a975defbc19770507807169fef54dab */
+  --color-label-vibrant-quaternary: #262626;  /* VERIFIED — variable 6b0911ca363a845fc66a7c4ed251f58d4de39175 */
+
+  /* Labels - Vibrant - Controls (label color rendered on Liquid Glass fill)
+   * VERIFIED — Dark-mode value is #F5F5F5 (not #1a1a1a — that was the
+   * light-mode sample from the earlier extraction).
+   * Variable key 680e90a3b9687f44b9baa64a72e88571c53bb466. */
+  --color-label-vibrant-controls-primary:   #F5F5F5;  /* VERIFIED */
+  --color-label-vibrant-controls-secondary: #8A8A8A;  /* VERIFIED — variable 3a0506ec7fdf9e3eecab8778d79ac4a62ec607a0 */
+  --color-label-vibrant-controls-tertiary:  #404040;  /* VERIFIED — variable 753afc7eebeaf0666d6943a99d85e6a4d4f4e22a */
+
+  /* Fills (transparent overlays used as list-row / card fills) — VERIFIED */
+  --color-fill-primary:     rgba(120, 120, 128, 0.36);  /* VERIFIED — variable 3d5c36a7724752864e4a7f84774497a4723020f9 */
+  --color-fill-secondary:   rgba(120, 120, 128, 0.32);  /* VERIFIED — variable b8373c2469d25737ad96589b60756d40ee8a60a6 */
+  --color-fill-tertiary:    rgba(118, 118, 128, 0.24);  /* VERIFIED — variable eb02825f72ff263fccd24d58a142e8b1189549fb */
+  --color-fill-quaternary:  rgba(118, 118, 128, 0.18);  /* VERIFIED — variable 82d1bd78bdbb41394c48743c76c7a169fca269c8 */
+
+  /* Fills - Vibrant (used above blur surfaces) — VERIFIED */
+  --color-fill-vibrant-primary:   #333333;  /* VERIFIED — variable 6677f95d9aa548d71cf34a42e0f3983a8da25c00 */
+  --color-fill-vibrant-secondary: #1F1F1F;  /* VERIFIED — variable f11eca2ea9cde38f566b7fc05aca5986180d2789 */
+  --color-fill-vibrant-tertiary:  #121212;  /* VERIFIED — variable 083da622bd8276615a9b3126e748eb463b61c186 */
+
+  /* Backgrounds — VERIFIED */
+  --color-bg-primary:    #000000;  /* VERIFIED — variable 4a08e4d50961982008cb4d8dc0a189611dbe5fa1 */
+  --color-bg-secondary:  #1C1C1E;  /* VERIFIED — variable f0a0085d6c9c1de7b6ec2f55f2a6d1cc596ce1ad */
+  --color-bg-tertiary:   #2C2C2E;  /* VERIFIED — variable bacd672af5a72d58d41bb3dd2c59b42a1d41bd71 */
+
+  /* Backgrounds - Elevated — VERIFIED */
+  --color-bg-primary-elevated:   #1C1C1E;  /* VERIFIED — variable e6d21b0d456333720e13c1e198540b853f369f09 */
+  --color-bg-secondary-elevated: #2C2C2E;  /* VERIFIED — variable d201217eec13a4236089961979e58f08d05b39a3 */
+  --color-bg-tertiary-elevated:  #3A3A3C;  /* VERIFIED — variable ec702b5a7cb0b5be983dfd3cb478364eba18476b */
+
+  /* Backgrounds (Grouped) — list views — VERIFIED */
+  --color-bg-grouped-primary:             #000000;  /* VERIFIED — variable 03017e6b75ffabb391aaec0570d85ac573c75686 */
+  --color-bg-grouped-primary-elevated:    #1C1C1E;  /* VERIFIED — variable 8da1b6746b040cf0149476f63ef69ff4f32eab62 */
+  --color-bg-grouped-secondary:           #1C1C1E;  /* VERIFIED — variable 0c904708054b119b9c2f844fd73db7ac8fbc09dc */
+  --color-bg-grouped-secondary-elevated:  #2C2C2E;  /* VERIFIED — variable 5676f789ca7896d0a163664e1dfac1b6f3e45ee8 */
+  --color-bg-grouped-tertiary:            #2C2C2E;  /* VERIFIED — variable 92042e7fa2a013310825dd87a9caaac657012185 */
+  --color-bg-grouped-tertiary-elevated:   #3A3A3C;  /* VERIFIED — variable e156c94b399d0b1c8988c1f898bd62cd916b80e5 */
+
+  /* Separators — VERIFIED */
+  --color-separator-opaque:     #38383A;                    /* VERIFIED — variable 66347d474e3f3e5efbbed4e01cf7acde752774ee */
+  --color-separator-non-opaque: rgba(255, 255, 255, 0.17);  /* VERIFIED — variable 085f6c22dab86cb05f4d046c285e8a834460e9fb */
+  --color-separator-vibrant:    #1A1A1A;                    /* VERIFIED — variable 43f6ea01ca21c253c5cea882013d3da850bef96e */
+
+  /* Overlays & Miscellaneous — VERIFIED */
+  --color-overlay-default:              rgba(0, 0, 0, 0.48);    /* VERIFIED — variable f04539ebf7918d74a150f8944f219342f83fb827 */
+  --color-overlay-activity-view:        rgba(0, 0, 0, 0.29);    /* VERIFIED — variable 870974fd34c8908c7cacb58bcfc8bbbca0641abe */
+  --color-alert-overlay:                rgba(18, 18, 18, 0.56); /* VERIFIED — variable 0a6f2f8bcada650fb9edea6557d9546a0e862eb3 */
+  --color-segmented-control-selected:   rgba(255, 255, 255, 0.27); /* VERIFIED — variable 442efb61662c25d87941a6bde7b101c3758d40bb */
+  --color-tab-bar-selection:            #FFFFFF;                /* VERIFIED — variable dd13e2d67506680762c36c7cd86339b88b357f24 */
+  --color-window-grabber:               #FFFFFF;                /* VERIFIED — variable 1c24374a5e7c1873b73c74022248f7aa5176bd76 */
+
+  /* Destructive button colors — VERIFIED */
+  --color-destructive-label-disabled:   rgba(255, 66, 69, 0.50);  /* VERIFIED — variable ed32b4f5ae53a7b76e7a21691397c50746e98a53 */
+  --color-destructive-bg-prominent:     rgba(255, 66, 69, 0.20);  /* VERIFIED — variable a18a9a7bbf24c8c2257606a8125310236101f38c */
+  --color-destructive-bg:               rgba(255, 66, 69, 0.14);  /* VERIFIED — variable d16eabc40d09f9bf2ceb7f89acc5be2c856722c2 */
+
+  /* =====================================================================
+   * SPACING SCALE
+   *
+   * Derived from verified button paddings in Figma (iOS-26 UI kit):
+   *   Small  button: px-10 py-4   (nodes 5:108627 / 5473:20512 cluster)
+   *   Medium button: px-14 py-7   (nodes 5:108603 cluster)
+   *   Large  button: px-20 py-14  (nodes 5:108579 cluster)
+   * Liquid-Glass close button inner text frame: h-36
+   * Apple kits use a 4-point base grid throughout.
+   * ===================================================================== */
+  --spacing-0: 0px;
+  --spacing-1: 2px;
+  --spacing-2: 4px;   /* VERIFIED — Small button py, Liquid-Glass gap */
+  --spacing-3: 7px;   /* VERIFIED — Medium button py */
+  --spacing-4: 10px;  /* VERIFIED — Small button px */
+  --spacing-5: 12px;
+  --spacing-6: 14px;  /* VERIFIED — Medium button px, Large button py */
+  --spacing-7: 16px;
+  --spacing-8: 20px;  /* VERIFIED — Large button px */
+  --spacing-9: 24px;
+  --spacing-10: 32px;
+  --spacing-11: 40px;
+  --spacing-12: 48px;
+
+  /* Semantic spacing aliases for components */
+  --spacing-button-small-x: 10px;
+  --spacing-button-small-y: 4px;
+  --spacing-button-medium-x: 14px;
+  --spacing-button-medium-y: 7px;
+  --spacing-button-large-x: 20px;
+  --spacing-button-large-y: 14px;
+
+  /* =====================================================================
+   * CORNER RADII
+   *
+   * VERIFIED values:
+   *   --radius-button-pill: 1000px  (nodes 5:108579, 5:108603, 5:108627,
+   *                                  5:108651, 5:108723 — all Button variants)
+   *   --radius-liquid-glass-shape-morph: 296px
+   *                                 (node 5522:11870, inner Fill/Glass-Effect)
+   *   --radius-liquid-glass-outer: 1000px (node 5522:11870 container)
+   * ===================================================================== */
+  --radius-none: 0px;
+  --radius-xs: 4px;
+  --radius-sm: 8px;
+  --radius-md: 10px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-2xl: 20px;
+  --radius-card: 12px;        /* TBD — not directly extracted, verify Gate-1 */
+  --radius-alert: 14px;       /* TBD — not directly extracted, verify Gate-1 */
+  --radius-input: 10px;       /* TBD — not directly extracted, verify Gate-1 */
+  --radius-button-pill: 1000px;                /* VERIFIED */
+  --radius-liquid-glass-outer: 1000px;         /* VERIFIED */
+  --radius-liquid-glass-shape-morph: 296px;    /* VERIFIED */
+
+  /* =====================================================================
+   * SHEET GEOMETRY — iPhone Compact
+   *
+   * VERIFIED via use_figma Plugin-API on Kit collection variables and
+   * direct inspection of "Sheet - Inspector - iPhone" component
+   * (node 5551:41121) on page "Sheets" (507:24684).
+   *
+   * Container: 402×N, padding 6px (right/bottom/left), 0 top.
+   * Inner BG (Glass-Effect surface): 390×N with asymmetric corner radii
+   * (rounded top-corners, large bottom-corners to mirror iPhone physical
+   * screen corners when anchored to bottom edge).
+   *
+   * Grabber hit-area: 36×16px with 5px top-padding pushing the indicator
+   * away from the sheet top edge.
+   * Grabber indicator: 36×5px pill (cornerRadius 100).
+   * ===================================================================== */
+  --radius-sheet-iphone-top:    34px;  /* VERIFIED — Kit/Sheet/iPhone Radius/Top (c10800245fa9630e45239ddbbd8fd33197318cd7) */
+  --radius-sheet-iphone-bottom: 58px;  /* VERIFIED — Kit/Sheet/iPhone Radius/Bottom (971c270b4682e0410742041569952cde6301095a) */
+  --radius-sheet-ipad:          38px;  /* VERIFIED — Kit/Sheet/iPad Radius (bc9a0f63947271989ff2be8f144bf9a9fc907e57) */
+
+  /* Sheet grabber — VERIFIED from node I5726:35206;5726:33527 (hit-area)
+   * + I5726:35206;5827:65815 (indicator). */
+  --sheet-grabber-width:       36px;  /* VERIFIED */
+  --sheet-grabber-height:      5px;   /* VERIFIED — indicator height */
+  --sheet-grabber-radius:      100px; /* VERIFIED — pill */
+  --sheet-grabber-offset-top:  5px;   /* VERIFIED — Grabber-Container paddingTop */
+  --sheet-grabber-hit-height:  16px;  /* VERIFIED — Grabber hit-area total height */
+
+  /* Sheet content padding (Toolbar structure: grabber 16px + 54px title row
+   * + 10px bottom padding = 70px Toolbar) — VERIFIED from Toolbar and
+   * Title-and-Controls frames (5729:24624 / I5729:24624;5726:33529). */
+  --sheet-content-padding-top:    16px;  /* VERIFIED — Title-and-Controls y-offset inside Toolbar (grabber block) */
+  --sheet-content-padding-x:      16px;  /* VERIFIED — Title-and-Controls padding-left/right */
+  --sheet-content-padding-bottom: 10px;  /* VERIFIED — Toolbar paddingBottom */
+
+  /* Sheet outer container padding (between sheet edge and screen edge on
+   * non-full-screen presentations) — VERIFIED from component 5551:41121. */
+  --sheet-container-padding-x:      6px;  /* VERIFIED */
+  --sheet-container-padding-bottom: 6px;  /* VERIFIED */
+
+  /* Detent heights — TBD — manual sampling required
+   * Apple's iOS-26 kit does not expose sheet-detent percentages as variables;
+   * each Sheet specimen uses a fixed height (the Inspector iPhone sample is
+   * 387 tall). Medium/Large detent fractions are SwiftUI runtime values
+   * (.medium ≈ 50% / .large = full). Declare as TBD until explicit
+   * Apple-Figma "Detent - Medium" / "Detent - Large" frames are found. */
+  --sheet-detent-medium: /* TBD — manual sampling required */ 50%;
+  --sheet-detent-large:  /* TBD — manual sampling required */ 92%;
+
+  /* Keyboard radii — VERIFIED (iOS 26 Kit) */
+  --radius-keyboard-iphone-top:    27px;  /* VERIFIED — Kit/Keyboard/iPhone Radius/Top (4e3f41ec137e7939db6be4487960ea16f4cba7c3) */
+  --radius-keyboard-iphone-bottom: 62px;  /* VERIFIED — Kit/Keyboard/iPhone Radius/Bottom (c334f1381ef54309645f46054e90b1336e188350) */
+
+  /* Scroll-Edge effect — VERIFIED */
+  --scroll-edge-blur-radius: 10px;  /* VERIFIED — Kit/Scroll Edge Effect/Blur Radius (96944cd60599b6f52f81da384b843642e30496cf) */
+
+  /* =====================================================================
+   * TOUCH TARGETS
+   *
+   * VERIFIED sizes from button variant set metadata (frame 40:58696):
+   *   Small  button: 28px height  (symbol-only 28×28)
+   *   Medium button: 34px height  (symbol-only 34×34)
+   *   Large  button: 50px height  (symbol-only 50×50)
+   *   Liquid-Glass Close: 48px × 48px (node 5522:11870)
+   * Apple HIG minimum hit area = 44×44 (applies via padding when needed).
+   * ===================================================================== */
+  --size-touch-min: 44px;
+  --size-button-small: 28px;         /* VERIFIED */
+  --size-button-medium: 34px;        /* VERIFIED */
+  --size-button-large: 50px;         /* VERIFIED */
+  --size-button-liquid-glass: 48px;  /* VERIFIED */
+  --size-button-extra-large: 56px;   /* TBD — not directly extracted */
+
+  /* =====================================================================
+   * MATERIALS — LIQUID GLASS
+   * Variable names taken verbatim from Apple's Figma variable collection.
+   * All Regular + Medium/Large values VERIFIED via use_figma Plugin-API.
+   * ===================================================================== */
+
+  /* Core Liquid-Glass control parameters (Regular size class) */
+  --liquid-glass-light-angle: -45;         /* VERIFIED — variable b1e8e27d81da26a86b865795e111bbe2a6c72738 */
+  --liquid-glass-refraction: 60;           /* VERIFIED — variable 0d5f5fbc8e9791552114d1bd5da4509b395dbfef */
+  --liquid-glass-frost-regular: 6;         /* VERIFIED — variable b5e87089d3607d3936fbb2db03a889de74afaa58 */
+  --liquid-glass-depth-regular: 30;        /* VERIFIED — variable 55fd1d48c0524c6dd8d9aa387bf3b16e11b0f8ff */
+  --liquid-glass-splay-regular: 25;        /* VERIFIED — variable 28d2d5bfa5e75aae3c40522496c341e7430e968b */
+  --liquid-glass-dispersion: 0;            /* VERIFIED — variable ef5cdbc86f8fa20453fdfa995ee033f240dd5ac7 */
+
+  /* Medium and Large size class — VERIFIED */
+  --liquid-glass-depth-medium-large:  60;  /* VERIFIED — variable cb8870e9acef62a5ea4fbd3c6e69a60e43b7f991 */
+  --liquid-glass-splay-medium-large:  12;  /* VERIFIED — variable f98346cdfbff73b6e876951a6ebc90a11c9332c4 */
+  --liquid-glass-frost-medium:        20;  /* VERIFIED — variable d1b9460dbd5170ecc3e56c68a4cd2a9b1dba95bf */
+  --liquid-glass-frost-large:         35;  /* VERIFIED — variable 19332e8913ca12edf9ddc4dbb8f6bd9d67cdc373 */
+
+  /* Liquid-Glass Opacity — TBD — not exposed as a variable in Apple's kit.
+   * The Regular-class 48×48 close-button uses opacity 0.67 on the Blur
+   * wrapper (captured below as --liquid-glass-blur-opacity); Apple does
+   * not publish a global Liquid-Glass/Opacity value in the Kit collection. */
+  --liquid-glass-opacity: /* TBD — fallback from Regular-set blur-wrapper */ 0.67;
+
+  /* Shadow layers emitted by the Liquid-Glass tinted variant (node 5522:11867).
+   * VERIFIED. */
+  --liquid-glass-shadow-blur-bg:    0px 0px 2px 0px rgba(0, 0, 0, 0.10);
+  --liquid-glass-shadow-blur-layer: 0px 1px 8px 0px rgba(0, 0, 0, 0.12);
+  --liquid-glass-shadow:            0px 0px 2px 0px rgba(0, 0, 0, 0.10), 0px 1px 8px 0px rgba(0, 0, 0, 0.12);
+
+  /* Concrete material stacks used on the verified Liquid-Glass close button
+   * (node 5522:11870). Use these in backdrop-filter compositions. */
+  --liquid-glass-blur: 20px;                               /* VERIFIED — Regular */
+  --liquid-glass-blur-medium: 20px;                        /* VERIFIED — Frost Medium */
+  --liquid-glass-blur-large:  35px;                        /* VERIFIED — Frost Large */
+  --liquid-glass-base-fill: rgba(0, 0, 0, 0.04);           /* VERIFIED */
+  --liquid-glass-base-blend: hard-light;                   /* VERIFIED */
+  --liquid-glass-second-color-dodge-fill: #333333;         /* VERIFIED */
+  --liquid-glass-second-blend: color-dodge;                /* VERIFIED */
+  --liquid-glass-overlay-fill: rgba(247, 247, 247, 1);     /* VERIFIED (gradient endpoint) */
+  --liquid-glass-overlay-tint: rgba(255, 255, 255, 0.5);   /* VERIFIED (gradient endpoint) */
+  --liquid-glass-blur-opacity: 0.67;                       /* VERIFIED (opacity-67 on Blur wrapper) */
+
+  /* Tinted variant tint chroma (node 5522:11867) — sample/reference value.
+   * Apple's tinted Liquid-Glass picks up the app's accent color at runtime;
+   * this fallback (#0091ff) appears in the static Figma export. */
+  --liquid-glass-tint-reference: #0091ff;                  /* VERIFIED */
+
+  /* =====================================================================
+   * MOTION — Apple HIG Dark-Mode defaults (HIG-DEFAULT, not Figma-sourced;
+   * Apple's Figma kit exposes no motion variables).
+   * For Capacitor native paths, prefer iOS-system animations over CSS
+   * transitions (Sheet presentation, Navigation push, etc.).
+   * ===================================================================== */
+
+  --motion-duration-micro:     200ms;  /* small state changes, toggles */
+  --motion-duration-standard:  250ms;  /* most transitions */
+  --motion-duration-emphasis:  350ms;  /* modal open, tab switch */
+  --motion-duration-sheet:     500ms;  /* sheet present/dismiss */
+
+  --motion-ease-standard:  cubic-bezier(0.25, 0.1, 0.25, 1);
+  --motion-ease-out:       cubic-bezier(0, 0, 0.58, 1);
+  --motion-ease-in-out:    cubic-bezier(0.42, 0, 0.58, 1);
+  --motion-ease-spring:    cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
