@@ -86,14 +86,16 @@ export default function ExtraSessionRequestModal({
       time,
       note: note.trim() || undefined,
     });
-    // Short confirmation, then close + parent navigates.
+    // Show a short success toast, then close the modal. The student stays
+    // on the TeacherProfile (no navigation); the request is visible in the
+    // chat the next time they open it.
     setTimeout(() => {
       setIsSending(false);
       setSentToast(true);
       setTimeout(() => {
         onClose();
         onRequestSent?.();
-      }, 700);
+      }, 1400);
     }, 250);
   };
 

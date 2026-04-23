@@ -496,7 +496,6 @@ export default function TeacherProfileScreen({
           onClose={() => setShowExtraSessionModal(false)}
           teacherId={teacher.id}
           teacherName={teacher.name}
-          onRequestSent={() => onOpenChat?.(teacher.id)}
         />
       </div>
     );
@@ -646,7 +645,6 @@ export default function TeacherProfileScreen({
         onClose={() => setShowExtraSessionModal(false)}
         teacherId={teacher.id}
         teacherName={teacher.name}
-        onRequestSent={() => onOpenChat?.(teacher.id)}
       />
     </div>
   );

@@ -8,9 +8,11 @@ export interface ChatMessage {
   message: string;
   timestamp: Date;
   isRead: boolean;
-  type: 'text' | 'voice' | 'image';
+  type: 'text' | 'voice' | 'image' | 'extra-session-request';
   duration?: number; // Für Voice Messages in Sekunden
   attachments?: ChatAttachment[];
+  /** Link to an ExtraSessionRequest in extraSessionRequestStore (type==='extra-session-request') */
+  extraSessionRequestId?: string;
 }
 
 export interface ChatAttachment {

@@ -52,6 +52,7 @@ import {
   BlockedBar,
 } from './ChatFeatureOverlays';
 import { MessageAttachments } from './ChatMessageAttachments';
+import ExtraSessionRequestCard from './ExtraSessionRequestCard';
 import type { ChatAttachment as ChatAttachmentType } from '@/mocks/chatMocks';
 import { useUser } from '@/contexts/UserContext';
 import { Lock } from 'lucide-react';
@@ -1669,6 +1670,36 @@ const DesktopMessageBubble = React.memo(function DesktopMessageBubble({
   avatar?: string;
 }) {
   const time = formatMessageTime(message.timestamp);
+
+  // Rich card renderer for extra-session requests — skips the bubble UI.
+  if (message.type === 'extra-session-request' && message.extraSessionRequestId) {
+    return (
+      <div
+        className={`flex items-end gap-2.5 ${isStudent ? 'flex-row-reverse' : 'flex-row'}`}
+        style={{ marginTop: isConsecutive ? '2px' : '14px' }}
+      >
+        {!isStudent && isLast && (
+          <img
+            src={avatar}
+            alt=""
+            className="w-7 h-7 rounded-full object-cover flex-shrink-0"
+            style={{ border: '1.5px solid rgba(255,255,255,0.06)' }}
+          />
+        )}
+        {!isStudent && !isLast && <div className="w-7 flex-shrink-0" />}
+        <div className="flex flex-col" style={{ maxWidth: '55%' }}>
+          <ExtraSessionRequestCard requestId={message.extraSessionRequestId} isStudent={isStudent} />
+          {isLast && (
+            <span
+              className={`font-['Poppins:Regular',sans-serif] text-[10px] text-white/25 mt-1 px-1 ${isStudent ? 'self-end' : 'self-start'}`}
+            >
+              {time}
+            </span>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div
