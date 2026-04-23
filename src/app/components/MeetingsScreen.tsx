@@ -50,6 +50,12 @@ interface MeetingsScreenProps {
   externalTransition?: boolean;
   onOpenTutoringActivation?: () => void;
   onOpenTutoringSession?: (sessionId: string) => void;
+  /**
+   * Direct-open mode: when set (e.g. from Home Extra-Stunden tap),
+   * the screen mounts straight into the detail view for this session —
+   * no loading, no top tabs, no list. Back/close returns to caller via `onClose`.
+   */
+  directExtraSessionId?: string | null;
 }
 
 // ===== HELPERS =====
@@ -1141,7 +1147,8 @@ const MeetingRoom = ({ meeting, onLeave }: { meeting: Meeting; onLeave: () => vo
 };
 
 // ===== MAIN MEETINGS SCREEN =====
-export default React.memo(function MeetingsScreen({ onClose, isMobile = false, externalTransition = false, onOpenTutoringActivation, onOpenTutoringSession }: MeetingsScreenProps) {
+export default React.memo(function MeetingsScreen({ onClose, isMobile = false, externalTransition = false, onOpenTutoringActivation, onOpenTutoringSession, directExtraSessionId }: MeetingsScreenProps) {
+  const directOpenMode = !!directExtraSessionId;
   const { tutoringStatus } = useUser();
   const isTutoringLocked = tutoringStatus !== 'activated';
 
@@ -1166,13 +1173,24 @@ export default React.memo(function MeetingsScreen({ onClose, isMobile = false, e
     setCancelConfirmMeeting(meeting);
   }, []);
 
-  const [activeTab, setActiveTab] = useState<MeetingTab>('upcoming');
-  const [viewState, setViewState] = useState<ViewState>('list');
-  const [selectedMeeting, setSelectedMeeting] = useState<Meeting | null>(null);
+  // In direct-open mode, preselect the target meeting and start in detail view.
+  const initialDirectMeeting = useMemo(
+    () => (directExtraSessionId ? MOCK_MEETINGS.find((m) => m.extraSessionId === directExtraSessionId) ?? null : null),
+    [directExtraSessionId],
+  );
+  const initialDirectTab: MeetingTab = useMemo(() => {
+    if (!initialDirectMeeting) return 'upcoming';
+    const s = getUIStatus(initialDirectMeeting);
+    return s === 'live' ? 'live' : s === 'past' || s === 'cancelled' ? 'past' : 'upcoming';
+  }, [initialDirectMeeting]);
+
+  const [activeTab, setActiveTab] = useState<MeetingTab>(initialDirectTab);
+  const [viewState, setViewState] = useState<ViewState>(directOpenMode && initialDirectMeeting ? 'detail' : 'list');
+  const [selectedMeeting, setSelectedMeeting] = useState<Meeting | null>(directOpenMode ? initialDirectMeeting : null);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedSubject, setSelectedSubject] = useState('Alle');
   const [selectedType, setSelectedType] = useState<'all' | '1on1' | 'group'>('all');
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(!directOpenMode);
   const [showFilters, setShowFilters] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -1275,9 +1293,10 @@ export default React.memo(function MeetingsScreen({ onClose, isMobile = false, e
   // Phase flow: null → 'exit' → [swap content] → 'enter-start' (1 frame, no transition) → 'enter-end' (animate to 0) → null
 
   useEffect(() => {
+    if (directOpenMode) return; // no loading skeleton in direct-open mode
     const timer = setTimeout(() => setIsLoading(false), 500);
     return () => clearTimeout(timer);
-  }, []);
+  }, [directOpenMode]);
 
   // Filter meetings by tab
   const tabMeetings = useMemo(() => {
@@ -1437,7 +1456,8 @@ export default React.memo(function MeetingsScreen({ onClose, isMobile = false, e
 
   const content = (
     <div className="size-full flex flex-col bg-[#0a0a0a]">
-      {/* Header */}
+      {/* Header — hidden in direct-open mode; MeetingDetailView provides its own back button */}
+      {!directOpenMode && (
       <div className="sticky top-0 z-20 bg-[#0a0a0a]/90 backdrop-blur-xl border-b border-white/[0.06]">
         {/* Top bar */}
         <div className="flex items-center gap-3 px-4 py-3">
@@ -1577,6 +1597,7 @@ export default React.memo(function MeetingsScreen({ onClose, isMobile = false, e
           </div>
         )}
       </div>
+      )}
 
       {/* Content — Full-width GPU slide transitions (matches SlideTransition.css pattern) */}
       <div className="flex-1 min-h-0 overflow-hidden relative">
@@ -1606,7 +1627,7 @@ export default React.memo(function MeetingsScreen({ onClose, isMobile = false, e
             {viewState === 'detail' && selectedMeeting ? (
               <MeetingDetailView
                 meeting={selectedMeeting}
-                onBack={handleBackToList}
+                onBack={directOpenMode ? (onClose ?? handleBackToList) : handleBackToList}
                 onJoinLobby={() => setViewState('lobby')}
                 ratingValue={getRating(selectedMeeting.id)?.rating}
                 onRate={() => setRatingModalMeeting(selectedMeeting)}

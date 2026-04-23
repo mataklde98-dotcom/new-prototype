@@ -6,6 +6,8 @@ import { cancelledExtraSessionsStore, useCancelledExtraSessions } from '@/app/co
 interface AllExtraSessionsSheetProps {
   isOpen: boolean;
   onClose: () => void;
+  /** Tap a session row → navigate to Meetings screen detail view */
+  onOpenExtraSession?: (extraSessionId: string) => void;
 }
 
 // ===== STORNO-LOGIK =====
@@ -27,7 +29,7 @@ function getCancelState(session: ExtraSession, now: Date): { state: CancelState;
   return { state: 'none', hoursLeft: Math.floor(hoursUntilDeadline) };
 }
 
-export default function AllExtraSessionsSheet({ isOpen, onClose }: AllExtraSessionsSheetProps) {
+export default function AllExtraSessionsSheet({ isOpen, onClose, onOpenExtraSession }: AllExtraSessionsSheetProps) {
   const [visible, setVisible] = useState(false);
   const [animateIn, setAnimateIn] = useState(false);
   const [, setTick] = useState(0);
@@ -99,10 +101,12 @@ export default function AllExtraSessionsSheet({ isOpen, onClose }: AllExtraSessi
 
     return (
       <div
-        className="flex flex-col gap-2.5 rounded-2xl p-3.5 transition-all duration-200"
+        onClick={() => onOpenExtraSession?.(session.id)}
+        className="flex flex-col gap-2.5 rounded-2xl p-3.5 transition-all duration-200 cursor-pointer active:scale-[0.99]"
         style={{
           background: 'rgba(255,255,255,0.04)',
           border: '1px solid rgba(255,255,255,0.08)',
+          WebkitTapHighlightColor: 'transparent',
         }}
       >
         <div className="flex items-center gap-3.5">
@@ -164,7 +168,7 @@ export default function AllExtraSessionsSheet({ isOpen, onClose }: AllExtraSessi
 
             {/* Einheitlicher Absagen-Button */}
             <button
-              onClick={() => handleCancelClick(session)}
+              onClick={(e) => { e.stopPropagation(); handleCancelClick(session); }}
               className="font-['Poppins:SemiBold',sans-serif] text-[10px] px-3 py-1.5 rounded-md transition-all active:scale-95 flex-shrink-0"
               style={{
                 color: '#FF9F43',

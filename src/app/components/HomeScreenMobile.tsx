@@ -69,6 +69,8 @@ interface HomeScreenMobileProps {
   onStartExamSimulation?: (context: any) => void;
   /** Notifies parent when a bottom sheet opens/closes — used to hide MobileNavigation */
   onBottomSheetChange?: (open: boolean) => void;
+  /** Tap an Extra-Stunde card → navigate to Meetings screen and open its detail view */
+  onOpenExtraSession?: (extraSessionId: string) => void;
 }
 
 export default React.memo(function HomeScreenMobile({ 
@@ -92,6 +94,7 @@ export default React.memo(function HomeScreenMobile({
   onGenerateForWeakness,
   onStartExamSimulation,
   onBottomSheetChange,
+  onOpenExtraSession,
 }: HomeScreenMobileProps) {
   const [selectedDate, setSelectedDate] = useState<{ day: string; date: string; fullDate: Date; isManual?: boolean } | null>(null);
   const [showFilterPopup, setShowFilterPopup] = useState(false);
@@ -996,8 +999,9 @@ export default React.memo(function HomeScreenMobile({
 
                 <div className="flex gap-3 overflow-x-auto snap-x snap-mandatory pb-2 -mx-5 px-5 scrollbar-hide" style={{ scrollPaddingLeft: '20px' }}>
                   {MOCK_EXTRA_SESSIONS.filter(s => new Date(s.startAtISO) >= APP_NOW && !cancelledExtraSessionIds.has(s.id)).slice(0, 3).map((session) => (
-                    <div 
-                      key={session.id} 
+                    <div
+                      key={session.id}
+                      onClick={() => onOpenExtraSession?.(session.id)}
                       className="relative overflow-hidden bg-gradient-to-br from-white/[0.05] to-white/[0.02] border border-white/[0.08] rounded-2xl p-3 w-[190px] flex-shrink-0 snap-start transition-all duration-300 cursor-pointer active:scale-[0.98]"
                       style={{
                         willChange: 'transform',
@@ -1054,6 +1058,10 @@ export default React.memo(function HomeScreenMobile({
       <AllExtraSessionsSheet
         isOpen={showAllExtraSessions}
         onClose={() => setShowAllExtraSessions(false)}
+        onOpenExtraSession={(id) => {
+          setShowAllExtraSessions(false);
+          onOpenExtraSession?.(id);
+        }}
       />
     </div>
   );

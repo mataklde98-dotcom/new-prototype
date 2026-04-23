@@ -140,6 +140,9 @@ function AppContent({ userData, onLogout }: { userData: any; onLogout: () => voi
   // Pending chat teacher ID — when navigating from Teacher Profile → Chat
   const [pendingChatTeacherId, setPendingChatTeacherId] = useState<string | null>(null);
 
+  // Pending Extra-Session ID — when tapping an Extra-Stunde card in Home, navigate to Meetings and open its detail view
+  const [pendingExtraSessionId, setPendingExtraSessionId] = useState<string | null>(null);
+
   // ===== ONBOARDING TRIAL POPUP =====
   // Prototyping-Modus: Popup wird nach jeder Registrierung angezeigt,
   // aber NICHT nach einem normalen Login. Das `isNewRegistration`-Flag
@@ -579,6 +582,7 @@ function AppContent({ userData, onLogout }: { userData: any; onLogout: () => voi
                      navigation.openExamSimulation();
                    }}
                    onBottomSheetChange={setHomeBottomSheetOpen}
+                   onOpenExtraSession={(id) => setPendingExtraSessionId(id)}
                  />
               ),
             },
@@ -917,6 +921,23 @@ function AppContent({ userData, onLogout }: { userData: any; onLogout: () => voi
             sessionId={navigation.selectedTutoringSessionId}
             onClose={() => navigation.setShowTutoringExplain(false)}
             externalTransition
+          />
+        </MobileRouteTransition>
+      )}
+
+      {/* Mobile Extra-Stunde Detail (Direct-Open from Home tap) — overlays Home without tab change */}
+      {isMobile && (
+        <MobileRouteTransition isVisible={!!pendingExtraSessionId}>
+          <MeetingsScreen
+            isMobile={true}
+            externalTransition
+            directExtraSessionId={pendingExtraSessionId}
+            onClose={() => setPendingExtraSessionId(null)}
+            onOpenTutoringSession={(sessionId) => {
+              setPendingExtraSessionId(null);
+              navigation.setSelectedTutoringSessionId(sessionId);
+              navigation.setShowTutoringSessionDetail(true);
+            }}
           />
         </MobileRouteTransition>
       )}

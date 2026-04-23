@@ -1,65 +1,26 @@
 // ===== KLASSENARBEITEN TUTORIAL =====
 // First-time tutorial overlay for the Klassenarbeiten screen.
-// Explains: KI-Analyse, Lernprofil-Integration, Nachhilfe-Einsicht.
-// Uses localStorage to track "seen" state. Rendered via ReactDOM.createPortal.
+// Matches the platform-wide tutorial chrome (SchulaufgabenTutorial / TodoTutorial /
+// LernanalyseTutorial): header + scrollable content + footer with progress dots.
+// Content (4 Steps) unchanged.
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import ReactDOM from 'react-dom';
+import { motion, AnimatePresence } from 'motion/react';
 import {
   Brain,
-  BarChart3,
   Upload,
   Users,
-  ChevronRight,
-  ChevronLeft,
-  Sparkles,
   TrendingUp,
-  Eye,
 } from 'lucide-react';
-import Button from './Button';
 import CloseButton from './CloseButton';
 
 const STORAGE_KEY = 'klassenarbeiten_tutorial_seen';
 
 interface KlassenarbeitenTutorialProps {
-  onComplete: () => void;
+  isOpen: boolean;
+  onClose: () => void;
 }
-
-// ===== STEP DATA =====
-const steps = [
-  {
-    icon: Upload,
-    iconBg: 'rgba(0,184,148,0.12)',
-    iconColor: '#00B894',
-    title: 'Willkommen bei Klassenarbeiten',
-    description:
-      'Lade deine geschriebenen Klassenarbeiten hoch und lass die KI sie automatisch analysieren. So wird dein Lernprofil immer genauer und dein Lernerlebnis immer besser.',
-  },
-  {
-    icon: Brain,
-    iconBg: 'rgba(139,92,246,0.12)',
-    iconColor: '#8B5CF6',
-    title: 'KI-Analyse',
-    description:
-      'Die KI analysiert jede hochgeladene Klassenarbeit auf Note, Stärken und Schwächen. Diese Erkenntnisse werden automatisch in dein Lernprofil aufgenommen, damit die KI dich besser versteht.',
-  },
-  {
-    icon: TrendingUp,
-    iconBg: 'rgba(59,130,246,0.12)',
-    iconColor: '#3B82F6',
-    title: 'Präziseres Lernerlebnis',
-    description:
-      'Je mehr Klassenarbeiten du hochlädst, desto besser kennt die KI deinen Wissensstand. Übungen, Karteikarten und Prüfungssimulationen passen sich automatisch an deine Stärken und Schwächen an.',
-  },
-  {
-    icon: Users,
-    iconBg: 'rgba(245,158,66,0.12)',
-    iconColor: '#F59E42',
-    title: 'Einsicht für Nachhilfelehrer',
-    description:
-      'Wenn du die Nachhilfe aktivierst, haben deine Nachhilfelehrer Einsicht auf deine hochgeladenen Klassenarbeiten, die Notenübersicht und die KI-Analysen deiner Stärken und Schwächen. So können sie gezielt mit dir an deinen Schwächen arbeiten.',
-  },
-];
 
 export function hasSeenKlassenarbeitenTutorial(): boolean {
   try {
@@ -75,143 +36,262 @@ export function markKlassenarbeitenTutorialSeen(): void {
   } catch {}
 }
 
-export default function KlassenarbeitenTutorial({ onComplete }: KlassenarbeitenTutorialProps) {
+// ===== STEP DATA — Content unchanged from prior version =====
+const tutorialSteps = [
+  {
+    icon: Upload,
+    iconBg: 'rgba(0,184,148,0.12)',
+    iconColor: '#00B894',
+    title: 'Willkommen bei Klassenarbeiten',
+    subtitle: 'So nutzt du die Klassenarbeiten-Funktion',
+    description:
+      'Lade deine geschriebenen Klassenarbeiten hoch und lass die KI sie automatisch analysieren. So wird dein Lernprofil immer genauer und dein Lernerlebnis immer besser.',
+  },
+  {
+    icon: Brain,
+    iconBg: 'rgba(139,92,246,0.12)',
+    iconColor: '#8B5CF6',
+    title: 'KI-Analyse',
+    subtitle: 'Was mit deinen Uploads passiert',
+    description:
+      'Die KI analysiert jede hochgeladene Klassenarbeit auf Note, Stärken und Schwächen. Diese Erkenntnisse werden automatisch in dein Lernprofil aufgenommen, damit die KI dich besser versteht.',
+  },
+  {
+    icon: TrendingUp,
+    iconBg: 'rgba(59,130,246,0.12)',
+    iconColor: '#3B82F6',
+    title: 'Präziseres Lernerlebnis',
+    subtitle: 'Je mehr, desto genauer',
+    description:
+      'Je mehr Klassenarbeiten du hochlädst, desto besser kennt die KI deinen Wissensstand. Übungen, Karteikarten und Prüfungssimulationen passen sich automatisch an deine Stärken und Schwächen an.',
+  },
+  {
+    icon: Users,
+    iconBg: 'rgba(245,158,66,0.12)',
+    iconColor: '#F59E42',
+    title: 'Einsicht für Nachhilfelehrer',
+    subtitle: 'Gezielt an deinen Schwächen arbeiten',
+    description:
+      'Wenn du die Nachhilfe aktivierst, haben deine Nachhilfelehrer Einsicht auf deine hochgeladenen Klassenarbeiten, die Notenübersicht und die KI-Analysen deiner Stärken und Schwächen. So können sie gezielt mit dir an deinen Schwächen arbeiten.',
+  },
+];
+
+export default function KlassenarbeitenTutorial({ isOpen, onClose }: KlassenarbeitenTutorialProps) {
   const [currentStep, setCurrentStep] = useState(0);
-  const [isVisible, setIsVisible] = useState(false);
-  const [isExiting, setIsExiting] = useState(false);
+  const [isTransitioning, setIsTransitioning] = useState(false);
 
   useEffect(() => {
-    requestAnimationFrame(() => setIsVisible(true));
-  }, []);
+    if (isOpen) {
+      setCurrentStep(0);
+      setIsTransitioning(false);
+    }
+  }, [isOpen]);
 
-  const handleComplete = useCallback(() => {
-    setIsExiting(true);
+  const handleClose = () => {
     markKlassenarbeitenTutorialSeen();
-    setTimeout(() => onComplete(), 280);
-  }, [onComplete]);
+    setCurrentStep(0);
+    onClose();
+  };
 
-  const handleSkipClose = useCallback(() => {
-    markKlassenarbeitenTutorialSeen();
-    setIsExiting(true);
-    setTimeout(() => onComplete(), 280);
-  }, [onComplete]);
+  const handleNext = (e?: React.MouseEvent | React.TouchEvent) => {
+    e?.stopPropagation();
+    e?.preventDefault();
+    if (isTransitioning) return;
+    setIsTransitioning(true);
 
-  const goNext = () => {
-    if (currentStep < steps.length - 1) {
-      setCurrentStep((prev) => prev + 1);
+    if (currentStep < tutorialSteps.length - 1) {
+      setCurrentStep(currentStep + 1);
+      setTimeout(() => setIsTransitioning(false), 250);
     } else {
-      handleComplete();
+      handleClose();
     }
   };
 
-  const goBack = () => {
+  const handlePrevious = (e?: React.MouseEvent | React.TouchEvent) => {
+    e?.stopPropagation();
+    e?.preventDefault();
+    if (isTransitioning) return;
     if (currentStep > 0) {
-      setCurrentStep((prev) => prev - 1);
+      setIsTransitioning(true);
+      setCurrentStep(currentStep - 1);
+      setTimeout(() => setIsTransitioning(false), 250);
     }
   };
 
-  const step = steps[currentStep];
-  const StepIcon = step.icon;
-  const isLastStep = currentStep === steps.length - 1;
+  const currentStepData = tutorialSteps[currentStep];
+  const StepIcon = currentStepData.icon;
 
-  const overlay = (
-    <div
-      className="fixed inset-0 flex items-center justify-center p-5"
-      style={{
-        zIndex: 999999,
-        background: isVisible && !isExiting ? 'rgba(0,0,0,0.85)' : 'rgba(0,0,0,0)',
-        backdropFilter: isVisible && !isExiting ? 'blur(12px)' : 'blur(0px)',
-        WebkitBackdropFilter: isVisible && !isExiting ? 'blur(12px)' : 'blur(0px)',
-        transition: 'background 0.3s ease, backdrop-filter 0.3s ease, -webkit-backdrop-filter 0.3s ease',
-      }}
-    >
-      <div
-        className="w-full max-w-[380px] rounded-3xl overflow-hidden relative"
-        style={{
-          background: 'linear-gradient(135deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02))',
-          border: '1px solid rgba(255,255,255,0.10)',
-          opacity: isVisible && !isExiting ? 1 : 0,
-          transform: isVisible && !isExiting ? 'translateY(0) scale(1)' : 'translateY(24px) scale(0.96)',
-          transition: 'opacity 0.3s ease, transform 0.3s ease',
-        }}
-      >
-        {/* Content */}
-        <div className="px-7 pt-8 pb-6">
-          {/* Close button */}
-          <CloseButton
-            onClick={handleSkipClose}
-            className="absolute top-4 right-4 z-10"
+  if (!isOpen) return null;
+
+  return ReactDOM.createPortal(
+    <AnimatePresence>
+      {isOpen && (
+        <>
+          {/* Backdrop */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="fixed inset-0 bg-black/60 backdrop-blur-[2px] z-[9998]"
+            onClick={handleClose}
           />
 
-          {/* Step indicator */}
-          <div className="flex items-center gap-2 mb-8">
-            {steps.map((_, i) => (
-              <div
-                key={i}
-                className="h-[3px] rounded-full flex-1 transition-all duration-300"
-                style={{
-                  background:
-                    i < currentStep
-                      ? '#00B894'
-                      : i === currentStep
-                      ? 'rgba(0,184,148,0.6)'
-                      : 'rgba(255,255,255,0.08)',
-                }}
-              />
-            ))}
-          </div>
-
-          {/* Icon */}
+          {/* Tutorial Modal */}
           <div
-            className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-6"
+            className="fixed inset-0 flex items-center justify-center z-[9999] pointer-events-none"
             style={{
-              background: step.iconBg,
-              border: `1px solid ${step.iconColor}25`,
+              padding: '1rem',
+              paddingTop: 'calc(1rem + env(safe-area-inset-top, 0px))',
+              paddingBottom: 'calc(1rem + env(safe-area-inset-bottom, 0px))',
             }}
           >
-            <StepIcon className="w-8 h-8" style={{ color: step.iconColor }} />
-          </div>
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+              className="bg-gradient-to-br from-[#1e1e1e] to-[#0a0a0a] border border-white/[0.15] rounded-[24px] w-full max-w-[520px] overflow-hidden flex flex-col h-[90vh] max-h-[680px] pointer-events-auto"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Header */}
+              <div className="relative p-6 pb-4 border-b border-white/[0.08] h-[120px] flex flex-col justify-center">
+                <CloseButton
+                  onClick={handleClose}
+                  className="absolute top-6 right-6"
+                />
+                <AnimatePresence mode="wait">
+                  <motion.div
+                    key={currentStep}
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: 10 }}
+                    transition={{ duration: 0.2 }}
+                    className="pr-12"
+                  >
+                    {/* Step badge */}
+                    <div className="flex items-center gap-2 mb-2">
+                      <span
+                        className="px-2 py-0.5 rounded-full font-['Poppins:SemiBold',sans-serif] text-[10px]"
+                        style={{
+                          color: '#00B894',
+                          background: 'rgba(0,184,148,0.12)',
+                          border: '1px solid rgba(0,184,148,0.25)',
+                        }}
+                      >
+                        {currentStep + 1} / {tutorialSteps.length}
+                      </span>
+                    </div>
+                    <h2 className="font-['Poppins:Bold',sans-serif] text-[20px] text-white mb-1 leading-tight">
+                      {currentStepData.title}
+                    </h2>
+                    <p className="font-['Poppins:Regular',sans-serif] text-[14px] text-[#979797] leading-snug">
+                      {currentStepData.subtitle}
+                    </p>
+                  </motion.div>
+                </AnimatePresence>
+              </div>
 
-          {/* Text */}
-          <div className="text-center mb-8">
-            <h2 className="font-['Poppins:SemiBold',sans-serif] text-[20px] text-white mb-3 tracking-[-0.3px]">
-              {step.title}
-            </h2>
-            <p className="font-['Poppins:Regular',sans-serif] text-[14px] text-white/50 leading-[1.7]">
-              {step.description}
-            </p>
-          </div>
+              {/* Content */}
+              <div className="px-6 py-6 flex-1 overflow-y-auto">
+                <AnimatePresence mode="wait">
+                  <motion.div
+                    key={currentStep}
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -20 }}
+                    transition={{ duration: 0.2 }}
+                    className="space-y-5"
+                  >
+                    {/* Icon */}
+                    <div
+                      className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto"
+                      style={{
+                        background: currentStepData.iconBg,
+                        border: `1px solid ${currentStepData.iconColor}25`,
+                      }}
+                    >
+                      <StepIcon className="w-8 h-8" style={{ color: currentStepData.iconColor }} />
+                    </div>
 
-          {/* Actions */}
-          <div className="space-y-3">
-            <Button onClick={goNext}>
-              {isLastStep ? 'Verstanden' : 'Weiter'}
-              {!isLastStep && <ChevronRight className="w-4 h-4 text-white/60" />}
-            </Button>
+                    {/* Description */}
+                    <p className="font-['Poppins:Regular',sans-serif] text-[14px] text-white/75 leading-relaxed text-center">
+                      {currentStepData.description}
+                    </p>
+                  </motion.div>
+                </AnimatePresence>
+              </div>
 
-            <div className="flex items-center justify-between px-1">
-              {currentStep > 0 ? (
-                <button
-                  onClick={goBack}
-                  className="flex items-center gap-1 py-2 transition-colors"
-                  style={{ WebkitTapHighlightColor: 'transparent' }}
-                >
-                  <ChevronLeft className="w-4 h-4 text-white/30" />
-                  <span className="font-['Poppins:Medium',sans-serif] text-[13px] text-white/30">
-                    Zurück
-                  </span>
-                </button>
-              ) : (
-                <div />
-              )}
-            </div>
+              {/* Footer */}
+              <div className="p-6 pt-4 border-t border-white/[0.08] flex-shrink-0">
+                {/* Progress Dots */}
+                <div className="flex items-center justify-center gap-2 mb-4">
+                  {tutorialSteps.map((_, index) => (
+                    <div
+                      key={index}
+                      className={`h-[8px] rounded-full transition-all ${
+                        index === currentStep
+                          ? 'w-[32px] bg-[#00B894]'
+                          : 'w-[8px] bg-white/[0.2]'
+                      }`}
+                    />
+                  ))}
+                </div>
+
+                {/* Navigation Buttons */}
+                <div className="flex gap-3">
+                  <button
+                    onClick={handlePrevious}
+                    onTouchEnd={handlePrevious}
+                    disabled={currentStep === 0 || isTransitioning}
+                    className={`group relative flex items-center justify-center gap-2 h-[48px] rounded-[12px] border border-white/[0.1] px-6 transition-all overflow-hidden ${
+                      currentStep === 0 || isTransitioning
+                        ? 'cursor-not-allowed opacity-50'
+                        : 'cursor-pointer active:scale-95'
+                    }`}
+                    style={{
+                      WebkitTapHighlightColor: 'transparent',
+                      touchAction: 'manipulation',
+                      pointerEvents: currentStep === 0 || isTransitioning ? 'none' : 'auto',
+                    }}
+                  >
+                    <div className="absolute inset-0 bg-gradient-to-br from-white/[0.05] to-white/[0.02]" />
+                    <svg className="relative z-10 w-[18px] h-[18px]" fill="none" viewBox="0 0 24 24" stroke="white" strokeWidth="2">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+                    </svg>
+                    <p className="relative z-10 font-['Poppins:Medium',sans-serif] text-[15px] text-white">
+                      Zurück
+                    </p>
+                  </button>
+
+                  <button
+                    onClick={handleNext}
+                    onTouchEnd={handleNext}
+                    disabled={isTransitioning}
+                    className={`group relative flex-1 flex items-center justify-center gap-2 h-[48px] rounded-[12px] border border-[#00B894]/30 transition-all overflow-hidden ${
+                      isTransitioning ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer active:scale-95'
+                    }`}
+                    style={{
+                      WebkitTapHighlightColor: 'transparent',
+                      touchAction: 'manipulation',
+                      pointerEvents: isTransitioning ? 'none' : 'auto',
+                    }}
+                  >
+                    <div className="absolute inset-0 bg-gradient-to-br from-[#00B894]/20 to-[#009379]/20" />
+                    <p className="relative z-10 font-['Poppins:SemiBold',sans-serif] text-[15px] text-white">
+                      {currentStep === tutorialSteps.length - 1 ? 'Verstanden!' : 'Weiter'}
+                    </p>
+                    <svg className="relative z-10 w-[18px] h-[18px]" fill="none" viewBox="0 0 24 24" stroke="white" strokeWidth="2">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+            </motion.div>
           </div>
-        </div>
-      </div>
-    </div>
+        </>
+      )}
+    </AnimatePresence>,
+    document.body
   );
-
-  return typeof document !== 'undefined'
-    ? ReactDOM.createPortal(overlay, document.body)
-    : null;
 }

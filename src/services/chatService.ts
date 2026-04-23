@@ -3,6 +3,7 @@
 
 import type { ChatMessage, ChatRoom, ChatAttachment } from '@/mocks/chatMocks';
 import { mockChatRooms, mockChatMessages } from '@/mocks/chatMocks';
+import { extraSessionRequestStore, requestToChatMessage } from '@/app/components/extraSessionRequestStore';
 
 // Simulated delay for realistic feel
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
@@ -17,8 +18,14 @@ class ChatService {
   // Get messages for a specific chat room
   async getMessages(roomId: string): Promise<ChatMessage[]> {
     await delay(200);
-    // In a real app, filter by roomId
-    return [...mockChatMessages];
+    // Mock messages are prototype-shared across rooms. Extra-session requests
+    // sent from the TeacherProfile are persisted per-room and injected here.
+    const extraRequests = extraSessionRequestStore
+      .getForTeacher(roomId)
+      .map(requestToChatMessage);
+    const combined = [...mockChatMessages, ...extraRequests];
+    combined.sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
+    return combined;
   }
 
   // Send a new message

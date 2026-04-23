@@ -1451,9 +1451,7 @@ export default function KlassenarbeitenScreen({ onClose, isMobile = false, isClo
       </div>
 
       {/* First-time tutorial overlay */}
-      {showTutorial && (
-        <KlassenarbeitenTutorial onComplete={() => setShowTutorial(false)} />
-      )}
+      <KlassenarbeitenTutorial isOpen={showTutorial} onClose={() => setShowTutorial(false)} />
 
       {/* Premium Calendar Pickers */}
       <PremiumCalendarPicker

@@ -4,7 +4,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import ReactDOM from 'react-dom';
-import { Sparkles, Gift, Users, CreditCard, GraduationCap, Copy, Check, Crown, Trophy, Zap, Info, ChevronRight, Award, Star } from 'lucide-react';
+import { Sparkles, Gift, Users, CreditCard, GraduationCap, Copy, Check, Crown, Trophy, Zap, Info, ChevronRight, Award, Flame } from 'lucide-react';
 import CloseButton from '@/app/components/CloseButton';
 import DesktopPageHeader from '@/app/components/DesktopPageHeader';
 import './MeinTarifScreen.css';
@@ -241,11 +241,11 @@ export default function MeinTarifScreen({ onClose, tutoringActive = false, exter
             </div>
 
             {/* Referral Credits */}
-            <div className="rounded-xl bg-[#F59E0B]/[0.07] border border-[#F59E0B]/[0.15] p-3 flex flex-col items-center text-center">
-              <div className="w-7 h-7 rounded-lg bg-[#F59E0B]/15 flex items-center justify-center mb-2">
-                <Gift className="w-[14px] h-[14px] text-[#F59E0B]" strokeWidth={2} />
+            <div className="rounded-xl bg-[#FFD60A]/[0.07] border border-[#FFD60A]/[0.15] p-3 flex flex-col items-center text-center">
+              <div className="w-7 h-7 rounded-lg bg-[#FFD60A]/15 flex items-center justify-center mb-2">
+                <Gift className="w-[14px] h-[14px] text-[#FFD60A]" strokeWidth={2} />
               </div>
-              <span className="font-['Poppins:SemiBold',sans-serif] text-[20px] text-[#F59E0B] leading-none mb-1">
+              <span className="font-['Poppins:SemiBold',sans-serif] text-[20px] text-[#FFD60A] leading-none mb-1">
                 {referralCredits}
               </span>
               <span className="font-['Poppins:Regular',sans-serif] text-[10px] text-white/35 leading-tight">
@@ -253,16 +253,16 @@ export default function MeinTarifScreen({ onClose, tutoringActive = false, exter
               </span>
             </div>
 
-            {/* Activity Credits */}
-            <div className="rounded-xl bg-[#8B5CF6]/[0.07] border border-[#8B5CF6]/[0.15] p-3 flex flex-col items-center text-center">
-              <div className="w-7 h-7 rounded-lg bg-[#8B5CF6]/15 flex items-center justify-center mb-2">
-                <Star className="w-[14px] h-[14px] text-[#8B5CF6]" strokeWidth={2} />
+            {/* Streak Credits */}
+            <div className="rounded-xl bg-[#F59E0B]/[0.07] border border-[#F59E0B]/[0.15] p-3 flex flex-col items-center text-center">
+              <div className="w-7 h-7 rounded-lg bg-[#F59E0B]/15 flex items-center justify-center mb-2">
+                <Flame className="w-[14px] h-[14px] text-[#F59E0B]" strokeWidth={2} />
               </div>
-              <span className="font-['Poppins:SemiBold',sans-serif] text-[20px] text-[#8B5CF6] leading-none mb-1">
+              <span className="font-['Poppins:SemiBold',sans-serif] text-[20px] text-[#F59E0B] leading-none mb-1">
                 {activityCredits}
               </span>
               <span className="font-['Poppins:Regular',sans-serif] text-[10px] text-white/35 leading-tight">
-                Durch Aufgaben
+                Durch Lern-Streak
               </span>
             </div>
           </div>
@@ -270,15 +270,15 @@ export default function MeinTarifScreen({ onClose, tutoringActive = false, exter
           {/* Part 3: Detail timeline (subtle, secondary) */}
           <div className="space-y-1.5 mb-4 px-1">
             <div className="flex items-center gap-2">
-              <div className="w-1.5 h-1.5 rounded-full bg-[#F59E0B]/40 flex-shrink-0" />
+              <div className="w-1.5 h-1.5 rounded-full bg-[#FFD60A]/40 flex-shrink-0" />
               <span className="font-['Poppins:Regular',sans-serif] text-[11px] text-white/25">
                 Referral-Credits: {referralCredits} Credits · seit Oktober 2025
               </span>
             </div>
             <div className="flex items-center gap-2">
-              <div className="w-1.5 h-1.5 rounded-full bg-[#8B5CF6]/40 flex-shrink-0" />
+              <div className="w-1.5 h-1.5 rounded-full bg-[#F59E0B]/40 flex-shrink-0" />
               <span className="font-['Poppins:Regular',sans-serif] text-[11px] text-white/25">
-                Aktivitäts-Credits: {activityCredits} Credits · seit November 2025
+                Lern-Streak-Credits: {activityCredits} Credits · seit November 2025
               </span>
             </div>
           </div>
@@ -295,8 +295,8 @@ export default function MeinTarifScreen({ onClose, tutoringActive = false, exter
         {/* ===== BEREICH 3: Freunde einladen ===== */}
         <div className="rounded-2xl bg-white/[0.03] border border-white/[0.06] p-4">
           <div className="flex items-center gap-2.5 mb-3">
-            <div className="w-9 h-9 rounded-xl bg-[#F59E0B]/10 flex items-center justify-center">
-              <Gift className="w-[18px] h-[18px] text-[#F59E0B]" strokeWidth={2} />
+            <div className="w-9 h-9 rounded-xl bg-[#FFD60A]/10 flex items-center justify-center">
+              <Gift className="w-[18px] h-[18px] text-[#FFD60A]" strokeWidth={2} />
             </div>
             <div>
               <p className="font-['Poppins:SemiBold',sans-serif] text-[14px] text-white leading-tight">
@@ -309,7 +309,7 @@ export default function MeinTarifScreen({ onClose, tutoringActive = false, exter
           </div>
 
           <p className="font-['Poppins:Regular',sans-serif] text-[13px] text-white/50 mb-4 leading-[19px]">
-            Lade 3 Freunde ein und erhalte <span className="text-[#F59E0B] font-['Poppins:Medium',sans-serif]">100 Credits kostenlos</span>.
+            Lade 3 Freunde ein und erhalte <span className="text-[#FFD60A] font-['Poppins:Medium',sans-serif]">100 Credits kostenlos</span>.
           </p>
 
           {/* Progress Bar */}
@@ -324,7 +324,7 @@ export default function MeinTarifScreen({ onClose, tutoringActive = false, exter
             </div>
             <div className="w-full h-[6px] rounded-full bg-white/[0.06] overflow-hidden">
               <div
-                className="h-full rounded-full bg-gradient-to-r from-[#F59E0B] to-[#F97316] transition-all duration-500 ease-out"
+                className="h-full rounded-full bg-gradient-to-r from-[#FFD60A] to-[#F59E0B] transition-all duration-500 ease-out"
                 style={{ width: `${progressPercent}%` }}
               />
             </div>

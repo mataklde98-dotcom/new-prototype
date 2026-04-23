@@ -4,19 +4,19 @@
 // Mobile: MobileRouteTransition Overlay
 // Premium SaaS Style (#0a0a0a, Poppins)
 
-import React from 'react';
+import React, { useState } from 'react';
 import {
-  ArrowLeft, MessageSquare, Upload, CalendarPlus,
+  ArrowLeft, MessageSquare, CalendarPlus,
   Calendar, Clock, Video,
-  FileText, Download, Eye,
   CheckCircle, AlertCircle,
   ChevronRight, Users,
 } from 'lucide-react';
 import { useTeacherProfileData } from '@/hooks/useTeacherProfileData';
 import { formatTutorName } from '@/mocks';
-import type { TeacherMeeting, SharedDocument } from '@/mocks/teacherProfile.mock';
+import type { TeacherMeeting } from '@/mocks/teacherProfile.mock';
 import { useMeetingRatings } from '@/hooks/useMeetingRatings';
 import { MeetingRatingModal, RatingBadge } from './MeetingRatingModal';
+import ExtraSessionRequestModal from './ExtraSessionRequestModal';
 
 // ===== TYPES =====
 interface TeacherProfileScreenProps {
@@ -58,17 +58,6 @@ function getCountdown(iso: string): string {
   if (hours > 24) return `in ${Math.floor(hours / 24)}d`;
   if (hours > 0) return `in ${hours}h ${mins}m`;
   return `in ${mins}m`;
-}
-
-function getFileIcon(fileType: string) {
-  switch (fileType) {
-    case 'pdf': return { color: '#FF4444', label: 'PDF' };
-    case 'docx': return { color: '#4A90D9', label: 'DOCX' };
-    case 'xlsx': return { color: '#00B050', label: 'XLSX' };
-    case 'pptx': return { color: '#FF8C00', label: 'PPTX' };
-    case 'image': return { color: '#7B61FF', label: 'IMG' };
-    default: return { color: '#8E8E93', label: 'FILE' };
-  }
 }
 
 // ===== SUB-COMPONENTS =====
@@ -267,70 +256,6 @@ function MeetingCard({ meeting, isUpcoming, isMobile, hasRating, onRate }: { mee
   );
 }
 
-/** Document Row */
-function DocumentRow({ doc, isMobile }: { doc: SharedDocument; isMobile?: boolean }) {
-  const fileIcon = getFileIcon(doc.fileType);
-  const d = new Date(doc.uploadDate);
-  const dateStr = `${d.getDate()}.${(d.getMonth() + 1).toString().padStart(2, '0')}.${d.getFullYear()}`;
-
-  return (
-    <div
-      className="flex items-center gap-3 rounded-xl px-4 py-3 transition-colors"
-      style={{
-        backgroundColor: 'rgba(255,255,255,0.03)',
-        border: '1px solid rgba(255,255,255,0.06)',
-      }}
-    >
-      {/* File type badge */}
-      <div
-        className={`flex items-center justify-center rounded-lg flex-shrink-0 ${poppins('Bold')} text-[9px]`}
-        style={{
-          width: 40, height: 40,
-          backgroundColor: `${fileIcon.color}15`,
-          color: fileIcon.color,
-          border: `1px solid ${fileIcon.color}25`,
-        }}
-      >
-        {fileIcon.label}
-      </div>
-
-      {/* File info */}
-      <div className="flex-1 min-w-0">
-        <p className={`${poppins('Medium')} text-[12px] text-white/85 truncate`}>
-          {doc.fileName}
-        </p>
-        <div className="flex items-center gap-2 mt-0.5">
-          <span className={`${poppins('Regular')} text-[11px] text-white/35`}>{dateStr}</span>
-          <span className="text-white/15">·</span>
-          <span className={`${poppins('Regular')} text-[11px] text-white/35`}>{doc.fileSize}</span>
-          <span className="text-white/15">·</span>
-          <span className={`${poppins('Medium')} text-[11px]`} style={{ color: doc.sentBy === 'teacher' ? '#7B61FF' : '#00D4AA' }}>
-            {doc.sentBy === 'teacher' ? 'Lehrer' : 'Du'}
-          </span>
-        </div>
-      </div>
-
-      {/* Actions */}
-      <div className="flex items-center gap-1.5 flex-shrink-0">
-        <button
-          className="p-2 rounded-lg transition-colors"
-          style={{ backgroundColor: 'rgba(255,255,255,0.04)' }}
-          title="Ansehen"
-        >
-          <Eye size={14} color="rgba(255,255,255,0.4)" />
-        </button>
-        <button
-          className="p-2 rounded-lg transition-colors"
-          style={{ backgroundColor: 'rgba(255,255,255,0.04)' }}
-          title="Herunterladen"
-        >
-          <Download size={14} color="rgba(255,255,255,0.4)" />
-        </button>
-      </div>
-    </div>
-  );
-}
-
 /** Action Button */
 function ActionButton({
   icon: Icon,
@@ -383,7 +308,8 @@ export default function TeacherProfileScreen({
   isMobile = false,
   externalTransition = false,
 }: TeacherProfileScreenProps) {
-  const { teacher, upcomingMeetings, pastMeetings, documents, isLoading, error } = useTeacherProfileData(teacherId);
+  const { teacher, upcomingMeetings, pastMeetings, isLoading, error } = useTeacherProfileData(teacherId);
+  const [showExtraSessionModal, setShowExtraSessionModal] = useState(false);
   const { submitRating, getRating, hasRating } = useMeetingRatings();
   const [ratingModalMeeting, setRatingModalMeeting] = React.useState<TeacherMeeting | null>(null);
 
@@ -501,28 +427,17 @@ export default function TeacherProfileScreen({
               Chat
             </button>
             <button
-              className={`flex-1 flex items-center justify-center gap-2 rounded-xl py-3 ${poppins('SemiBold')} text-[12px] opacity-40 cursor-not-allowed`}
+              onClick={() => setShowExtraSessionModal(true)}
+              className={`flex-1 flex items-center justify-center gap-2 rounded-xl py-3 ${poppins('SemiBold')} text-[12px] active:scale-[0.97] transition-transform`}
               style={{
-                backgroundColor: 'rgba(255,255,255,0.03)',
-                color: 'rgba(255,255,255,0.3)',
-                border: '1px solid rgba(255,255,255,0.06)',
+                backgroundColor: 'rgba(123,97,255,0.12)',
+                color: '#9B87FF',
+                border: '1px solid rgba(123,97,255,0.25)',
+                WebkitTapHighlightColor: 'transparent',
               }}
-              disabled
-            >
-              <Upload size={15} />
-              Teilen
-            </button>
-            <button
-              className={`flex-1 flex items-center justify-center gap-2 rounded-xl py-3 ${poppins('SemiBold')} text-[12px] opacity-40 cursor-not-allowed`}
-              style={{
-                backgroundColor: 'rgba(255,255,255,0.03)',
-                color: 'rgba(255,255,255,0.3)',
-                border: '1px solid rgba(255,255,255,0.06)',
-              }}
-              disabled
             >
               <CalendarPlus size={15} />
-              Stunde
+              Extra-Stunde
             </button>
           </div>
 
@@ -564,21 +479,6 @@ export default function TeacherProfileScreen({
               </div>
             )}
           </div>
-
-          {/* ===== SHARED DOCUMENTS ===== */}
-          <div className="mb-5">
-            <SectionTitle count={documents.length}>Geteilte Dokumente</SectionTitle>
-            {documents.length === 0 ? (
-              <EmptyState
-                icon={FileText}
-                message="Noch keine Dokumente mit diesem Lehrer ausgetauscht."
-              />
-            ) : (
-              <div className="flex flex-col gap-2">
-                {documents.map(d => <DocumentRow key={d.id} doc={d} isMobile />)}
-              </div>
-            )}
-          </div>
         </div>
         <MeetingRatingModal
           isOpen={!!ratingModalMeeting}
@@ -590,6 +490,13 @@ export default function TeacherProfileScreen({
           tutorName={teacher?.name || ''}
           meetingDate={ratingModalMeeting?.startAt || ''}
           meetingTime={ratingModalMeeting ? formatTimeRange(ratingModalMeeting.startAt, ratingModalMeeting.endAt) : ''}
+        />
+        <ExtraSessionRequestModal
+          isOpen={showExtraSessionModal}
+          onClose={() => setShowExtraSessionModal(false)}
+          teacherId={teacher.id}
+          teacherName={teacher.name}
+          onRequestSent={() => onOpenChat?.(teacher.id)}
         />
       </div>
     );
@@ -675,18 +582,10 @@ export default function TeacherProfileScreen({
           tooltip={!onOpenChat ? 'Bald verfügbar' : undefined}
         />
         <ActionButton
-          icon={Upload}
-          label="Dokument teilen"
-          color="#4A90D9"
-          disabled
-          tooltip="Bald verfügbar"
-        />
-        <ActionButton
           icon={CalendarPlus}
           label="Extra-Stunde"
           color="#7B61FF"
-          disabled
-          tooltip="Bald verfügbar"
+          onClick={() => setShowExtraSessionModal(true)}
         />
       </div>
 
@@ -728,21 +627,6 @@ export default function TeacherProfileScreen({
         )}
       </div>
 
-      {/* ===== SHARED DOCUMENTS ===== */}
-      <div className="mb-6">
-        <SectionTitle count={documents.length}>Geteilte Dokumente</SectionTitle>
-        {documents.length === 0 ? (
-          <EmptyState
-            icon={FileText}
-            message="Du hast noch keine Dokumente mit diesem Lehrer ausgetauscht."
-          />
-        ) : (
-          <div className="flex flex-col gap-2">
-            {documents.map(d => <DocumentRow key={d.id} doc={d} />)}
-          </div>
-        )}
-      </div>
-
       {/* Bottom spacing */}
       <div className="h-8" />
 
@@ -756,6 +640,13 @@ export default function TeacherProfileScreen({
         tutorName={teacher?.name || ''}
         meetingDate={ratingModalMeeting?.startAt || ''}
         meetingTime={ratingModalMeeting ? formatTimeRange(ratingModalMeeting.startAt, ratingModalMeeting.endAt) : ''}
+      />
+      <ExtraSessionRequestModal
+        isOpen={showExtraSessionModal}
+        onClose={() => setShowExtraSessionModal(false)}
+        teacherId={teacher.id}
+        teacherName={teacher.name}
+        onRequestSent={() => onOpenChat?.(teacher.id)}
       />
     </div>
   );
