@@ -68,6 +68,19 @@ export const teacherTasksStore = {
     notify();
   },
 
+  /** Clean up tasks pointing to a flashcard set that no longer exists */
+  unlinkBySetId(setId: string) {
+    let changed = false;
+    tasks = tasks.map(t => {
+      if (t.linkedSetId === setId) {
+        changed = true;
+        return { ...t, linkedSetId: undefined, score: 0, status: 'new' as const };
+      }
+      return t;
+    });
+    if (changed) notify();
+  },
+
   /** FLOW 2b: Update flashcard task progress (called on every card swipe) */
   updateFlashcardProgress(linkedSetId: string, progress: number) {
     tasks = tasks.map(t => {

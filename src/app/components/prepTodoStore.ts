@@ -224,6 +224,20 @@ export const prepTodoStore = {
     notify();
   },
 
+  /** Clean up todos pointing to a flashcard set that no longer exists */
+  unlinkBySetId(setId: number | string) {
+    const setIdNum = typeof setId === 'string' ? parseInt(setId, 10) : setId;
+    let changed = false;
+    todos = todos.map(t => {
+      if (t.linkedSetId === setIdNum) {
+        changed = true;
+        return { ...t, linkedSetId: null, flashcardProgress: 0 };
+      }
+      return t;
+    });
+    if (changed) notify();
+  },
+
   // ── Subscribe ──
   subscribe(listener: Listener): () => void {
     listeners.add(listener);

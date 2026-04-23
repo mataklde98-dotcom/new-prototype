@@ -24,6 +24,7 @@ import {
 } from '@/mocks/tutoringProgress.mock';
 import { useTeacherTasks } from '@/hooks/useTeacherTasks';
 import GlobalWeaknessActionButtons from './WeaknessActionButtons';
+import type { FlashcardSet } from '@/types/flashcard';
 
 // ===================================================================
 // TYPES
@@ -47,6 +48,7 @@ interface TutoringSessionDetailScreenProps {
   onGenerateForWeakness?: (context: WeaknessContext) => void;
   onStartExamForWeakness?: (context: WeaknessContext) => void;
   onOpenLinkedFlashcardSet?: (linkedSetId: string) => void;
+  allSets?: FlashcardSet[];
   externalTransition?: boolean;
 }
 
@@ -211,6 +213,7 @@ export default function TutoringSessionDetailScreen({
   onGenerateForWeakness,
   onStartExamForWeakness,
   onOpenLinkedFlashcardSet,
+  allSets,
   externalTransition = false,
 }: TutoringSessionDetailScreenProps) {
   const session = useMemo(() => MOCK_SESSIONS.find(s => s.id === sessionId), [sessionId]);
@@ -377,6 +380,7 @@ export default function TutoringSessionDetailScreen({
                           onGenerate={(ctx) => onGenerateForWeakness?.({ ...ctx, contextLabel: `${session.subject}unterricht`, notificationLabel: 'Schwäche gezielt trainieren' })}
                           onStartExam={(ctx) => onStartExamForWeakness?.({ ...ctx, contextLabel: `${session.subject}unterricht`, notificationLabel: 'Schwäche gezielt trainieren' })}
                           onOpenLinkedFlashcardSet={onOpenLinkedFlashcardSet}
+                          allSets={allSets}
                         />
                       </div>
                     </GlassCard>
@@ -445,6 +449,7 @@ export default function TutoringSessionDetailScreen({
                           onGenerate={(ctx) => onGenerateForWeakness?.({ ...ctx, contextLabel: `${session.subject}unterricht`, notificationLabel: 'KI-Empfehlung' })}
                           onStartExam={(ctx) => onStartExamForWeakness?.({ ...ctx, contextLabel: `${session.subject}unterricht`, notificationLabel: 'KI-Empfehlung' })}
                           onOpenLinkedFlashcardSet={onOpenLinkedFlashcardSet}
+                          allSets={allSets}
                         />
                       </div>
                     </GlassCard>
@@ -825,6 +830,7 @@ export default function TutoringSessionDetailScreen({
                           onGenerate={(ctx) => onGenerateForWeakness?.({ ...ctx, contextLabel: `${session.subject}unterricht`, notificationLabel: 'KI-Empfehlung' })}
                           onStartExam={(ctx) => onStartExamForWeakness?.({ ...ctx, contextLabel: `${session.subject}unterricht`, notificationLabel: 'KI-Empfehlung' })}
                           onOpenLinkedFlashcardSet={onOpenLinkedFlashcardSet}
+                          allSets={allSets}
                         />
                       </div>
                     </GlassCard>
@@ -935,6 +941,7 @@ export default function TutoringSessionDetailScreen({
                           onGenerate={(ctx) => onGenerateForWeakness?.({ ...ctx, contextLabel: `${session.subject}unterricht`, notificationLabel: 'Schwäche gezielt trainieren' })}
                           onStartExam={(ctx) => onStartExamForWeakness?.({ ...ctx, contextLabel: `${session.subject}unterricht`, notificationLabel: 'Schwäche gezielt trainieren' })}
                           onOpenLinkedFlashcardSet={onOpenLinkedFlashcardSet}
+                          allSets={allSets}
                         />
                       </div>
                     </GlassCard>

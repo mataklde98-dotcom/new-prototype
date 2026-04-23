@@ -162,7 +162,7 @@ export default function TodoCardsSection({ selectedDate, filters, onGenerateForW
       // Button text lifecycle (shorter for Home ToDo cards)
       let actionLabel = isFlashcards ? 'Karten erstellen' : 'Prüfung starten';
       if (isFlashcards) {
-        if (hasLinkedSet && !setComplete) actionLabel = 'Üben';
+        if (hasLinkedSet && !setComplete) actionLabel = 'Fortsetzen';
         else if (setComplete) actionLabel = 'Neue Karten erstellen';
       }
 

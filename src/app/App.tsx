@@ -731,8 +731,10 @@ function AppContent({ userData, onLogout }: { userData: any; onLogout: () => voi
               if (set) {
                 appHandlers.handleOpenFlashcardSet(set);
               } else {
-                // Orphaned link — set was deleted. Clean up store so UI resets to "erstellen".
+                // Orphaned link — set was deleted. Clean up across all stores so UI resets to "erstellen".
                 weaknessCardStore.unlinkBySetId(String(setId));
+                teacherTasksStore.unlinkBySetId(String(setId));
+                prepTodoStore.unlinkBySetId(setId);
               }
             }}
             pendingPrepTaskLink={pendingPrepTaskLink}
@@ -840,6 +842,7 @@ function AppContent({ userData, onLogout }: { userData: any; onLogout: () => voi
         <MobileRouteTransition isVisible={navigation.showTutoringProgress}>
           <TutoringProgressScreen
             onClose={() => navigation.setShowTutoringProgress(false)}
+            allSets={allSets}
             onOpenSessionDetail={(sessionId) => {
               navigation.setSelectedTutoringSessionId(sessionId);
               navigation.setShowTutoringSessionDetail(true);
@@ -855,7 +858,14 @@ function AppContent({ userData, onLogout }: { userData: any; onLogout: () => voi
             }}
             onOpenLinkedFlashcardSet={(linkedSetId) => {
               const set = allSets.find(s => String(s.id) === linkedSetId);
-              if (set) appHandlers.handleOpenFlashcardSet(set);
+              if (set) {
+                appHandlers.handleOpenFlashcardSet(set);
+              } else {
+                // Orphaned link — set was deleted. Clean up across all stores so UI resets to "erstellen".
+                weaknessCardStore.unlinkBySetId(String(linkedSetId));
+                teacherTasksStore.unlinkBySetId(String(linkedSetId));
+                prepTodoStore.unlinkBySetId(linkedSetId);
+              }
             }}
             externalTransition
           />
@@ -867,6 +877,7 @@ function AppContent({ userData, onLogout }: { userData: any; onLogout: () => voi
         <MobileRouteTransition isVisible={navigation.showTutoringSessionDetail}>
           <TutoringSessionDetailScreen
             sessionId={navigation.selectedTutoringSessionId}
+            allSets={allSets}
             onClose={() => {
               navigation.setShowTutoringSessionDetail(false);
               setTimeout(() => navigation.setSelectedTutoringSessionId(null), 350);
@@ -885,7 +896,14 @@ function AppContent({ userData, onLogout }: { userData: any; onLogout: () => voi
             }}
             onOpenLinkedFlashcardSet={(linkedSetId) => {
               const set = allSets.find(s => String(s.id) === linkedSetId);
-              if (set) appHandlers.handleOpenFlashcardSet(set);
+              if (set) {
+                appHandlers.handleOpenFlashcardSet(set);
+              } else {
+                // Orphaned link — set was deleted. Clean up across all stores so UI resets to "erstellen".
+                weaknessCardStore.unlinkBySetId(String(linkedSetId));
+                teacherTasksStore.unlinkBySetId(String(linkedSetId));
+                prepTodoStore.unlinkBySetId(linkedSetId);
+              }
             }}
             externalTransition
           />

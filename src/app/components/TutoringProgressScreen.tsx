@@ -41,6 +41,7 @@ import {
 } from '@/mocks/tutoringProgress.mock';
 import { useTeacherTasks } from '@/hooks/useTeacherTasks';
 import GlobalWeaknessActionButtons from './WeaknessActionButtons';
+import type { FlashcardSet } from '@/types/flashcard';
 
 // ===================================================================
 // TYPES
@@ -52,6 +53,7 @@ interface TutoringProgressScreenProps {
   onGenerateForWeakness?: (context: { topic: string; subject: string; severity: string; recommendation: string; source?: 'weakness' | 'risk' | 'knowledge-gap' | 'teacher-task' | 'practice' | 'recommendation'; cardCount?: number; assignedDate?: string; teacherTaskId?: string; contextLabel?: string; notificationLabel?: string }) => void;
   onStartExamForWeakness?: (context: { topic: string; subject: string; severity: string; recommendation: string; source?: 'weakness' | 'risk' | 'knowledge-gap' | 'teacher-task' | 'practice' | 'recommendation'; examDurationMinutes?: number; assignedDate?: string; teacherTaskId?: string; contextLabel?: string; notificationLabel?: string }) => void;
   onOpenLinkedFlashcardSet?: (linkedSetId: string) => void;
+  allSets?: FlashcardSet[];
   externalTransition?: boolean;
   isEmpty?: boolean;
 }
@@ -233,12 +235,13 @@ function TaskStatusBadge({ status, taskType }: { status: 'new' | 'started' | 'co
   );
 }
 
-function WeaknessActionButtons({ item, onGenerateForWeakness, onStartExamForWeakness, onOpenLinkedFlashcardSet, sourceOverride }: {
+function WeaknessActionButtons({ item, onGenerateForWeakness, onStartExamForWeakness, onOpenLinkedFlashcardSet, sourceOverride, allSets }: {
   item: { title: string; subject: string; severity: string; description: string };
   onGenerateForWeakness?: (ctx: any) => void;
   onStartExamForWeakness?: (ctx: any) => void;
   onOpenLinkedFlashcardSet?: (setId: string) => void;
   sourceOverride?: 'weakness' | 'risk' | 'knowledge-gap' | 'recommendation';
+  allSets?: FlashcardSet[];
 }) {
   const effectiveSource = (sourceOverride || 'weakness') as 'weakness' | 'risk' | 'knowledge-gap' | 'recommendation';
   return (
@@ -251,6 +254,7 @@ function WeaknessActionButtons({ item, onGenerateForWeakness, onStartExamForWeak
       onGenerate={(ctx) => onGenerateForWeakness?.(ctx)}
       onStartExam={(ctx) => onStartExamForWeakness?.(ctx)}
       onOpenLinkedFlashcardSet={onOpenLinkedFlashcardSet}
+      allSets={allSets}
       className="mt-2.5"
     />
   );
@@ -296,6 +300,7 @@ export default function TutoringProgressScreen({
   onGenerateForWeakness,
   onStartExamForWeakness,
   onOpenLinkedFlashcardSet,
+  allSets,
   externalTransition = false,
   isEmpty = false,
 }: TutoringProgressScreenProps) {
@@ -963,6 +968,7 @@ export default function TutoringProgressScreen({
                           onGenerate={(ctx) => onGenerateForWeakness?.({ ...ctx, contextLabel: 'Nachhilfe-Fortschritt', notificationLabel: 'Schwäche gezielt trainieren' })}
                           onStartExam={(ctx) => onStartExamForWeakness?.({ ...ctx, contextLabel: 'Nachhilfe-Fortschritt', notificationLabel: 'Schwäche gezielt trainieren' })}
                           onOpenLinkedFlashcardSet={onOpenLinkedFlashcardSet}
+                          allSets={allSets}
                         />
                       </div>
                     </GlassCard>
@@ -1030,6 +1036,7 @@ export default function TutoringProgressScreen({
                           onGenerate={(ctx) => onGenerateForWeakness?.({ ...ctx, contextLabel: 'Nachhilfe-Fortschritt', notificationLabel: 'Wissenslücke schließen' })}
                           onStartExam={(ctx) => onStartExamForWeakness?.({ ...ctx, contextLabel: 'Nachhilfe-Fortschritt', notificationLabel: 'Wissenslücke schließen' })}
                           onOpenLinkedFlashcardSet={onOpenLinkedFlashcardSet}
+                          allSets={allSets}
                         />
                       </div>
                     </GlassCard>
@@ -1635,6 +1642,7 @@ export default function TutoringProgressScreen({
                     onGenerate={(ctx) => onGenerateForWeakness?.({ ...ctx, contextLabel: 'Nachhilfe-Fortschritt', notificationLabel: 'Schwäche gezielt trainieren' })}
                     onStartExam={(ctx) => onStartExamForWeakness?.({ ...ctx, contextLabel: 'Nachhilfe-Fortschritt', notificationLabel: 'Schwäche gezielt trainieren' })}
                     onOpenLinkedFlashcardSet={onOpenLinkedFlashcardSet}
+                    allSets={allSets}
                   />
                 </div>
               </GlassCard>
@@ -1773,6 +1781,7 @@ export default function TutoringProgressScreen({
                     onGenerate={(ctx) => onGenerateForWeakness?.({ ...ctx, contextLabel: 'Nachhilfe-Fortschritt', notificationLabel: 'Wissenslücke schließen' })}
                     onStartExam={(ctx) => onStartExamForWeakness?.({ ...ctx, contextLabel: 'Nachhilfe-Fortschritt', notificationLabel: 'Wissenslücke schließen' })}
                     onOpenLinkedFlashcardSet={onOpenLinkedFlashcardSet}
+                    allSets={allSets}
                   />
                 </div>
               </GlassCard>
