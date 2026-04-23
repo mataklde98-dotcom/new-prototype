@@ -21,7 +21,7 @@ import AccountEditScreenMobile from "./components/AccountEditScreenMobile";
 import KlassenarbeitenScreen from "./components/KlassenarbeitenScreen";
 import SchulaufgabenScreen from "./components/SchulaufgabenScreen";
 import SchuleUndKlasseScreen from "./components/SchuleUndKlasseScreen";
-import MeetingsScreen from "./components/MeetingsScreen";
+import MeetingsScreen, { type Meeting } from "./components/MeetingsScreen";
 import TeacherProfileScreen from "./components/TeacherProfileScreen";
 import CreateOwnSetModal from "./components/CreateOwnSetModal";
 import TutoringActivationFlow from "./components/TutoringActivationFlow";
@@ -142,6 +142,9 @@ function AppContent({ userData, onLogout }: { userData: any; onLogout: () => voi
 
   // Pending Extra-Session ID — when tapping an Extra-Stunde card in Home, navigate to Meetings and open its detail view
   const [pendingExtraSessionId, setPendingExtraSessionId] = useState<string | null>(null);
+
+  // Pending Teacher Meeting — when tapping an anstehende/vergangene Karte im Lehrerprofil, Meetings-Detail direkt öffnen
+  const [pendingTeacherMeeting, setPendingTeacherMeeting] = useState<Meeting | null>(null);
 
   // ===== ONBOARDING TRIAL POPUP =====
   // Prototyping-Modus: Popup wird nach jeder Registrierung angezeigt,
@@ -404,6 +407,10 @@ function AppContent({ userData, onLogout }: { userData: any; onLogout: () => voi
         }}
         onCloseTeacherProfile={navigation.closeTeacherProfile}
         onOpenTeacherProfile={navigation.openTeacherProfile}
+        onOpenMeetingFromTeacherProfile={(m: Meeting) => {
+          navigation.closeTeacherProfile();
+          setPendingTeacherMeeting(m);
+        }}
         onOpenChatWithTeacher={(teacherId: string) => {
           setPendingChatTeacherId(teacherId);
           navigation.closeTeacherProfile();
@@ -825,6 +832,7 @@ function AppContent({ userData, onLogout }: { userData: any; onLogout: () => voi
               navigation.closeTeacherProfile();
               setTimeout(() => navigation.handleMobileTabChange('Chats'), 350);
             }}
+            onOpenMeeting={(m) => setPendingTeacherMeeting(m)}
             isMobile={true}
             externalTransition
           />
@@ -940,6 +948,46 @@ function AppContent({ userData, onLogout }: { userData: any; onLogout: () => voi
             }}
           />
         </MobileRouteTransition>
+      )}
+
+      {/* Mobile Teacher-Meeting Detail (Direct-Open from TeacherProfile tap) */}
+      {isMobile && (
+        <MobileRouteTransition isVisible={!!pendingTeacherMeeting}>
+          <MeetingsScreen
+            key={pendingTeacherMeeting?.id}
+            isMobile={true}
+            externalTransition
+            directMeeting={pendingTeacherMeeting}
+            onClose={() => setPendingTeacherMeeting(null)}
+            onOpenTutoringSession={(sessionId) => {
+              setPendingTeacherMeeting(null);
+              navigation.setSelectedTutoringSessionId(sessionId);
+              navigation.setShowTutoringSessionDetail(true);
+            }}
+          />
+        </MobileRouteTransition>
+      )}
+
+      {/* Desktop Teacher-Meeting Detail (Direct-Open from TeacherProfile tap) — full-screen overlay */}
+      {!isMobile && pendingTeacherMeeting && (
+        <div
+          className="fixed inset-0 z-[9000] overflow-y-auto"
+          style={{ backgroundColor: '#0a0a0a' }}
+        >
+          <div className="mx-auto max-w-[920px] px-6 pt-6 pb-10">
+            <MeetingsScreen
+              isMobile={false}
+              externalTransition
+              directMeeting={pendingTeacherMeeting}
+              onClose={() => setPendingTeacherMeeting(null)}
+              onOpenTutoringSession={(sessionId) => {
+                setPendingTeacherMeeting(null);
+                navigation.setSelectedTutoringSessionId(sessionId);
+                navigation.setShowTutoringSessionDetail(true);
+              }}
+            />
+          </div>
+        </div>
       )}
 
       {/* Mobile Extra Sessions (Nachhilfe Stunden kaufen) - Overlay with Slide-In/Out */}

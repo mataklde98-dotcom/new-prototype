@@ -19,6 +19,8 @@ export interface FlashcardSet {
     id: string;
     question: string;
     answer: string;
+    /** Optional step-by-step explanation shown in the "Lösung"-Popup (learn mode ? button). */
+    explanation?: string;
     confidenceScore?: number;
   }>;
 }

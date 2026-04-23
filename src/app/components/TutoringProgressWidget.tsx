@@ -15,6 +15,7 @@ import {
   MOCK_ACTIVE_WEAKNESSES,
   MOCK_RESOLVED_WEAKNESSES_COUNT,
 } from '@/mocks/tutoringProgress.mock';
+import { APP_NOW } from '@/mocks/extraSessions.mock';
 import { useTeacherTasks } from '@/hooks/useTeacherTasks';
 
 interface TutoringProgressWidgetProps {
@@ -30,8 +31,9 @@ export default React.memo(function TutoringProgressWidget({ onOpenProgress }: Tu
   const teacherTasks = useTeacherTasks();
   const pendingTeacherTasks = teacherTasks.filter(t => t.status !== 'completed').length;
 
-  // Pre-session warm-up check (session within 30 min)
-  const now = new Date();
+  // Pre-session warm-up check (session within 30 min) — anchored to APP_NOW
+  // so the widget's "coming soon" state stays deterministic in the prototype.
+  const now = APP_NOW;
   const nextSession = new Date(stats.nextSessionDate);
   const minutesUntilSession = Math.floor((nextSession.getTime() - now.getTime()) / (1000 * 60));
   const warmUpAvailable = minutesUntilSession > 0 && minutesUntilSession <= 30;
@@ -202,11 +204,12 @@ export default React.memo(function TutoringProgressWidget({ onOpenProgress }: Tu
   );
 });
 
-// Helper
+// Helper — uses APP_NOW (mock universe anchor) for deterministic labels
 function formatRelative(iso: string): string {
   const d = new Date(iso);
-  const now = new Date();
-  const diff = Math.floor((d.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+  const today = new Date(APP_NOW.getFullYear(), APP_NOW.getMonth(), APP_NOW.getDate());
+  const target = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  const diff = Math.floor((target.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
   if (diff === 0) return 'Heute';
   if (diff === 1) return 'Morgen';
   if (diff === 2) return 'Übermorgen';

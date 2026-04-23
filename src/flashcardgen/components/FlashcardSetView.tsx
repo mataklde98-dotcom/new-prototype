@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Shuffle, Play, SlidersHorizontal, HelpCircle, CheckCircle2 } from 'lucide-react';
+import { Shuffle, Play, SlidersHorizontal, HelpCircle, X, Sparkles } from 'lucide-react';
 import Checkbox from '@/app/components/Checkbox';
 import { FlashcardTutorial } from './FlashcardTutorial';
 import Button from '@/app/components/Button';
@@ -25,6 +25,8 @@ type Flashcard = {
   id: string;
   question: string;
   answer: string;
+  /** Step-by-step explanation shown in the "Lösung"-Popup (? button in learn mode). */
+  explanation?: string;
   confidenceScore?: number; // 0-100%, optional for backwards compatibility
 };
 
@@ -81,8 +83,9 @@ export default function FlashcardSetView({
   // Tutorial State
   const [isTutorialOpen, setIsTutorialOpen] = useState(false);
   
-  // "I'm Confused" state – flags topic for teacher
-  const [confusedFlagged, setConfusedFlagged] = useState(false);
+  // "Lösung"-Popup state — opened from the ? button next to "Karte umdrehen".
+  // Shows a step-by-step explanation of why the current answer is correct.
+  const [showSolution, setShowSolution] = useState(false);
   
   // Confidence Score System - Map von card.id -> score (0-100)
   const [cardScores, setCardScores] = useState<Map<string, number>>(() => {
@@ -739,31 +742,27 @@ export default function FlashcardSetView({
         {/* Karte Umdrehen Button - Apple 2026 Glassmorphism */}
         <div className="px-6 pb-8 flex-shrink-0">
           <div className="flex items-center justify-center gap-3">
-            {/* "I'm Confused" Button */}
+            {/* "Lösung"-Button — opens a popup with a step-by-step explanation
+                so students see *how* the answer comes about, not just the answer. */}
             <button
               onClick={(e) => {
                 e.stopPropagation();
-                setConfusedFlagged(true);
-                setTimeout(() => setConfusedFlagged(false), 3000);
+                setShowSolution(true);
               }}
-              disabled={confusedFlagged}
               className="relative px-4 py-4 rounded-2xl flex items-center justify-center transition-all duration-300 active:scale-95"
               style={{
-                background: confusedFlagged ? 'rgba(0,212,170,0.08)' : 'rgba(123,97,255,0.06)',
-                border: `1px solid ${confusedFlagged ? 'rgba(0,212,170,0.25)' : 'rgba(123,97,255,0.20)'}`,
+                background: 'rgba(123,97,255,0.06)',
+                border: '1px solid rgba(123,97,255,0.20)',
                 WebkitTapHighlightColor: 'transparent',
                 willChange: 'transform',
                 transform: 'translateZ(0)',
                 isolation: 'isolate',
                 zIndex: 1,
               }}
-              title={confusedFlagged ? 'Lehrer benachrichtigt' : 'Ich versteh\'s nicht'}
+              title="Lösung anzeigen"
+              aria-label="Lösung anzeigen"
             >
-              {confusedFlagged ? (
-                <CheckCircle2 className="relative z-10 w-[20px] h-[20px]" style={{ color: '#00D4AA' }} />
-              ) : (
-                <HelpCircle className="relative z-10 w-[20px] h-[20px]" style={{ color: '#7B61FF' }} />
-              )}
+              <HelpCircle className="relative z-10 w-[20px] h-[20px]" style={{ color: '#7B61FF' }} />
             </button>
 
             {/* Flip Button */}
@@ -794,6 +793,131 @@ export default function FlashcardSetView({
             </button>
           </div>
         </div>
+
+        {/* ===== LÖSUNG POPUP ===== */}
+        <AnimatePresence>
+          {showSolution && currentCard && (
+            <motion.div
+              key="solution-backdrop"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.18 }}
+              className="fixed inset-0 z-[11000] flex items-end sm:items-center justify-center"
+              style={{
+                background: 'rgba(0,0,0,0.55)',
+                backdropFilter: 'blur(6px)',
+                WebkitBackdropFilter: 'blur(6px)',
+              }}
+              onClick={() => setShowSolution(false)}
+            >
+              <motion.div
+                initial={{ y: 40, opacity: 0, scale: 0.98 }}
+                animate={{ y: 0, opacity: 1, scale: 1 }}
+                exit={{ y: 40, opacity: 0, scale: 0.98 }}
+                transition={{ type: 'spring', damping: 26, stiffness: 280 }}
+                onClick={(e) => e.stopPropagation()}
+                className="w-full max-w-[440px] rounded-t-3xl sm:rounded-3xl overflow-hidden flex flex-col"
+                style={{
+                  background: 'linear-gradient(180deg, #1a1a1a 0%, #121212 100%)',
+                  border: '1px solid rgba(123,97,255,0.25)',
+                  boxShadow: '0 24px 64px rgba(0,0,0,0.55)',
+                  maxHeight: '86vh',
+                  paddingBottom: 'env(safe-area-inset-bottom, 0px)',
+                }}
+              >
+                {/* Handle (mobile) */}
+                <div className="flex justify-center pt-2.5 pb-1 sm:hidden">
+                  <div className="w-10 h-1 rounded-full" style={{ background: 'rgba(255,255,255,0.12)' }} />
+                </div>
+
+                {/* Header */}
+                <div className="px-5 pt-3 pb-4 flex items-start justify-between gap-3 border-b border-white/[0.06]">
+                  <div className="flex items-center gap-2.5 flex-1 min-w-0">
+                    <div
+                      className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
+                      style={{
+                        background: 'rgba(123,97,255,0.12)',
+                        border: '1px solid rgba(123,97,255,0.28)',
+                      }}
+                    >
+                      <Sparkles className="w-4 h-4" style={{ color: '#9B87FF' }} strokeWidth={2.2} />
+                    </div>
+                    <div className="min-w-0">
+                      <h3
+                        className="text-white text-[16px] truncate"
+                        style={{ fontFamily: "Poppins, sans-serif", fontWeight: 600, letterSpacing: '-0.2px' }}
+                      >
+                        Lösung
+                      </h3>
+                      <p
+                        className="text-white/45 text-[11px] mt-0.5"
+                        style={{ fontFamily: "Poppins, sans-serif" }}
+                      >
+                        So kommst du auf die Antwort
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setShowSolution(false)}
+                    className="w-8 h-8 rounded-full flex items-center justify-center bg-white/[0.05] active:scale-95 transition-transform flex-shrink-0"
+                    style={{ WebkitTapHighlightColor: 'transparent' }}
+                    aria-label="Schließen"
+                  >
+                    <X className="w-4 h-4 text-white/60" />
+                  </button>
+                </div>
+
+                {/* Content — nur der Lösungsweg, Frage/Antwort sind auf der Karte selbst sichtbar */}
+                <div className="flex-1 overflow-y-auto px-5 py-5 scrollbar-hide">
+                  <p
+                    className="text-[10px] uppercase tracking-wider mb-2"
+                    style={{ fontFamily: "Poppins, sans-serif", fontWeight: 700, color: '#9B87FF', letterSpacing: '0.08em' }}
+                  >
+                    Lösungsweg
+                  </p>
+                  {currentCard.explanation && currentCard.explanation.trim().length > 0 ? (
+                    <p
+                      className="text-white/85 text-[14px] whitespace-pre-line"
+                      style={{ fontFamily: "Poppins, sans-serif", fontWeight: 400, lineHeight: '22px' }}
+                    >
+                      {currentCard.explanation}
+                    </p>
+                  ) : (
+                    <p
+                      className="text-white/45 text-[13px]"
+                      style={{ fontFamily: "Poppins, sans-serif", fontWeight: 400, lineHeight: '20px' }}
+                    >
+                      Für diese Karte ist noch kein Lösungsweg hinterlegt. Dein Lehrer kann
+                      eine ausführliche Erklärung ergänzen, damit du den Gedankengang besser
+                      nachvollziehen kannst.
+                    </p>
+                  )}
+                </div>
+
+                {/* Footer */}
+                <div className="px-5 pt-3 pb-5 border-t border-white/[0.06]">
+                  <button
+                    onClick={() => setShowSolution(false)}
+                    className="w-full h-[44px] rounded-xl flex items-center justify-center active:scale-[0.98] transition-transform"
+                    style={{
+                      background: 'rgba(123,97,255,0.14)',
+                      border: '1px solid rgba(123,97,255,0.30)',
+                      WebkitTapHighlightColor: 'transparent',
+                    }}
+                  >
+                    <span
+                      className="text-[13px]"
+                      style={{ fontFamily: "Poppins, sans-serif", fontWeight: 600, color: '#C6A5FF' }}
+                    >
+                      Alles klar, zurück
+                    </span>
+                  </button>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
         </motion.div>
       ) : (
         <div

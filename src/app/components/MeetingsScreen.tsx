@@ -22,7 +22,7 @@ import { MOCK_SESSIONS } from '@/mocks/tutoringProgress.mock';
 import { useCancelledExtraSessions, cancelledExtraSessionsStore } from '@/app/components/cancelledExtraSessionsStore';
 
 // ===== TYPES =====
-interface Meeting {
+export interface Meeting {
   id: string;
   subjectName: string;
   lessonType: '1on1' | 'group';
@@ -56,6 +56,12 @@ interface MeetingsScreenProps {
    * no loading, no top tabs, no list. Back/close returns to caller via `onClose`.
    */
   directExtraSessionId?: string | null;
+  /**
+   * Direct-open mode with an ad-hoc Meeting object (e.g. from TeacherProfile
+   * meeting card tap, where the meeting is not in MOCK_MEETINGS). Takes
+   * precedence over `directExtraSessionId` when set.
+   */
+  directMeeting?: Meeting | null;
 }
 
 // ===== HELPERS =====
@@ -1147,8 +1153,8 @@ const MeetingRoom = ({ meeting, onLeave }: { meeting: Meeting; onLeave: () => vo
 };
 
 // ===== MAIN MEETINGS SCREEN =====
-export default React.memo(function MeetingsScreen({ onClose, isMobile = false, externalTransition = false, onOpenTutoringActivation, onOpenTutoringSession, directExtraSessionId }: MeetingsScreenProps) {
-  const directOpenMode = !!directExtraSessionId;
+export default React.memo(function MeetingsScreen({ onClose, isMobile = false, externalTransition = false, onOpenTutoringActivation, onOpenTutoringSession, directExtraSessionId, directMeeting }: MeetingsScreenProps) {
+  const directOpenMode = !!directMeeting || !!directExtraSessionId;
   const { tutoringStatus } = useUser();
   const isTutoringLocked = tutoringStatus !== 'activated';
 
@@ -1175,8 +1181,12 @@ export default React.memo(function MeetingsScreen({ onClose, isMobile = false, e
 
   // In direct-open mode, preselect the target meeting and start in detail view.
   const initialDirectMeeting = useMemo(
-    () => (directExtraSessionId ? MOCK_MEETINGS.find((m) => m.extraSessionId === directExtraSessionId) ?? null : null),
-    [directExtraSessionId],
+    () => {
+      if (directMeeting) return directMeeting;
+      if (directExtraSessionId) return MOCK_MEETINGS.find((m) => m.extraSessionId === directExtraSessionId) ?? null;
+      return null;
+    },
+    [directMeeting, directExtraSessionId],
   );
   const initialDirectTab: MeetingTab = useMemo(() => {
     if (!initialDirectMeeting) return 'upcoming';

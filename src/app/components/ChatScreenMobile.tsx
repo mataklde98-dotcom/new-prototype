@@ -52,7 +52,16 @@ import {
 } from './ChatFeatureOverlays';
 import { MessageAttachments } from './ChatMessageAttachments';
 import ExtraSessionRequestCard from './ExtraSessionRequestCard';
-import type { ChatAttachment as ChatAttachmentType } from '@/mocks/chatMocks';
+import type { ChatAttachment as ChatAttachmentType, ChatRoom } from '@/mocks/chatMocks';
+import {
+  GroupAvatar,
+  GroupMembersSheet,
+  MessageReactionBar,
+  MessageReactions,
+  EmojiPickerSheet,
+  ReactorsSheet,
+} from './ChatGroupComponents';
+import type { ChatReaction } from '@/mocks/chatMocks';
 import { useUser } from '@/contexts/UserContext';
 import { Lock } from 'lucide-react';
 
@@ -79,6 +88,20 @@ function formatRoomTime(date: Date): string {
   return date.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' });
 }
 
+// Per-sender accent color (WhatsApp-style) — deterministic from senderId so
+// every participant gets a stable, distinct hue without implying role/rank.
+const SENDER_COLORS = [
+  '#FF9F7A', '#7ABCFF', '#9B87FF', '#F5A3D0', '#FFC66B',
+  '#62D4A1', '#7FD2F0', '#F48FB1', '#C6A5FF', '#A3E4B8',
+];
+function getSenderColor(senderId: string): string {
+  let hash = 0;
+  for (let i = 0; i < senderId.length; i++) {
+    hash = (hash * 31 + senderId.charCodeAt(i)) | 0;
+  }
+  return SENDER_COLORS[Math.abs(hash) % SENDER_COLORS.length];
+}
+
 // Map suggestedAction.type → icon (per API spec)
 function getActionIcon(type: AiSuggestedAction['type']) {
   switch (type) {
@@ -103,7 +126,13 @@ export default React.memo(function ChatScreenMobile({ onClose, onOpenTeacherProf
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
-  const { chatRooms, messages, isSending, isTyping, messagesEndRef, sendMessage, clearUnread } = useChat(selectedRoomId || undefined);
+  const { chatRooms, messages, isSending, isTyping, messagesEndRef, sendMessage, clearUnread, toggleReaction } = useChat(selectedRoomId || undefined);
+
+  // Group + reaction + emoji UI state
+  const [showMembersSheet, setShowMembersSheet] = useState(false);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [reactionAnchor, setReactionAnchor] = useState<{ messageId: string; x: number; y: number; alignRight?: boolean } | null>(null);
+  const [reactorsSheet, setReactorsSheet] = useState<{ messageId: string; reactions: ChatReaction[]; initialEmoji?: string } | null>(null);
   const aiChat = useAiChat();
   const { tutoringStatus } = useUser();
   const isTutoringLocked = tutoringStatus !== 'activated';
@@ -349,90 +378,108 @@ export default React.memo(function ChatScreenMobile({ onClose, onOpenTeacherProf
               {/* Regular rooms – blurred/locked when tutoring not activated */}
               <div className="relative">
                 <div style={{ filter: isTutoringLocked ? 'blur(6px)' : 'none', pointerEvents: isTutoringLocked ? 'none' : 'auto', opacity: isTutoringLocked ? 0.5 : 1 }}>
-                  {filteredRooms.map((room) => (
-                    <button
-                      key={room.id}
-                      onClick={() => setSelectedRoomId(room.id)}
-                      className="w-full active:bg-white/[0.04] transition-colors"
-                      style={{
-                        padding: '14px 20px',
-                        borderBottom: '1px solid rgba(255,255,255,0.04)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '14px',
-                        WebkitTapHighlightColor: 'transparent',
-                      }}
-                    >
-                      {/* Avatar */}
-                      <div className="relative shrink-0">
-                        <img
-                          src={room.participantAvatar}
-                          alt={room.participantName}
-                          className="w-[52px] h-[52px] rounded-full object-cover"
-                          style={{ border: '2px solid rgba(255,255,255,0.06)' }}
-                        />
-                        {room.isOnline && (
-                          <div
-                            className="absolute -bottom-0.5 -right-0.5"
-                            style={{
-                              width: '14px',
-                              height: '14px',
-                              borderRadius: '50%',
-                              background: '#00D4AA',
-                              border: '3px solid #0a0a0a',
-                            }}
-                          />
+                  {filteredRooms.map((room) => {
+                    const isGroup = room.kind === 'group';
+                    const onlineMembers = isGroup && room.members
+                      ? room.members.filter((m) => m.isOnline).length
+                      : 0;
+                    return (
+                      <button
+                        key={room.id}
+                        onClick={() => setSelectedRoomId(room.id)}
+                        className="w-full active:bg-white/[0.04] transition-colors"
+                        style={{
+                          padding: '14px 20px',
+                          borderBottom: '1px solid rgba(255,255,255,0.04)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '14px',
+                          WebkitTapHighlightColor: 'transparent',
+                        }}
+                      >
+                        {/* Avatar — group or 1:1 */}
+                        {isGroup && room.members ? (
+                          <GroupAvatar members={room.members} size={52} />
+                        ) : (
+                          <div className="relative shrink-0">
+                            <img
+                              src={room.participantAvatar}
+                              alt={room.participantName}
+                              className="w-[52px] h-[52px] rounded-full object-cover"
+                              style={{ border: '2px solid rgba(255,255,255,0.06)' }}
+                            />
+                            {room.isOnline && (
+                              <div
+                                className="absolute -bottom-0.5 -right-0.5"
+                                style={{
+                                  width: '14px',
+                                  height: '14px',
+                                  borderRadius: '50%',
+                                  background: '#00D4AA',
+                                  border: '3px solid #0a0a0a',
+                                }}
+                              />
+                            )}
+                          </div>
                         )}
-                      </div>
 
-                      {/* Content */}
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between mb-0.5">
-                          <h3
-                            className="text-white text-[15px] truncate"
-                            style={{ fontFamily: ff, fontWeight: 600, letterSpacing: '-0.2px' }}
-                          >
-                            {room.participantName}
-                          </h3>
-                          <span
-                            className="text-white/30 text-[11px] shrink-0 ml-2"
-                            style={{ fontFamily: ff, fontWeight: 500 }}
-                          >
-                            {formatRoomTime(room.lastMessageTime)}
-                          </span>
-                        </div>
-                        <div className="flex items-center justify-between gap-2">
-                          <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                        {/* Content */}
+                        <div className="flex-1 min-w-0 text-left">
+                          <div className="flex items-center justify-between mb-0.5">
+                            <h3
+                              className="text-white text-[15px] truncate min-w-0"
+                              style={{ fontFamily: ff, fontWeight: 600, letterSpacing: '-0.2px' }}
+                            >
+                              {isGroup ? (room.groupName ?? room.participantName) : room.participantName}
+                            </h3>
+                            <span
+                              className="text-white/30 text-[11px] shrink-0 ml-2"
+                              style={{ fontFamily: ff, fontWeight: 500 }}
+                            >
+                              {formatRoomTime(room.lastMessageTime)}
+                            </span>
+                          </div>
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                              <p
+                                className="text-white/35 text-[13px] truncate"
+                                style={{ fontFamily: ff }}
+                              >
+                                {room.lastMessage}
+                              </p>
+                            </div>
+                            {room.unreadCount > 0 && (
+                              <div
+                                className="flex items-center justify-center shrink-0"
+                                style={{
+                                  minWidth: '20px',
+                                  height: '20px',
+                                  borderRadius: '10px',
+                                  background: 'linear-gradient(135deg, #00D4AA 0%, #00A87D 100%)',
+                                  padding: '0 6px',
+                                }}
+                              >
+                                <span
+                                  className="text-white text-[10px]"
+                                  style={{ fontFamily: ff, fontWeight: 700 }}
+                                >
+                                  {room.unreadCount}
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                          {isGroup && (
                             <p
-                              className="text-white/35 text-[13px] truncate"
+                              className="text-white/25 text-[11px] mt-1"
                               style={{ fontFamily: ff }}
                             >
-                              {room.lastMessage}
+                              {room.members?.length ?? 0} Mitglieder · {onlineMembers} online
                             </p>
-                          </div>
-                          {room.unreadCount > 0 && (
-                            <div
-                              className="flex items-center justify-center shrink-0"
-                              style={{
-                                minWidth: '20px',
-                                height: '20px',
-                                borderRadius: '10px',
-                                background: 'linear-gradient(135deg, #00D4AA 0%, #00A87D 100%)',
-                                padding: '0 6px',
-                              }}
-                            >
-                              <span
-                                className="text-white text-[10px]"
-                                style={{ fontFamily: ff, fontWeight: 700 }}
-                              >
-                                {room.unreadCount}
-                              </span>
-                            </div>
                           )}
                         </div>
-                      </div>
-                    </button>
-                  ))}
+                      </button>
+                    );
+                  })}
                 </div>
                 {isTutoringLocked && (
                   <div className="absolute inset-0 flex flex-col items-center justify-center" style={{ pointerEvents: 'auto' }}>
@@ -1109,31 +1156,38 @@ export default React.memo(function ChatScreenMobile({ onClose, onOpenTeacherProf
           </button>
 
           <div className="flex items-center gap-3 flex-1 min-w-0">
-            <div className="relative shrink-0">
-              <img
-                src={currentRoom?.participantAvatar}
-                alt={currentRoom?.participantName}
-                className="w-10 h-10 rounded-full object-cover"
-                style={{ border: '2px solid rgba(255,255,255,0.06)' }}
-              />
-              {currentRoom?.isOnline && (
-                <div
-                  className="absolute -bottom-0.5 -right-0.5"
-                  style={{
-                    width: '11px',
-                    height: '11px',
-                    borderRadius: '50%',
-                    background: '#00D4AA',
-                    border: '2.5px solid #0a0a0a',
-                  }}
+            {currentRoom?.kind === 'group' && currentRoom.members ? (
+              <GroupAvatar members={currentRoom.members} size={40} />
+            ) : (
+              <div className="relative shrink-0">
+                <img
+                  src={currentRoom?.participantAvatar}
+                  alt={currentRoom?.participantName}
+                  className="w-10 h-10 rounded-full object-cover"
+                  style={{ border: '2px solid rgba(255,255,255,0.06)' }}
                 />
-              )}
-            </div>
+                {currentRoom?.isOnline && (
+                  <div
+                    className="absolute -bottom-0.5 -right-0.5"
+                    style={{
+                      width: '11px',
+                      height: '11px',
+                      borderRadius: '50%',
+                      background: '#00D4AA',
+                      border: '2.5px solid #0a0a0a',
+                    }}
+                  />
+                )}
+              </div>
+            )}
             <button
               className="min-w-0 text-left active:opacity-70 transition-opacity"
               style={{ WebkitTapHighlightColor: 'transparent' }}
               onClick={() => {
-                if (currentRoom && onOpenTeacherProfile) {
+                if (!currentRoom) return;
+                if (currentRoom.kind === 'group') {
+                  setShowMembersSheet(true);
+                } else if (onOpenTeacherProfile) {
                   onOpenTeacherProfile(currentRoom.id);
                 }
               }}
@@ -1143,7 +1197,9 @@ export default React.memo(function ChatScreenMobile({ onClose, onOpenTeacherProf
                   className="text-white text-[16px] truncate"
                   style={{ fontFamily: ff, fontWeight: 600, letterSpacing: '-0.3px' }}
                 >
-                  {currentRoom?.participantName}
+                  {currentRoom?.kind === 'group'
+                    ? (currentRoom.groupName ?? currentRoom.participantName)
+                    : currentRoom?.participantName}
                 </h2>
               </div>
               {isTyping ? (
@@ -1152,6 +1208,13 @@ export default React.memo(function ChatScreenMobile({ onClose, onOpenTeacherProf
                   style={{ fontFamily: ff }}
                 >
                   schreibt...
+                </p>
+              ) : currentRoom?.kind === 'group' ? (
+                <p
+                  className="text-white/35 text-[12px]"
+                  style={{ fontFamily: ff }}
+                >
+                  {(currentRoom.members?.filter((m) => m.isOnline).length ?? 0)} online · {currentRoom.members?.length ?? 0} Mitglieder
                 </p>
               ) : (
                 <p
@@ -1204,6 +1267,8 @@ export default React.memo(function ChatScreenMobile({ onClose, onOpenTeacherProf
             const isStudent = message.senderId === 'student';
             const isConsecutive = index > 0 && messages[index - 1].senderId === message.senderId;
             const isLast = index === messages.length - 1 || messages[index + 1]?.senderId !== message.senderId;
+            const isGroup = currentRoom?.kind === 'group';
+            const senderAvatar = message.senderAvatar || currentRoom?.participantAvatar;
 
             return (
               <MobileMessageBubble
@@ -1212,7 +1277,24 @@ export default React.memo(function ChatScreenMobile({ onClose, onOpenTeacherProf
                 isStudent={isStudent}
                 isConsecutive={isConsecutive}
                 isLast={isLast}
-                avatar={currentRoom?.participantAvatar}
+                avatar={senderAvatar}
+                isGroup={isGroup}
+                onLongPress={(e) => {
+                  const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                  setReactionAnchor({
+                    messageId: message.id,
+                    x: rect.left,
+                    y: Math.max(72, rect.top - 56),
+                    alignRight: isStudent,
+                  });
+                }}
+                onOpenReactors={(initialEmoji) => {
+                  setReactorsSheet({
+                    messageId: message.id,
+                    reactions: message.reactions ?? [],
+                    initialEmoji,
+                  });
+                }}
               />
             );
           })}
@@ -1320,10 +1402,12 @@ export default React.memo(function ChatScreenMobile({ onClose, onOpenTeacherProf
               rows={1}
             />
             <button
+              onClick={() => setShowEmojiPicker(true)}
               className="flex-shrink-0 mb-0.5 active:scale-90 transition-transform"
               style={{ WebkitTapHighlightColor: 'transparent' }}
+              aria-label="Emoji einfügen"
             >
-              <Smile className="w-5 h-5 text-white/25" strokeWidth={2} />
+              <Smile className="w-5 h-5 text-white/35" strokeWidth={2} />
             </button>
           </div>
 
@@ -1349,6 +1433,79 @@ export default React.memo(function ChatScreenMobile({ onClose, onOpenTeacherProf
         </div>
       </div>
       )}
+
+      {/* Group Members Sheet */}
+      {currentRoom?.kind === 'group' && currentRoom.members && (
+        <GroupMembersSheet
+          isOpen={showMembersSheet}
+          onClose={() => setShowMembersSheet(false)}
+          groupName={currentRoom.groupName ?? currentRoom.participantName}
+          members={currentRoom.members}
+        />
+      )}
+
+      {/* Reaction Bar Popup */}
+      <MessageReactionBar
+        isOpen={!!reactionAnchor}
+        anchor={reactionAnchor}
+        onClose={() => setReactionAnchor(null)}
+        onSelect={(emoji) => {
+          if (reactionAnchor) toggleReaction(reactionAnchor.messageId, emoji);
+        }}
+      />
+
+      {/* Reactors Sheet — who reacted with what */}
+      <ReactorsSheet
+        isOpen={!!reactorsSheet}
+        onClose={() => setReactorsSheet(null)}
+        reactions={reactorsSheet?.reactions ?? []}
+        initialEmoji={reactorsSheet?.initialEmoji}
+        resolveMember={(memberId) => {
+          if (memberId === 'student') return { name: 'Du', isSelf: true };
+          if (currentRoom?.kind === 'group' && currentRoom.members) {
+            const m = currentRoom.members.find((x) => x.id === memberId);
+            if (m) return { name: m.name, avatar: m.avatar };
+          }
+          if (memberId === 'teacher' && currentRoom) {
+            return { name: currentRoom.participantName, avatar: currentRoom.participantAvatar };
+          }
+          return { name: memberId };
+        }}
+        onRemoveSelf={(emoji) => {
+          if (!reactorsSheet) return;
+          toggleReaction(reactorsSheet.messageId, emoji);
+          // Reflect removal in the open sheet immediately
+          setReactorsSheet((prev) => {
+            if (!prev) return null;
+            const updated = prev.reactions
+              .map((r) =>
+                r.emoji === emoji
+                  ? { ...r, memberIds: r.memberIds.filter((id) => id !== 'student') }
+                  : r,
+              )
+              .filter((r) => r.memberIds.length > 0);
+            return { ...prev, reactions: updated };
+          });
+        }}
+      />
+
+      {/* Emoji Picker Sheet */}
+      <EmojiPickerSheet
+        isOpen={showEmojiPicker}
+        onClose={() => setShowEmojiPicker(false)}
+        onSelect={(emoji) => {
+          setMessageText((prev) => prev + emoji);
+          if (inputRef.current) {
+            // keep focus + trigger grow
+            inputRef.current.focus();
+            requestAnimationFrame(() => {
+              if (!inputRef.current) return;
+              inputRef.current.style.height = 'auto';
+              inputRef.current.style.height = `${Math.min(inputRef.current.scrollHeight, 100)}px`;
+            });
+          }
+        }}
+      />
 
       {/* Chat Feature Overlays */}
       <UploadSheet
@@ -1490,14 +1647,37 @@ const MobileMessageBubble = React.memo(function MobileMessageBubble({
   isConsecutive,
   isLast,
   avatar,
+  isGroup,
+  onLongPress,
+  onOpenReactors,
 }: {
   message: ChatMessage;
   isStudent: boolean;
   isConsecutive: boolean;
   isLast: boolean;
   avatar?: string;
+  isGroup?: boolean;
+  onLongPress?: (e: React.TouchEvent | React.MouseEvent) => void;
+  onOpenReactors?: (initialEmoji?: string) => void;
 }) {
   const time = formatMessageTime(message.timestamp);
+  const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handlePressStart = (e: React.TouchEvent | React.MouseEvent) => {
+    if (!onLongPress) return;
+    if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current);
+    // Capture ref to currentTarget before the timer fires (React pools events)
+    const target = e.currentTarget;
+    longPressTimerRef.current = setTimeout(() => {
+      onLongPress({ ...e, currentTarget: target } as any);
+    }, 420);
+  };
+  const cancelPress = () => {
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+  };
 
   // Rich card renderer for extra-session requests — skips the bubble UI.
   if (message.type === 'extra-session-request' && message.extraSessionRequestId) {
@@ -1529,6 +1709,9 @@ const MobileMessageBubble = React.memo(function MobileMessageBubble({
     );
   }
 
+  const showSenderHeader = Boolean(isGroup && !isStudent && !isConsecutive);
+  const senderColor = getSenderColor(message.senderId);
+
   return (
     <div
       className={`flex items-end gap-2 ${isStudent ? 'flex-row-reverse' : 'flex-row'}`}
@@ -1547,8 +1730,21 @@ const MobileMessageBubble = React.memo(function MobileMessageBubble({
 
       {/* Bubble */}
       <div style={{ maxWidth: '78%' }}>
+        {showSenderHeader && (
+          <div
+            className="flex items-center mb-1 px-1"
+            style={{ minHeight: 14 }}
+          >
+            <span
+              className="text-[11px] truncate"
+              style={{ fontFamily: ff, fontWeight: 600, color: senderColor }}
+            >
+              {message.senderName}
+            </span>
+          </div>
+        )}
         <div
-          className="px-3.5 py-2.5"
+          className="px-3.5 py-2.5 select-none"
           style={{
             background: isStudent
               ? 'rgba(255,255,255,0.10)'
@@ -1566,6 +1762,19 @@ const MobileMessageBubble = React.memo(function MobileMessageBubble({
             borderTopRightRadius: isStudent
               ? (isConsecutive ? '12px' : '18px')
               : '18px',
+            WebkitTapHighlightColor: 'transparent',
+          }}
+          onTouchStart={handlePressStart}
+          onTouchEnd={cancelPress}
+          onTouchMove={cancelPress}
+          onTouchCancel={cancelPress}
+          onMouseDown={handlePressStart}
+          onMouseUp={cancelPress}
+          onMouseLeave={cancelPress}
+          onContextMenu={(e) => {
+            if (!onLongPress) return;
+            e.preventDefault();
+            onLongPress(e);
           }}
         >
           {message.attachments && message.attachments.length > 0 && (
@@ -1585,6 +1794,15 @@ const MobileMessageBubble = React.memo(function MobileMessageBubble({
             </p>
           )}
         </div>
+
+        {/* Reactions below bubble — tap opens reactors sheet */}
+        {onOpenReactors && (
+          <MessageReactions
+            reactions={message.reactions}
+            onOpen={onOpenReactors}
+            align={isStudent ? 'end' : 'start'}
+          />
+        )}
 
         {/* Time & Status – only on last message in group */}
         {isLast && (

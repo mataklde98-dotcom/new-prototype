@@ -17,12 +17,15 @@ import type { TeacherMeeting } from '@/mocks/teacherProfile.mock';
 import { useMeetingRatings } from '@/hooks/useMeetingRatings';
 import { MeetingRatingModal, RatingBadge } from './MeetingRatingModal';
 import ExtraSessionRequestModal from './ExtraSessionRequestModal';
+import type { Meeting } from './MeetingsScreen';
 
 // ===== TYPES =====
 interface TeacherProfileScreenProps {
   teacherId: string | null;
   onClose: () => void;
   onOpenChat?: (teacherId: string) => void;
+  /** Called when the student taps a meeting card — opens Meetings detail view for that meeting. */
+  onOpenMeeting?: (meeting: Meeting) => void;
   isMobile?: boolean;
   externalTransition?: boolean;
 }
@@ -58,6 +61,24 @@ function getCountdown(iso: string): string {
   if (hours > 24) return `in ${Math.floor(hours / 24)}d`;
   if (hours > 0) return `in ${hours}h ${mins}m`;
   return `in ${mins}m`;
+}
+
+/** Build a synthetic Meeting from a teacher-scoped TeacherMeeting so the
+ *  Meetings detail view can render it without requiring an entry in MOCK_MEETINGS. */
+function teacherMeetingToMeeting(tm: TeacherMeeting, teacherName: string): Meeting {
+  return {
+    id: tm.id,
+    subjectName: tm.subject,
+    lessonType: tm.lessonType,
+    tutor: { id: tm.teacherId, name: teacherName },
+    students: [{ id: 's1', name: 'Max Mustermann' }],
+    topicTitle: tm.topicTitle,
+    startAt: tm.startAt,
+    endAt: tm.endAt,
+    status: tm.status,
+    joinPolicy: { joinEarlyMinutes: 10, requiresTutorStart: true },
+    room: { roomId: `room-${tm.id}` },
+  };
 }
 
 // ===== SUB-COMPONENTS =====
@@ -122,7 +143,7 @@ function EmptyState({ icon: Icon, message }: { icon: React.ElementType; message:
 }
 
 /** Meeting Card */
-function MeetingCard({ meeting, isUpcoming, isMobile, hasRating, onRate }: { meeting: TeacherMeeting; isUpcoming: boolean; isMobile?: boolean; hasRating?: boolean; onRate?: () => void }) {
+function MeetingCard({ meeting, isUpcoming, isMobile, hasRating, onRate, onClick }: { meeting: TeacherMeeting; isUpcoming: boolean; isMobile?: boolean; hasRating?: boolean; onRate?: () => void; onClick?: () => void }) {
   const duration = getDurationMinutes(meeting.startAt, meeting.endAt);
   const statusConfig: Record<string, { label: string; color: string; bg: string; pulse?: boolean }> = {
     scheduled: { label: 'Geplant', color: '#7B61FF', bg: 'rgba(123,97,255,0.15)' },
@@ -143,7 +164,12 @@ function MeetingCard({ meeting, isUpcoming, isMobile, hasRating, onRate }: { mee
 
   return (
     <div
-      className="rounded-2xl bg-gradient-to-br from-white/[0.05] to-white/[0.02] border border-white/[0.08] p-4"
+      onClick={onClick}
+      role={onClick ? 'button' : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      onKeyDown={onClick ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick(); } } : undefined}
+      className={`rounded-2xl bg-gradient-to-br from-white/[0.05] to-white/[0.02] border border-white/[0.08] p-4 transition-transform ${onClick ? 'cursor-pointer active:scale-[0.985] hover:border-white/[0.14]' : ''}`}
+      style={{ WebkitTapHighlightColor: 'transparent' }}
     >
       {/* Top: Avatar + Subject + Status */}
       <div className="flex items-start justify-between gap-3 mb-3">
@@ -232,7 +258,7 @@ function MeetingCard({ meeting, isUpcoming, isMobile, hasRating, onRate }: { mee
           )}
           {!isUpcoming && meeting.status === 'ended' && !hasRating && onRate && (
             <button
-              onClick={onRate}
+              onClick={(e) => { e.stopPropagation(); onRate(); }}
               className={`px-2.5 py-1 rounded-lg ${poppins('Medium')} text-[11px] transition-all active:scale-95`}
               style={{
                 color: 'rgba(123,97,255,0.8)',
@@ -305,6 +331,7 @@ export default function TeacherProfileScreen({
   teacherId,
   onClose,
   onOpenChat,
+  onOpenMeeting,
   isMobile = false,
   externalTransition = false,
 }: TeacherProfileScreenProps) {
@@ -451,7 +478,15 @@ export default function TeacherProfileScreen({
               />
             ) : (
               <div className="flex flex-col gap-2.5">
-                {upcomingMeetings.map(m => <MeetingCard key={m.id} meeting={m} isUpcoming isMobile />)}
+                {upcomingMeetings.map(m => (
+                  <MeetingCard
+                    key={m.id}
+                    meeting={m}
+                    isUpcoming
+                    isMobile
+                    onClick={onOpenMeeting ? () => onOpenMeeting(teacherMeetingToMeeting(m, teacher.name)) : undefined}
+                  />
+                ))}
               </div>
             )}
           </div>
@@ -474,6 +509,7 @@ export default function TeacherProfileScreen({
                     isMobile
                     hasRating={hasRating(m.id)}
                     onRate={() => setRatingModalMeeting(m)}
+                    onClick={onOpenMeeting ? () => onOpenMeeting(teacherMeetingToMeeting(m, teacher.name)) : undefined}
                   />
                 ))}
               </div>
@@ -598,7 +634,14 @@ export default function TeacherProfileScreen({
           />
         ) : (
           <div className="flex flex-col gap-3">
-            {upcomingMeetings.map(m => <MeetingCard key={m.id} meeting={m} isUpcoming />)}
+            {upcomingMeetings.map(m => (
+              <MeetingCard
+                key={m.id}
+                meeting={m}
+                isUpcoming
+                onClick={onOpenMeeting ? () => onOpenMeeting(teacherMeetingToMeeting(m, teacher.name)) : undefined}
+              />
+            ))}
           </div>
         )}
       </div>
@@ -620,6 +663,7 @@ export default function TeacherProfileScreen({
                 isUpcoming={false}
                 hasRating={hasRating(m.id)}
                 onRate={() => setRatingModalMeeting(m)}
+                onClick={onOpenMeeting ? () => onOpenMeeting(teacherMeetingToMeeting(m, teacher.name)) : undefined}
               />
             ))}
           </div>

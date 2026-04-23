@@ -47,6 +47,7 @@ interface ContentRouterProps {
   onOpenTeacherProfile?: (teacherId: string) => void;
   onCloseTeacherProfile?: () => void;
   onOpenChatWithTeacher?: (teacherId: string) => void;
+  onOpenMeetingFromTeacherProfile?: (meeting: import('./MeetingsScreen').Meeting) => void;
   initialChatTeacherId?: string | null;
   pendingPrepTaskLink?: { examId: string; taskIndex: number; setId: number } | null;
   isMobile: boolean;
@@ -155,6 +156,7 @@ export default function ContentRouter(props: ContentRouterProps) {
     onOpenTeacherProfile,
     onCloseTeacherProfile,
     onOpenChatWithTeacher,
+    onOpenMeetingFromTeacherProfile,
     initialChatTeacherId,
     pendingPrepTaskLink,
     isMobile,
@@ -392,6 +394,7 @@ export default function ContentRouter(props: ContentRouterProps) {
           teacherId={selectedTeacherId}
           onClose={onCloseTeacherProfile || onNavigateToHome}
           onOpenChat={onOpenChatWithTeacher}
+          onOpenMeeting={onOpenMeetingFromTeacherProfile}
           externalTransition
         />
       </DesktopContentWrapper>

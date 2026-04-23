@@ -39,6 +39,7 @@ import {
   type UpcomingSession,
   type ActiveWeakness,
 } from '@/mocks/tutoringProgress.mock';
+import { APP_NOW } from '@/mocks/extraSessions.mock';
 import { useTeacherTasks } from '@/hooks/useTeacherTasks';
 import GlobalWeaknessActionButtons from './WeaknessActionButtons';
 import type { FlashcardSet } from '@/types/flashcard';
@@ -101,8 +102,7 @@ function formatTime(iso: string): string {
 
 function formatDayLabel(iso: string): string {
   const d = new Date(iso);
-  const now = new Date();
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const today = new Date(APP_NOW.getFullYear(), APP_NOW.getMonth(), APP_NOW.getDate());
   const target = new Date(d.getFullYear(), d.getMonth(), d.getDate());
   const diff = Math.floor((target.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
   if (diff === 0) return 'Heute';
@@ -310,9 +310,11 @@ export default function TutoringProgressScreen({
   const teacherTasks = useTeacherTasks();
   // masteryMap removed – Themenübersicht was removed
   const warmupQuestions = MOCK_WARMUP;
+  // Use APP_NOW (mock universe anchor) so the "Bevorstehende Sitzungen" list
+  // stays populated regardless of real-world clock drift. Real-time filtering
+  // caused the list to go empty as the real clock advanced past the mocks.
   const upcomingSessions = React.useMemo(() => {
-    const now = new Date();
-    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const todayStart = new Date(APP_NOW.getFullYear(), APP_NOW.getMonth(), APP_NOW.getDate());
     return MOCK_UPCOMING_SESSIONS
       .filter(s => new Date(s.date) >= todayStart)
       .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());

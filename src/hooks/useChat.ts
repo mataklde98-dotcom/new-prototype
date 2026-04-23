@@ -2,7 +2,7 @@
 // React Hook für Chat State Management
 
 import { useState, useEffect, useRef, useCallback, useLayoutEffect } from 'react';
-import { chatService } from '@/services/chatService';
+import { chatService, reactionStore } from '@/services/chatService';
 import type { ChatMessage, ChatRoom, ChatAttachment } from '@/mocks/chatMocks';
 
 export function useChat(roomId?: string) {
@@ -53,8 +53,10 @@ export function useChat(roomId?: string) {
       const newMessage = await chatService.sendMessage(roomId, text, type, attachments);
       setMessages(prev => [...prev, newMessage]);
 
-      // Simulate teacher response after a delay (for demo purposes)
-      if (Math.random() > 0.5) {
+      // Simulate teacher response after a delay (for demo purposes).
+      // Skipped for group rooms — group replies stay deterministic via mocks.
+      const isGroup = roomId.startsWith('g');
+      if (!isGroup && Math.random() > 0.5) {
         setTimeout(() => {
           setIsTyping(true);
           setTimeout(() => {
@@ -102,6 +104,25 @@ export function useChat(roomId?: string) {
     );
   }, []);
 
+  // Toggle a reaction on a message (optimistic + subscription-driven refresh).
+  // Pass the current message's reactions as seed so mock-seeded reactions
+  // survive a user's first toggle on that message.
+  const toggleReaction = useCallback((messageId: string, emoji: string) => {
+    if (!roomId) return;
+    const msg = messages.find((m) => m.id === messageId);
+    chatService.toggleReaction(roomId, messageId, emoji, 'student', msg?.reactions);
+  }, [roomId, messages]);
+
+  // Refresh messages when reactions change so seeded reactions stay intact
+  // and newly added/removed ones appear live.
+  useEffect(() => {
+    if (!roomId) return;
+    const unsubscribe = reactionStore.subscribe(() => {
+      chatService.getMessages(roomId).then(setMessages).catch(() => {});
+    });
+    return unsubscribe;
+  }, [roomId]);
+
   // Scroll to bottom of messages – returns the fn, component decides when to call
   const scrollToBottom = useCallback((instant?: boolean) => {
     if (!messagesEndRef.current) return;
@@ -110,22 +131,24 @@ export function useChat(roomId?: string) {
     );
   }, []);
 
-  // Auto-scroll on new messages
-  // useLayoutEffect fires BEFORE the browser paints → no visible jump
+  // Auto-scroll ONLY when message count grows (new message arrived).
+  // Reaction updates also replace the messages array, so we must not scroll
+  // on every array change — that's what caused the chat to jump to bottom
+  // every time a user reacted to a message.
   useLayoutEffect(() => {
     if (messages.length === 0) return;
-    const wasEmpty = prevMessageCountRef.current === 0;
-    prevMessageCountRef.current = messages.length;
+    const prev = prevMessageCountRef.current;
+    const curr = messages.length;
+    prevMessageCountRef.current = curr;
 
-    if (wasEmpty) {
-      // Initial load → instant scroll before paint, user never sees top
+    if (prev === 0) {
       messagesEndRef.current?.scrollIntoView({ behavior: 'instant' as ScrollBehavior });
-    } else {
-      // New message → smooth scroll (use rAF so it doesn't block)
+    } else if (curr > prev) {
       requestAnimationFrame(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
       });
     }
+    // Same count → likely a reaction refresh; do NOT scroll.
   }, [messages]);
 
   // Load initial data
@@ -153,6 +176,7 @@ export function useChat(roomId?: string) {
     sendMessage,
     markAsRead,
     clearUnread,
+    toggleReaction,
     scrollToBottom,
   };
 }
