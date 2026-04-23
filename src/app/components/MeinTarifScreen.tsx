@@ -14,9 +14,11 @@ interface MeinTarifScreenProps {
   tutoringActive?: boolean;
   /** When true, skip portal + own animation (external transition handles it) */
   externalTransition?: boolean;
+  /** Opens the Credits consumption history screen. */
+  onOpenCreditHistory?: () => void;
 }
 
-export default function MeinTarifScreen({ onClose, tutoringActive = false, externalTransition = false }: MeinTarifScreenProps) {
+export default function MeinTarifScreen({ onClose, tutoringActive = false, externalTransition = false, onOpenCreditHistory }: MeinTarifScreenProps) {
   // Animation state (mobile portal mode)
   const [animationState, setAnimationState] = useState<'entering' | 'active' | 'exiting'>('entering');
 
@@ -290,6 +292,29 @@ export default function MeinTarifScreen({ onClose, tutoringActive = false, exter
               Deine kostenlosen Credits (Referral + Aktivitäten) verfallen nicht und bleiben erhalten. Bei deiner nächsten Zahlung kommen deine monatlichen Plan-Credits oben drauf.
             </p>
           </div>
+
+          {/* Part 5: Credits-Verlauf Link */}
+          {onOpenCreditHistory && (
+            <button
+              onClick={onOpenCreditHistory}
+              className="w-full flex items-center gap-3 px-4 py-3 rounded-xl mt-2 active:scale-[0.985] transition-transform"
+              style={{
+                background: 'rgba(255,255,255,0.03)',
+                border: '1px solid rgba(255,255,255,0.06)',
+                WebkitTapHighlightColor: 'transparent',
+              }}
+            >
+              <div className="flex-1 min-w-0 text-left">
+                <p className="font-['Poppins:SemiBold',sans-serif] text-[13px] text-white/85 leading-tight">
+                  Credits-Verbrauch ansehen
+                </p>
+                <p className="font-['Poppins:Regular',sans-serif] text-[11px] text-white/35 leading-tight mt-0.5">
+                  Wofür du deine Credits verbraucht hast
+                </p>
+              </div>
+              <ChevronRight className="w-4 h-4 text-white/35 flex-shrink-0" strokeWidth={2} />
+            </button>
+          )}
         </div>
 
         {/* ===== BEREICH 3: Freunde einladen ===== */}

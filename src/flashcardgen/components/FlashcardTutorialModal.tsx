@@ -417,6 +417,16 @@ export default function FlashcardTutorialModal({ isOpen, onClose }: FlashcardTut
 
             {/* Footer with Navigation */}
             <div className="p-6 pt-4 border-t border-white/[0.08] flex-shrink-0">
+              {/* Skip tutorial — only before the last step */}
+              {currentStep < totalSteps - 1 && (
+                <button
+                  onClick={onClose}
+                  className="mx-auto mb-3 block font-['Poppins:Medium',sans-serif] text-[12px] text-white/35 hover:text-white/60 active:text-white/65 transition-colors"
+                  style={{ WebkitTapHighlightColor: 'transparent' }}
+                >
+                  Überspringen
+                </button>
+              )}
               {/* Progress Dots */}
               <div className="flex items-center justify-center gap-2 mb-4">
                 {tutorialSteps.map((_, index) => (

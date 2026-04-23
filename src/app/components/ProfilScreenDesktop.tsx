@@ -27,9 +27,10 @@ interface ProfilScreenDesktopProps {
   onOpenLernanalyse?: () => void;
   onOpenTutoringActivation?: () => void;
   onOpenTutoringProgress?: () => void;
+  onOpenCreditHistory?: () => void;
 }
 
-export default React.memo(function ProfilScreenDesktop({ onClose, onLogout, showKlassenarbeiten, onShowKlassenarbeitenChange, onOpenLernanalyse, onOpenTutoringActivation, onOpenTutoringProgress }: ProfilScreenDesktopProps) {
+export default React.memo(function ProfilScreenDesktop({ onClose, onLogout, showKlassenarbeiten, onShowKlassenarbeitenChange, onOpenLernanalyse, onOpenTutoringActivation, onOpenTutoringProgress, onOpenCreditHistory }: ProfilScreenDesktopProps) {
   // Use UserContext for centralized state
   const { profileImage, setProfileImage, userName, accountData, setAccountData, tutoringStatus, setTutoringStatus, tutoringRequestData } = useUser();
   
@@ -618,6 +619,10 @@ export default React.memo(function ProfilScreenDesktop({ onClose, onLogout, show
           onClose={() => setShowMeinTarif(false)}
           externalTransition={true}
           tutoringActive={tutoringStatus === 'activated'}
+          onOpenCreditHistory={onOpenCreditHistory ? () => {
+            setShowMeinTarif(false);
+            setTimeout(() => onOpenCreditHistory(), 50);
+          } : undefined}
         />
       )}
 

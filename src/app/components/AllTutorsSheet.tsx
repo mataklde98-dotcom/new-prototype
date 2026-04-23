@@ -155,18 +155,6 @@ export default function AllTutorsSheet({ isOpen, onClose, onOpenTeacherProfile }
                   {/* removed rating and total lessons */}
                 </div>
 
-                {/* Online indicator text */}
-                {tutor.isOnline && (
-                  <span
-                    className="font-['Poppins:Medium',sans-serif] text-[10px] px-2 py-0.5 rounded-full flex-shrink-0"
-                    style={{
-                      background: 'rgba(0,212,170,0.08)',
-                      color: '#00D4AA',
-                    }}
-                  >
-                    Online
-                  </span>
-                )}
               </button>
             ))}
           </div>

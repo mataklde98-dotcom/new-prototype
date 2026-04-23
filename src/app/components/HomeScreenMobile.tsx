@@ -60,6 +60,7 @@ interface HomeScreenMobileProps {
   onShowKlassenarbeiten?: () => void;
   onShowSchulaufgaben?: () => void;
   onOpenStreakScreen?: () => void;
+  onOpenCreditHistory?: () => void;
   allSets?: FlashcardSet[];
   onOpenFlashcardSet?: (set: FlashcardSet) => void;
   onCompletedExamClick?: (examId: string) => void;
@@ -87,6 +88,7 @@ export default React.memo(function HomeScreenMobile({
   onShowKlassenarbeiten,
   onShowSchulaufgaben,
   onOpenStreakScreen,
+  onOpenCreditHistory,
   allSets = [],
   onOpenFlashcardSet,
   onCompletedExamClick,
@@ -1043,7 +1045,7 @@ export default React.memo(function HomeScreenMobile({
           <LernStreakSection onClick={onOpenStreakScreen} />
 
           {/* Promotional Banner */}
-          <ReferralBannerHome />
+          <ReferralBannerHome onOpenCreditHistory={onOpenCreditHistory} />
         </div>
       </div>
 
@@ -1068,7 +1070,7 @@ export default React.memo(function HomeScreenMobile({
 });
 
 // ===== REFERRAL BANNER (matches MeinTarif design) =====
-function ReferralBannerHome() {
+function ReferralBannerHome({ onOpenCreditHistory }: { onOpenCreditHistory?: () => void }) {
   const [linkCopied, setLinkCopied] = useState(false);
   const referrals = 2;
   const REFERRALS_NEEDED = 3;
@@ -1229,10 +1231,11 @@ function ReferralBannerHome() {
           </div>
 
           <button
-            className="font-['Poppins:Medium',sans-serif] text-[12px] text-white/30 active:text-white/50 transition-colors flex items-center gap-1"
+            onClick={onOpenCreditHistory}
+            className="font-['Poppins:Medium',sans-serif] text-[12px] text-white/45 active:text-white/70 transition-colors flex items-center gap-1"
             style={{ WebkitTapHighlightColor: 'transparent' }}
           >
-            Details anzeigen
+            Verlauf ansehen
             <ChevronRight className="w-3 h-3" />
           </button>
         </div>

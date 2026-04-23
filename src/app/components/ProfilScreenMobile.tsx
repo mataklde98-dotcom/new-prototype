@@ -32,6 +32,7 @@ interface ProfilScreenMobileProps {
   onOpenTutoringActivation?: () => void;
   onOpenTutoringProgress?: () => void;
   onOpenExtraSessions?: () => void;
+  onOpenCreditHistory?: () => void;
 }
 
 export default React.memo(function ProfilScreenMobile({
@@ -47,6 +48,7 @@ export default React.memo(function ProfilScreenMobile({
   onOpenTutoringActivation,
   onOpenTutoringProgress,
   onOpenExtraSessions,
+  onOpenCreditHistory,
 }: ProfilScreenMobileProps) {
   // Use UserContext for centralized state
   const { profileImage, setProfileImage, userName, accountData, tutoringStatus, setTutoringStatus, tutoringRequestData, extraSessions } = useUser();
@@ -596,6 +598,10 @@ export default React.memo(function ProfilScreenMobile({
         <MeinTarifScreen
           onClose={() => setShowMeinTarif(false)}
           tutoringActive={tutoringStatus === 'activated'}
+          onOpenCreditHistory={onOpenCreditHistory ? () => {
+            setShowMeinTarif(false);
+            setTimeout(() => onOpenCreditHistory(), 50);
+          } : undefined}
         />
       )}
 

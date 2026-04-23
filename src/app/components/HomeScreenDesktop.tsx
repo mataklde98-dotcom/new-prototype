@@ -50,6 +50,7 @@ interface HomeScreenDesktopProps {
   refreshCompletedExams?: number;
   onGenerateForWeakness?: (context: any) => void;
   onStartExamSimulation?: (context: any) => void;
+  onOpenCreditHistory?: () => void;
 }
 
 const HomeScreenDesktop = React.memo(function HomeScreenDesktop({ 
@@ -66,6 +67,7 @@ const HomeScreenDesktop = React.memo(function HomeScreenDesktop({
   refreshCompletedExams,
   onGenerateForWeakness,
   onStartExamSimulation,
+  onOpenCreditHistory,
 }: HomeScreenDesktopProps) {
   const [selectedDate, setSelectedDate] = useState<{ day: string; date: string; fullDate: Date; isManual?: boolean } | null>(null);
   const [showFilterPopup, setShowFilterPopup] = useState(false);
@@ -608,7 +610,7 @@ const HomeScreenDesktop = React.memo(function HomeScreenDesktop({
       <LernStreakSectionDesktop />
 
       {/* Promotional Banner */}
-      <ReferralBannerDesktop />
+      <ReferralBannerDesktop onOpenCreditHistory={onOpenCreditHistory} />
     </div>
   );
 });
@@ -619,7 +621,7 @@ export default HomeScreenDesktop;
 const INVITE_URL = 'https://sostudy.de/invite/abc123';
 const INVITE_TEXT = 'Lerne smarter mit SoStudy – KI-gestützte Lernhilfe für Schüler! Nutze meinen Einladungslink:';
 
-function ReferralBannerDesktop() {
+function ReferralBannerDesktop({ onOpenCreditHistory }: { onOpenCreditHistory?: () => void }) {
   const [linkCopied, setLinkCopied] = React.useState(false);
   const referrals = 2;
   const REFERRALS_NEEDED = 3;
@@ -772,9 +774,10 @@ function ReferralBannerDesktop() {
           </div>
 
           <button
-            className="font-['Poppins:Medium',sans-serif] text-[12px] text-white/30 hover:text-white/50 transition-colors flex items-center gap-1"
+            onClick={onOpenCreditHistory}
+            className="font-['Poppins:Medium',sans-serif] text-[12px] text-white/45 hover:text-white/70 transition-colors flex items-center gap-1"
           >
-            Details anzeigen
+            Verlauf ansehen
             <ChevronRight className="w-3 h-3" />
           </button>
         </div>

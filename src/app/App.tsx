@@ -30,6 +30,7 @@ import TutoringSessionDetailScreen from "./components/TutoringSessionDetailScree
 import TutoringExplainScreen from "./components/TutoringExplainScreen";
 import ExtraSessionsScreen from "./components/ExtraSessionScreen";
 import LernStreakScreen from "./components/LernStreakScreen";
+import CreditHistoryScreen from "./components/CreditHistoryScreen";
 import OnboardingTrialPopup from "./components/OnboardingTrialPopup";
 import AuthWrapper from "@/app/components/AuthWrapper";
 import { ScreenManager } from "@/app/components/ScreenManager";
@@ -269,6 +270,7 @@ function AppContent({ userData, onLogout }: { userData: any; onLogout: () => voi
     showHomeBottomSheet: homeBottomSheetOpen,
     showExtraSessions: navigation.showExtraSessions,
     showLernStreak: navigation.showLernStreak,
+    showCreditHistory: navigation.showCreditHistory,
     onToggleSidebar: uiState.toggleSidebar,
     onHomeClick: navigation.navigateToHome,
     onMyFlashcardsClick: () => {
@@ -547,6 +549,7 @@ function AppContent({ userData, onLogout }: { userData: any; onLogout: () => voi
         }}
         onOpenTutoringActivation={() => navigation.setShowTutoringActivation(true)}
         onOpenTutoringProgress={() => navigation.setShowTutoringProgress(true)}
+        onOpenCreditHistory={() => navigation.setShowCreditHistory(true)}
       />
 
       {/* 🚀 OPTIMIZED SCREEN MANAGER - Only renders active screen! */}
@@ -590,6 +593,7 @@ function AppContent({ userData, onLogout }: { userData: any; onLogout: () => voi
                    }}
                    onBottomSheetChange={setHomeBottomSheetOpen}
                    onOpenExtraSession={(id) => setPendingExtraSessionId(id)}
+                   onOpenCreditHistory={() => navigation.setShowCreditHistory(true)}
                  />
               ),
             },
@@ -625,6 +629,7 @@ function AppContent({ userData, onLogout }: { userData: any; onLogout: () => voi
                   onOpenTutoringActivation={() => navigation.setShowTutoringActivation(true)}
                   onOpenTutoringProgress={() => navigation.setShowTutoringProgress(true)}
                   onOpenExtraSessions={() => navigation.setShowExtraSessions(true)}
+                  onOpenCreditHistory={() => navigation.setShowCreditHistory(true)}
                 />
               ),
             },
@@ -1008,6 +1013,32 @@ function AppContent({ userData, onLogout }: { userData: any; onLogout: () => voi
             externalTransition
           />
         </MobileRouteTransition>
+      )}
+
+      {/* Credit History Screen - Mobile overlay */}
+      {isMobile && (
+        <MobileRouteTransition isVisible={navigation.showCreditHistory}>
+          <CreditHistoryScreen
+            onClose={() => navigation.setShowCreditHistory(false)}
+            isMobile
+            externalTransition
+          />
+        </MobileRouteTransition>
+      )}
+
+      {/* Credit History Screen - Desktop full-screen overlay */}
+      {!isMobile && navigation.showCreditHistory && (
+        <div
+          className="fixed inset-0 z-[9000] overflow-y-auto"
+          style={{ backgroundColor: '#0a0a0a' }}
+        >
+          <div className="mx-auto max-w-[880px] h-full">
+            <CreditHistoryScreen
+              onClose={() => navigation.setShowCreditHistory(false)}
+              isMobile={false}
+            />
+          </div>
+        </div>
       )}
 
       {/* Create Own Set Modal */}

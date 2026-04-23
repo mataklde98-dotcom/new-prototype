@@ -111,6 +111,7 @@ interface ContentRouterProps {
   onMobileTabChange: (tab: string) => void;
   onOpenTutoringActivation?: () => void;
   onOpenTutoringProgress?: () => void;
+  onOpenCreditHistory?: () => void;
   onTabChange: (tab: string) => void;
   onSubjectChange: (subject: string) => void;
   onKategorieChange: (kategorie: string) => void;
@@ -304,6 +305,7 @@ export default function ContentRouter(props: ContentRouterProps) {
           refreshCompletedExams={refreshCompletedExams}
           onGenerateForWeakness={onGenerateForWeakness}
           onStartExamSimulation={onStartExamForWeakness}
+          onOpenCreditHistory={props.onOpenCreditHistory}
         />
       </DesktopContentWrapper>
     );
@@ -356,6 +358,7 @@ export default function ContentRouter(props: ContentRouterProps) {
           onOpenLernanalyse={onOpenLernanalyse}
           onOpenTutoringActivation={props.onOpenTutoringActivation}
           onOpenTutoringProgress={props.onOpenTutoringProgress}
+          onOpenCreditHistory={props.onOpenCreditHistory}
         />
       </DesktopContentWrapper>
     );
