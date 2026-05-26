@@ -27,6 +27,8 @@ import { identityService } from '@/services/identityService';
 import { familyService } from '@/services/familyService';
 import { generateInviteCode } from '@/mocks/family.mock';
 import type { SoStudyIdentity } from '@/types/identity';
+import { usePhoneOtp } from '@/hooks/usePhoneOtp';
+import { PhoneEntryFields, OtpEntryFields, PhoneVerifiedRow } from '@/app/components/onboarding/PhoneOtpFields';
 
 // ===================================================================
 // TYPES
@@ -651,15 +653,16 @@ function TutoringRequestFlow({
 }
 
 // ===================================================================
-// ELIGIBILITY-GATE (Phase 4 Klarname-Gate + Phase 5 Volljährigkeit & 4-Felder-Matrix)
-// Reihenfolge: Klarname (wenn leer) → Volljährigkeits-Toggle → Eltern-Matrix.
+// ELIGIBILITY-GATE (Volljährigkeit → 18+-Datenschritt / 4-Felder-Matrix)
+// Reihenfolge: Volljährigkeits-Toggle → bei 18+ der Daten-Schritt (Klarname + E-Mail +
+// verifiziertes Telefon, Änderung 4); bei minderjährig die Eltern-Matrix.
 // 4-Felder-Matrix = Alter (volljährig/minderjährig) × Familienverknüpfung (mit/ohne Elternkonto):
-//   volljährig                → selbst aktivierbar (mit/ohne Elternkonto)
+//   volljährig                → Klarname/E-Mail/Telefon erfassen, dann selbst aktivierbar
 //   minderjährig + Elternkonto → Eltern-Einwilligung (✓ weiter / ⏳ ausstehend)
-//   minderjährig + kein Konto  → Eltern-Einladung erstellen
+//   minderjährig + kein Konto  → Eltern per E-Mail einladen (Änderung 7)
 // Erst nach bestandenem Gate wird der eigentliche Request-Flow gerendert.
 // ===================================================================
-type GateStep = 'klarname' | 'age' | 'consent';
+type GateStep = 'age' | 'adultData' | 'consent';
 
 function GateShell({ onBack, children }: { onBack: () => void; children: React.ReactNode }) {
   return (
@@ -700,22 +703,39 @@ export default function TutoringActivationFlow(props: TutoringActivationFlowProp
   const [loaded, setLoaded] = useState(false);
   const [eligible, setEligible] = useState(false);
   const [identity, setIdentity] = useState<SoStudyIdentity | null>(null);
-  const [gateStep, setGateStep] = useState<GateStep>('klarname');
+  const [gateStep, setGateStep] = useState<GateStep>('age');
 
-  const [nameInput, setNameInput] = useState('');
   const [busy, setBusy] = useState(false);
   const [copied, setCopied] = useState(false);
   const [inviteCode, setInviteCode] = useState('');
   const [consentRequested, setConsentRequested] = useState(false);
 
+  // 18+-Datenschritt (Änderung 4): eigener Klarname + Kontaktdaten für die Nachhilfe.
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [email, setEmail] = useState('');
+  const phoneOtp = usePhoneOtp();
+
+  // Für die Selbst-Aktivierung (18+) nötige Nachhilfe-Kontaktdaten bereits vollständig?
+  const adultDataComplete = (id: SoStudyIdentity) =>
+    !!id.real_name.trim() && !!id.email && !!id.phone;
+
   useEffect(() => {
     const id = identityService.ensureIdentity();
     setIdentity(id);
     if (!id) { setEligible(true); setLoaded(true); return; }
-    setNameInput(id.real_name || '');
-    if (!id.real_name.trim()) setGateStep('klarname');
-    else if (!id.volljaehrig) setGateStep('age');
-    else setEligible(true);
+    // Klarname-Felder für den 18+-Datenschritt vorbefüllen.
+    const [vn, ...rest] = (id.real_name || '').trim().split(' ');
+    setFirstName(vn || '');
+    setLastName(rest.join(' '));
+    setEmail(id.email || '');
+    if (id.volljaehrig) {
+      // Bereits als volljährig erklärt → bei fehlenden Kontaktdaten direkt zum Datenschritt.
+      if (adultDataComplete(id)) setEligible(true);
+      else setGateStep('adultData');
+    } else {
+      setGateStep('age');
+    }
     setLoaded(true);
   }, []);
 
@@ -730,55 +750,36 @@ export default function TutoringActivationFlow(props: TutoringActivationFlowProp
     setTimeout(() => setCopied(false), 1600);
   };
 
-  const submitName = async () => {
-    if (nameInput.trim().length < 2) return;
-    setBusy(true);
-    const updated = await identityService.setRealName(nameInput);
-    setBusy(false);
-    if (updated) {
-      setIdentity(updated);
-      if (!updated.volljaehrig) setGateStep('age');
-      else setEligible(true);
-    }
-  };
-
   const answerAge = async (isAdult: boolean) => {
     setBusy(true);
     const updated = await identityService.setVolljaehrig(isAdult);
     setBusy(false);
     if (updated) {
       setIdentity(updated);
-      if (isAdult) setEligible(true);
-      else setGateStep('consent');
+      if (isAdult) {
+        // 18+: Klarname/E-Mail/Telefon erfassen, falls noch nicht vorhanden (Änderung 4).
+        if (adultDataComplete(updated)) setEligible(true);
+        else setGateStep('adultData');
+      } else {
+        setGateStep('consent');
+      }
     }
   };
 
-  // ----- KLARNAME-GATE -----
-  if (gateStep === 'klarname') {
-    return (
-      <GateShell onBack={onClose}>
-        <div className="w-14 h-14 rounded-2xl flex items-center justify-center mb-5" style={{ background: 'rgba(0,184,148,0.12)' }}>
-          <UserIcon className="w-7 h-7" style={{ color: '#00B894' }} />
-        </div>
-        <StepHeader
-          title="Wie heißt du wirklich?"
-          subtitle={`Für die Nachhilfe brauchen wir deinen echten Namen (für Vertrag & Tutor:in). In der App bleibst du sonst „${identity.display_name}".`}
-        />
-        <input
-          autoFocus
-          value={nameInput}
-          onChange={(e) => setNameInput(e.target.value)}
-          placeholder="Vor- und Nachname"
-          onKeyDown={(e) => e.key === 'Enter' && submitName()}
-          className="w-full mb-6 px-5 py-4 rounded-2xl bg-white/[0.05] border border-white/[0.10] text-white text-[16px] font-['Poppins:Medium',sans-serif] outline-none focus:border-[#009379] transition-colors"
-          style={{ fontSize: 16 }}
-        />
-        <Button onClick={submitName} disabled={busy || nameInput.trim().length < 2}>
-          {busy ? 'Speichern…' : 'Weiter'}
-        </Button>
-      </GateShell>
-    );
-  }
+  const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
+  const adultFormValid =
+    firstName.trim().length >= 2 && lastName.trim().length >= 1 && emailValid && phoneOtp.verified;
+
+  // 18+-Datenschritt absenden: Klarname + E-Mail + verifiziertes Telefon speichern (ersetzt NICHT
+  // den Spitznamen) und in den Request-Flow wechseln.
+  const submitAdultData = async () => {
+    if (!adultFormValid || busy) return;
+    setBusy(true);
+    await identityService.setRealName(`${firstName.trim()} ${lastName.trim()}`);
+    const updated = await identityService.setContact({ email: email.trim(), phone: phoneOtp.fullPhone });
+    setBusy(false);
+    if (updated) { setIdentity(updated); setEligible(true); }
+  };
 
   // ----- VOLLJÄHRIGKEITS-TOGGLE -----
   if (gateStep === 'age') {
@@ -807,6 +808,78 @@ export default function TutoringActivationFlow(props: TutoringActivationFlowProp
             disabled={busy}
           />
         </div>
+      </GateShell>
+    );
+  }
+
+  // ----- 18+-DATENSCHRITT: Klarname + Kontakt + Telefon-OTP (Änderung 4) -----
+  if (gateStep === 'adultData') {
+    return (
+      <GateShell onBack={() => setGateStep('age')}>
+        <div className="w-14 h-14 rounded-2xl flex items-center justify-center mb-5" style={{ background: 'rgba(0,184,148,0.12)' }}>
+          <UserIcon className="w-7 h-7" style={{ color: '#00B894' }} />
+        </div>
+        <StepHeader
+          title="Für die Nachhilfe brauchen wir noch ein paar Daten"
+          subtitle="Nur für die Nachhilfe verwendet."
+        />
+
+        <div className="space-y-3 mb-5">
+          <input
+            autoFocus
+            value={firstName}
+            onChange={(e) => setFirstName(e.target.value)}
+            placeholder="Vorname"
+            className="w-full px-5 py-3.5 rounded-2xl bg-white/[0.05] border border-white/[0.10] text-white font-['Poppins:Medium',sans-serif] outline-none focus:border-[#009379] transition-colors"
+            style={{ fontSize: 16 }}
+          />
+          <input
+            value={lastName}
+            onChange={(e) => setLastName(e.target.value)}
+            placeholder="Nachname"
+            className="w-full px-5 py-3.5 rounded-2xl bg-white/[0.05] border border-white/[0.10] text-white font-['Poppins:Medium',sans-serif] outline-none focus:border-[#009379] transition-colors"
+            style={{ fontSize: 16 }}
+          />
+          <input
+            type="email"
+            inputMode="email"
+            autoCapitalize="none"
+            autoCorrect="off"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="E-Mail"
+            className="w-full px-5 py-3.5 rounded-2xl bg-white/[0.05] border border-white/[0.10] text-white font-['Poppins:Medium',sans-serif] outline-none focus:border-[#009379] transition-colors"
+            style={{ fontSize: 16 }}
+          />
+        </div>
+
+        {/* Telefonnummer (Pflicht, per SMS-OTP verifiziert) */}
+        <div className="mb-6">
+          <label className="font-['Poppins:Medium',sans-serif] text-[13px] text-white/60 px-1 mb-2 block">
+            Telefonnummer
+          </label>
+          {phoneOtp.stage === 'verified' ? (
+            <PhoneVerifiedRow otp={phoneOtp} />
+          ) : phoneOtp.stage === 'verify' ? (
+            <div className="space-y-3">
+              <OtpEntryFields otp={phoneOtp} />
+              <Button onClick={phoneOtp.verify} disabled={phoneOtp.otp.length !== 6 || phoneOtp.busy}>
+                {phoneOtp.busy ? 'Prüfen…' : 'Code bestätigen'}
+              </Button>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <PhoneEntryFields otp={phoneOtp} />
+              <Button onClick={phoneOtp.sendCode} disabled={!phoneOtp.phoneValid || phoneOtp.busy}>
+                {phoneOtp.busy ? 'Senden…' : 'Code per SMS senden'}
+              </Button>
+            </div>
+          )}
+        </div>
+
+        <Button onClick={submitAdultData} disabled={!adultFormValid || busy}>
+          {busy ? 'Speichern…' : 'Weiter zur Fächer-Auswahl'}
+        </Button>
       </GateShell>
     );
   }

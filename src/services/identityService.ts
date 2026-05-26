@@ -270,6 +270,25 @@ export const identityService = {
   },
 
   /**
+   * Setzt E-Mail + (verifizierte) Telefonnummer für den 18+-Schüler vor der Nachhilfe-Anfrage
+   * (Änderung 4). Ersetzt NICHT den Spitznamen — nur die Nachhilfe-/Kontaktfelder.
+   */
+  setContact: async (
+    data: { email?: string; phone?: string }
+  ): Promise<SoStudyIdentity | null> => {
+    await delay(150);
+    const current = identityService.getIdentity();
+    if (!current) return null;
+    const updated: SoStudyIdentity = {
+      ...current,
+      email: data.email ?? current.email,
+      phone: data.phone ?? current.phone,
+    };
+    persistSession(updated, false);
+    return updated;
+  },
+
+  /**
    * Setzt den Spitznamen (display_name). Genutzt vom Spitzname-Schritt beim ersten Login
    * eines von Eltern angelegten Kindes (Modus A), das seinen Namen selbst vergibt.
    */
