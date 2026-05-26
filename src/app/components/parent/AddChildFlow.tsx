@@ -264,15 +264,25 @@ export default function AddChildFlow({ familyId, onDone, onCancel, allowSkip }: 
             eintragen oder dein Kind ergänzt sie später selbst beim ersten Login.
           </p>
 
+          {/* Gestaffelt: Schulform erscheint erst nach Bundesland, Klassenstufe erst nach Schulform.
+              So sieht man pro Schritt nur eine Auswahl — minimalistisch statt überladen. */}
           <Field label="Bundesland">
             <ChoiceList options={BUNDESLAENDER} value={childBundesland} onChange={setChildBundesland} columns={2} />
           </Field>
-          <Field label="Schulform">
-            <ChoiceList options={SCHOOL_TYPES} value={childSchool} onChange={setChildSchool} columns={2} />
-          </Field>
-          <Field label="Klassenstufe">
-            <ChoiceList options={GRADES} value={childGrade} onChange={setChildGrade} columns={3} />
-          </Field>
+          {childBundesland && (
+            <div className="animate-[onbStepIn_0.3s_ease-out]">
+              <Field label="Schulform">
+                <ChoiceList options={SCHOOL_TYPES} value={childSchool} onChange={setChildSchool} columns={2} />
+              </Field>
+            </div>
+          )}
+          {childBundesland && childSchool && (
+            <div className="animate-[onbStepIn_0.3s_ease-out]">
+              <Field label="Klassenstufe">
+                <ChoiceList options={GRADES} value={childGrade} onChange={setChildGrade} columns={3} />
+              </Field>
+            </div>
+          )}
           {error && <ErrorText>{error}</ErrorText>}
         </div>
       </OnboardingShell>
