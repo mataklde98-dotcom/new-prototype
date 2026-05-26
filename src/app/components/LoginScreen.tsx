@@ -10,7 +10,11 @@ import { projectId, publicAnonKey } from '/utils/supabase/info';
 import SoStudyLogo from './SoStudyLogo';
 import type { SocialAuthInfo } from './AuthWrapper';
 import { identityService } from '@/services/identityService';
+import { findIdentityById, getDefaultIdentities } from '@/mocks/identity.mock';
 import { BRAND, MascotAvatar, GoogleIcon, AppleIcon } from './onboarding/OnboardingShared';
+
+// Voll ausgestatteter Schüler-Mock — Social-Login (Apple/Google) meldet im Prototyp diesen an.
+const MOCK_STUDENT_ID = 'user_alexanderbaum_mock_123';
 
 interface LoginScreenProps {
   onLoginSuccess: (userData: any) => void;
@@ -63,34 +67,17 @@ const LoginScreen = React.memo(function LoginScreen({ onLoginSuccess, onSwitchTo
     setError('');
 
     try {
-      // Simulate OAuth flow delay
+      // OAuth-Flow simulieren
       await new Promise(resolve => setTimeout(resolve, 1200));
 
-      const mockSocialEmail = provider === 'google'
-        ? 'alexander.baum@gmail.com'
-        : 'alexander.baum@icloud.com';
-      const mockFirstName = 'Alexander';
-      const mockLastName = 'Baum';
-
-      // Check if user already exists (mock check)
-      const existingUser = localStorage.getItem('userData');
-      if (existingUser) {
-        const parsed = JSON.parse(existingUser);
-        if (parsed.email === mockSocialEmail || parsed.socialProvider === provider) {
-          // Existing user → direct login
-          localStorage.setItem('isLoggedIn', 'true');
-          onLoginSuccess(parsed);
-          return;
-        }
-      }
-
-      // New user → redirect to register with social info
-      onSocialAuthNewUser({
-        provider,
-        email: mockSocialEmail,
-        firstName: mockFirstName,
-        lastName: mockLastName,
-      });
+      // Prototyp: Apple/Google = Schüler-Login → direkt in die App (Home). Es wird der voll
+      // ausgestattete Schüler-Mock angemeldet (Eltern nutzen den E-Mail-Login).
+      // establishSession schreibt vollständige userData (inkl. Spitzname) → kein Namens-/Daten-Gate.
+      const identity = findIdentityById(MOCK_STUDENT_ID) ?? getDefaultIdentities()[MOCK_STUDENT_ID];
+      if (!identity) throw new Error('Konto nicht gefunden');
+      identityService.establishSession(identity, false);
+      const stored = localStorage.getItem('userData');
+      onLoginSuccess(stored ? JSON.parse(stored) : identity);
     } catch (err: any) {
       setError(`${provider === 'google' ? 'Google' : 'Apple'} Anmeldung fehlgeschlagen`);
     } finally {
