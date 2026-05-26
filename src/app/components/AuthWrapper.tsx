@@ -9,6 +9,7 @@ import ParentOnboardingFlow from './parent/ParentOnboardingFlow';
 import NicknameClaimGate from './onboarding/NicknameClaimGate';
 import SchoolDataClaimGate from './onboarding/SchoolDataClaimGate';
 import AcceptInviteFlow from './onboarding/AcceptInviteFlow';
+import AcceptParentInviteFlow from './onboarding/AcceptParentInviteFlow';
 import { clearUserSession } from '@/lib/auth';
 
 // Social Auth info passed between screens
@@ -35,15 +36,19 @@ export default function AuthWrapper({ children }: AuthWrapperProps) {
   const [userData, setUserData] = useState<any>(null);
   // 'onboarding' = neuer Knowunity-Flow (Default-Einstieg). 'parentOnboarding' = Eltern-Pfad (E1–E8).
   // 'register' = alter Formular-Flow (Fallback).
-  const [authView, setAuthView] = useState<'login' | 'register' | 'onboarding' | 'parentOnboarding' | 'acceptInvite'>('onboarding');
+  const [authView, setAuthView] = useState<'login' | 'register' | 'onboarding' | 'parentOnboarding' | 'acceptInvite' | 'acceptParentInvite'>('onboarding');
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
   const [socialAuth, setSocialAuth] = useState<SocialAuthInfo | null>(null);
   // Token aus einem ?invite=<token>-Deep-Link (Kind öffnet die E-Mail-Einladung, Weg ①).
   const [inviteToken, setInviteToken] = useState<string | null>(null);
+  // Token aus einem ?parentinvite=<token>-Deep-Link (Eltern öffnen die Schüler-Einladung, Pfad 4).
+  const [parentInviteToken, setParentInviteToken] = useState<string | null>(null);
   
   // Check if user is already logged in
   useEffect(() => {
-    const invite = new URLSearchParams(window.location.search).get('invite');
+    const params = new URLSearchParams(window.location.search);
+    const invite = params.get('invite');
+    const parentInvite = params.get('parentinvite');
     const loggedIn = localStorage.getItem('isLoggedIn');
     const storedUserData = localStorage.getItem('userData');
 
@@ -54,6 +59,10 @@ export default function AuthWrapper({ children }: AuthWrapperProps) {
       // Kind öffnet eine E-Mail-Einladung (Weg ①) → direkt in den Annehmen-Flow.
       setInviteToken(invite);
       setAuthView('acceptInvite');
+    } else if (parentInvite) {
+      // Eltern öffnen die Schüler-Einladung (Pfad 4, Änderung 7) → Eltern-Annehmen-Flow.
+      setParentInviteToken(parentInvite);
+      setAuthView('acceptParentInvite');
     }
 
     setIsCheckingAuth(false);
@@ -122,6 +131,15 @@ export default function AuthWrapper({ children }: AuthWrapperProps) {
           token={inviteToken}
           onComplete={(u) => { clearInviteFromUrl(); handleRegisterSuccess(u); }}
           onInvalid={() => { clearInviteFromUrl(); setInviteToken(null); setAuthView('onboarding'); }}
+        />
+      );
+    }
+    if (authView === 'acceptParentInvite' && parentInviteToken) {
+      return (
+        <AcceptParentInviteFlow
+          token={parentInviteToken}
+          onComplete={(u) => { clearInviteFromUrl(); handleRegisterSuccess(u); }}
+          onInvalid={() => { clearInviteFromUrl(); setParentInviteToken(null); setAuthView('onboarding'); }}
         />
       );
     }

@@ -25,10 +25,12 @@ import type { TutoringPartner } from '@/mocks/tutoringPartners.mock';
 import Button from './Button';
 import { identityService } from '@/services/identityService';
 import { familyService } from '@/services/familyService';
-import { generateInviteCode } from '@/mocks/family.mock';
 import type { SoStudyIdentity } from '@/types/identity';
 import { usePhoneOtp } from '@/hooks/usePhoneOtp';
 import { PhoneEntryFields, OtpEntryFields, PhoneVerifiedRow } from '@/app/components/onboarding/PhoneOtpFields';
+import { parentInviteService } from '@/services/parentInviteService';
+import type { ParentInvite } from '@/mocks/parentInvites.mock';
+import { clearUserSession } from '@/lib/auth';
 
 // ===================================================================
 // TYPES
@@ -778,8 +780,14 @@ export default function TutoringActivationFlow(props: TutoringActivationFlowProp
 
   const [busy, setBusy] = useState(false);
   const [copied, setCopied] = useState(false);
-  const [inviteCode, setInviteCode] = useState('');
   const [consentRequested, setConsentRequested] = useState(false);
+
+  // Eltern-Einladung (Pfad 4, Änderung 7): unter-18-Schüler ohne Familienkonto laden Eltern ein.
+  const [parentInvite, setParentInvite] = useState<ParentInvite | null>(null);
+  const [parentEmail, setParentEmail] = useState('');
+  const [parentMobile, setParentMobile] = useState('');
+  const [editingInviteEmail, setEditingInviteEmail] = useState(false);
+  const [inviteMsg, setInviteMsg] = useState('');
 
   // 18+-Datenschritt (Änderung 4): eigener Klarname + Kontaktdaten für die Nachhilfe.
   const [firstName, setFirstName] = useState('');
@@ -800,6 +808,7 @@ export default function TutoringActivationFlow(props: TutoringActivationFlowProp
     setFirstName(vn || '');
     setLastName(rest.join(' '));
     setEmail(id.email || '');
+    setParentInvite(parentInviteService.getActiveForStudent(id.userId)); // bestehende Eltern-Einladung (Pfad 4)
     if (id.volljaehrig) {
       // Bereits als volljährig erklärt → bei fehlenden Kontaktdaten direkt zum Datenschritt.
       if (adultDataComplete(id)) setEligible(true);
@@ -850,6 +859,62 @@ export default function TutoringActivationFlow(props: TutoringActivationFlowProp
     const updated = await identityService.setContact({ email: email.trim(), phone: phoneOtp.fullPhone });
     setBusy(false);
     if (updated) { setIdentity(updated); setEligible(true); }
+  };
+
+  // ----- Eltern-Einladung (Pfad 4, Änderung 7) -----
+  const inviteEmailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(parentEmail.trim());
+
+  const sendParentInvite = async () => {
+    if (!identity || !inviteEmailValid || busy) return;
+    setBusy(true);
+    const inv = await parentInviteService.create(identity.userId, parentEmail.trim(), parentMobile.trim() || undefined);
+    setBusy(false);
+    setParentInvite(inv);
+    setEditingInviteEmail(false);
+    setInviteMsg('');
+  };
+
+  const resendParentInvite = async () => {
+    if (!parentInvite || busy) return;
+    setBusy(true);
+    await parentInviteService.resend(parentInvite.token);
+    setBusy(false);
+    setInviteMsg(`Einladung erneut an ${parentInvite.parentEmail} gesendet.`);
+  };
+
+  const startChangeInviteEmail = () => {
+    if (!parentInvite) return;
+    setParentEmail(parentInvite.parentEmail);
+    setEditingInviteEmail(true);
+    setInviteMsg('');
+  };
+
+  const submitChangeInviteEmail = async () => {
+    if (!parentInvite || !inviteEmailValid || busy) return;
+    setBusy(true);
+    const inv = await parentInviteService.changeEmail(parentInvite.token, parentEmail.trim());
+    setBusy(false);
+    if (inv) setParentInvite(inv);
+    setEditingInviteEmail(false);
+  };
+
+  const withdrawParentInvite = async () => {
+    if (!parentInvite || busy) return;
+    setBusy(true);
+    await parentInviteService.withdraw(parentInvite.token);
+    setBusy(false);
+    setParentInvite(null);
+    setParentEmail('');
+    setParentMobile('');
+    setEditingInviteEmail(false);
+    setInviteMsg('');
+  };
+
+  // Demo: simuliert den Klick der Eltern auf den Magic-Link → Session verlassen, ?parentinvite öffnen.
+  const openInviteAsParent = () => {
+    if (!parentInvite) return;
+    clearUserSession();
+    window.location.href = `${window.location.pathname}?parentinvite=${encodeURIComponent(parentInvite.token)}`;
   };
 
   // ----- VOLLJÄHRIGKEITS-TOGGLE -----
@@ -1006,36 +1071,106 @@ export default function TutoringActivationFlow(props: TutoringActivationFlowProp
           <div className="w-14 h-14 rounded-2xl flex items-center justify-center mb-5" style={{ background: 'rgba(0,184,148,0.12)' }}>
             <Users className="w-7 h-7" style={{ color: '#00B894' }} />
           </div>
-          <StepHeader
-            title="Hol deine Eltern dazu"
-            subtitle="Weil du noch nicht volljährig bist, muss ein Elternteil zustimmen. Erstelle eine Einladung und gib sie deinen Eltern."
-          />
-          {inviteCode ? (
+
+          {!parentInvite || editingInviteEmail ? (
+            /* ----- Einladungs-Formular (E-Mail Pflicht + Mobil optional) ----- */
             <>
-              <button
-                onClick={() => copy(inviteCode)}
-                className="w-full rounded-3xl py-6 px-4 mb-4 active:scale-[0.98] transition-transform"
-                style={{ background: 'rgba(0,147,121,0.12)', border: '1.5px solid #009379' }}
-              >
-                <div className="font-['Poppins:Medium',sans-serif] text-[12px] text-white/50 mb-1">Einladungs-Code für deine Eltern</div>
-                <div className="font-['Poppins:Bold',sans-serif] text-[24px] tracking-[0.08em] text-white break-all">{inviteCode}</div>
-                <div className="flex items-center justify-center gap-1.5 mt-2 text-[13px] font-['Poppins:Medium',sans-serif] text-white/55">
-                  {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-                  {copied ? 'Kopiert!' : 'Tippen zum Kopieren'}
-                </div>
-              </button>
-              <div className="flex items-start gap-2.5 mb-6 px-4 py-3 rounded-xl" style={{ background: 'rgba(59,130,246,0.06)', border: '1px solid rgba(59,130,246,0.15)' }}>
-                <MailIcon className="w-4 h-4 flex-shrink-0 mt-0.5" style={{ color: 'rgba(96,165,250,0.8)' }} />
-                <p className="font-['Poppins:Regular',sans-serif] text-[12px] leading-relaxed" style={{ color: 'rgba(96,165,250,0.75)' }}>
-                  Deine Eltern erstellen mit diesem Code ein Familienkonto und geben die Nachhilfe frei. Danach kannst du sie aktivieren.
-                </p>
+              <StepHeader
+                title="Einwilligung deiner Eltern nötig"
+                subtitle="Für die Nachhilfe brauchen wir die Zustimmung deiner Eltern. Lade sie ein, mit dir ein Familienkonto zu erstellen."
+              />
+              <div className="space-y-3 mb-4">
+                <input
+                  type="email"
+                  inputMode="email"
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  autoFocus
+                  value={parentEmail}
+                  onChange={(e) => setParentEmail(e.target.value)}
+                  placeholder="E-Mail-Adresse deiner Eltern"
+                  className="w-full px-5 py-3.5 rounded-2xl bg-white/[0.05] border border-white/[0.10] text-white font-['Poppins:Medium',sans-serif] outline-none focus:border-[#009379] transition-colors"
+                  style={{ fontSize: 16 }}
+                />
+                {!editingInviteEmail && (
+                  <input
+                    type="tel"
+                    inputMode="tel"
+                    value={parentMobile}
+                    onChange={(e) => setParentMobile(e.target.value)}
+                    placeholder="Mobilnummer der Eltern (optional, für SMS)"
+                    className="w-full px-5 py-3.5 rounded-2xl bg-white/[0.05] border border-white/[0.10] text-white font-['Poppins:Medium',sans-serif] outline-none focus:border-[#009379] transition-colors"
+                    style={{ fontSize: 16 }}
+                  />
+                )}
               </div>
-              <button onClick={onClose} className="w-full text-center py-3 font-['Poppins:Medium',sans-serif] text-[14px] text-white/45 active:text-white/70 transition-colors">
-                Schließen
+              <Button
+                onClick={editingInviteEmail ? submitChangeInviteEmail : sendParentInvite}
+                disabled={!inviteEmailValid || busy}
+              >
+                {busy ? 'Senden…' : editingInviteEmail ? 'E-Mail aktualisieren' : 'Einladung senden'}
+              </Button>
+              <button
+                onClick={editingInviteEmail ? () => setEditingInviteEmail(false) : onClose}
+                className="w-full text-center py-3 mt-2 font-['Poppins:Medium',sans-serif] text-[14px] text-white/45 active:text-white/70 transition-colors"
+              >
+                {editingInviteEmail ? 'Abbrechen' : 'Schließen'}
               </button>
             </>
           ) : (
-            <Button onClick={() => setInviteCode(generateInviteCode())}>Einladung erstellen</Button>
+            /* ----- Status: Einladung gesendet — wartet auf Antwort ----- */
+            <>
+              <StepHeader
+                title="Einladung gesendet"
+                subtitle={`Einladung an ${parentInvite.parentEmail} gesendet — wartet auf Antwort.`}
+              />
+              <div
+                className="flex items-center gap-3 mb-4 px-4 py-3.5 rounded-2xl"
+                style={{ background: 'rgba(245,158,11,0.10)', border: '1px solid rgba(245,158,11,0.25)' }}
+              >
+                <Hourglass className="w-5 h-5 flex-shrink-0" style={{ color: '#fbbf24' }} />
+                <div className="min-w-0">
+                  <p className="font-['Poppins:Medium',sans-serif] text-[14px] text-white truncate">{parentInvite.parentEmail}</p>
+                  <p className="font-['Poppins:Regular',sans-serif] text-[12px] text-white/45">Wartet auf Antwort deiner Eltern</p>
+                </div>
+              </div>
+
+              {inviteMsg && (
+                <p className="font-['Poppins:Medium',sans-serif] text-[13px] mb-3 px-1" style={{ color: '#00B894' }}>{inviteMsg}</p>
+              )}
+
+              <div className="space-y-2 mb-2">
+                <Button onClick={resendParentInvite} disabled={busy}>{busy ? 'Senden…' : 'Erneut senden'}</Button>
+                <button
+                  onClick={startChangeInviteEmail}
+                  className="w-full text-center py-2.5 font-['Poppins:Medium',sans-serif] text-[14px] text-white/55 active:text-white/80 transition-colors"
+                >
+                  Andere E-Mail probieren
+                </button>
+                <button
+                  onClick={withdrawParentInvite}
+                  className="w-full text-center py-2.5 font-['Poppins:Medium',sans-serif] text-[14px] text-red-300/70 active:text-red-300 transition-colors"
+                >
+                  Einladung zurückziehen
+                </button>
+              </div>
+
+              {/* Demo: simuliert den Klick der Eltern auf den Magic-Link */}
+              <div className="mt-3 pt-3" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+                <button
+                  onClick={openInviteAsParent}
+                  className="w-full text-center py-2.5 font-['Poppins:Medium',sans-serif] text-[13px] text-white/40 active:text-white/65 transition-colors"
+                >
+                  Einladung als Elternteil öffnen ▶
+                </button>
+                <button
+                  onClick={onClose}
+                  className="w-full text-center py-2 font-['Poppins:Medium',sans-serif] text-[14px] text-white/45 active:text-white/70 transition-colors"
+                >
+                  Schließen
+                </button>
+              </div>
+            </>
           )}
         </>
       )}

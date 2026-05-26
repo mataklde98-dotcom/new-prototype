@@ -151,6 +151,51 @@ export const familyService = {
   },
 
   /**
+   * Verknüpft einen bestehenden Schüler per userId ans Familienkonto (Pfad 4, Änderung 7):
+   * genutzt, wenn Eltern eine Schüler-Einladung annehmen. Setzt optional Klarname + Einwilligung.
+   * Anders als linkChildByCode ist hier die Ziel-Identität bereits bekannt (kein Code nötig).
+   */
+  linkChildById: async (
+    familyId: string,
+    childUserId: string,
+    opts: { realName?: string; tutoringConsent?: boolean } = {}
+  ): Promise<Familienkonto | null> => {
+    await delay(300);
+    const family = findFamilyById(familyId);
+    if (!family) return null;
+    const identity = findIdentityById(childUserId);
+    if (!identity) return null;
+
+    const realName = opts.realName?.trim() || identity.real_name;
+    upsertIdentity({ ...identity, real_name: realName, familyId, familyRole: 'child' });
+
+    const existing = family.children.find((c) => c.childUserId === childUserId);
+    if (existing) {
+      existing.real_name = realName;
+      if (opts.tutoringConsent !== undefined) existing.tutoringConsent = opts.tutoringConsent;
+      persistFamilies();
+      return family;
+    }
+
+    const child: FamilyChild = {
+      childUserId,
+      display_name: identity.display_name,
+      real_name: realName,
+      anmeldeCode: identity.anmeldeCode,
+      bundesland: identity.bundesland,
+      schoolType: identity.schoolType,
+      grade: identity.grade,
+      activationMode: 'B',
+      tutoringConsent: opts.tutoringConsent ?? false,
+      pending: false,
+      linkedAt: new Date().toISOString(),
+    };
+    family.children.push(child);
+    persistFamilies();
+    return family;
+  },
+
+  /**
    * WEG ① — Eltern laden ihr Kind per E-Mail ein.
    * Legt einen `pending`-Eintrag mit echtem Namen + E-Mail + Invite-Token an. Das Kind öffnet
    * die (gemockte) Einladung und wählt selbst Auth → acceptInviteWithAuth.
