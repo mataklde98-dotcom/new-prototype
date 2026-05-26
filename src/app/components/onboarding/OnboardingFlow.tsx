@@ -310,10 +310,12 @@ export default function OnboardingFlow({ onComplete, onSwitchToLogin, onSwitchTo
             style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}
           >
             <p className="font-['Poppins:Regular',sans-serif] text-[14px] leading-[1.55] text-white/70">
-              SoStudy nutzt für seine Lernfunktionen KI-Anbieter (<span className="text-white/90">OpenAI</span>,
-              <span className="text-white/90"> Anthropic</span> und <span className="text-white/90">Google</span>).
-              Deine Eingaben werden zur Verarbeitung an diese Anbieter übertragen. Mit „Zustimmen"
-              willigst du gemäß Art. 6 Abs. 1 lit. a DSGVO in diese Verarbeitung ein.
+              SoStudy nutzt KI-Anbieter (<span className="text-white/90">OpenAI</span>,
+              <span className="text-white/90"> Anthropic</span>, <span className="text-white/90">Google</span>) als
+              Kernfunktion unseres Lernangebots. Diese Verarbeitung ist gemäß{' '}
+              <span className="text-white/90">Art. 6 Abs. 1 lit. b DSGVO</span> zur Erfüllung des Nutzungsvertrags
+              erforderlich. Da die Verarbeitung teilweise in den USA erfolgt, willigst du mit „Zustimmen" gemäß{' '}
+              <span className="text-white/90">Art. 49 Abs. 1 lit. a DSGVO</span> in diese Drittlandsübermittlung ein.
             </p>
           </div>
         </div>
