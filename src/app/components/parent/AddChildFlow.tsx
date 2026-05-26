@@ -31,8 +31,7 @@ import { Copy, Check } from 'lucide-react';
 type SubStep =
   | 'mode'
   | 'detailA'
-  // Weg ② Schul-Daten als Progressive Disclosure (Änderung 2 überarbeitet): je ein Screen.
-  | 'schoolIntro'        // Meta-Entscheidung "Wer füllt aus?"
+  // Weg ② Schul-Daten als Progressive Disclosure (Änderung 2): je ein Screen.
   | 'schoolBundesland'   // nur Bundesland
   | 'schoolSchulform'    // nur Schulform
   | 'schoolKlasse'       // nur Klassenstufe (gefiltert nach Schulform)
@@ -90,19 +89,16 @@ export default function AddChildFlow({ familyId, onDone, onCancel, allowSkip }: 
   const firstName = (full: string) => full.trim().split(' ')[0] || 'Dein Kind';
 
   // ===== AKTIONEN =====
-  // Weg ② — Name validieren, dann zur Meta-Entscheidung der Schul-Daten (Screen 1/4).
+  // Weg ② — Name validieren, dann direkt zum ersten Schul-Daten-Schritt (Bundesland).
   const goToSchoolA = () => {
     setError('');
     if (childReal.trim().length < 2) { setError('Bitte den Namen des Kindes eingeben.'); return; }
-    setStep('schoolIntro');
+    setStep('schoolBundesland');
   };
 
   // Weg ② — Login-Code-Konto anlegen. includeSchool=false → Schul-Daten bleiben leer,
   // das Kind ergänzt sie beim ersten Login (Änderung 2 / SchoolDataClaimGate).
-  // gradeOverride: bei der Auto-Weiterleitung auf Screen 4/4 wird submitA direkt im Klick-Handler
-  // der Klassenstufe aufgerufen — der State (childGrade) ist im selben Tick noch nicht aktualisiert,
-  // daher reichen wir den gerade gewählten Wert explizit durch.
-  const submitA = async (includeSchool: boolean, gradeOverride?: string) => {
+  const submitA = async (includeSchool: boolean) => {
     if (busy) return;
     setError('');
     if (childReal.trim().length < 2) { setError('Bitte den Namen des Kindes eingeben.'); return; }
@@ -111,7 +107,7 @@ export default function AddChildFlow({ familyId, onDone, onCancel, allowSkip }: 
       real_name: childReal,
       bundesland: includeSchool ? childBundesland || undefined : undefined,
       schoolType: includeSchool ? childSchool || undefined : undefined,
-      grade: includeSchool ? (gradeOverride ?? childGrade) || undefined : undefined,
+      grade: includeSchool ? childGrade || undefined : undefined,
     });
     setBusy(false);
     if (res.ok) {
@@ -247,43 +243,24 @@ export default function AddChildFlow({ familyId, onDone, onCancel, allowSkip }: 
     );
   }
 
-  // ===== WEG ② — SCHUL-DATEN ALS PROGRESSIVE DISCLOSURE (Änderung 2 überarbeitet) =====
-  // Vier getrennte Screens statt einer überladenen Multi-Auswahl. Jeder Screen folgt dem
-  // Sumi-Bubble-Look des Schüler-Pfads: genau eine Frage, klare Buttons.
+  // ===== WEG ② — SCHUL-DATEN ALS PROGRESSIVE DISCLOSURE (Änderung 2) =====
+  // Drei getrennte Screens statt einer überladenen Multi-Auswahl. Jeder folgt dem Sumi-Bubble-Look:
+  // genau eine Frage, "Weiter" erst nach Auswahl. Der dezente Link "Mein Kind macht das später"
+  // überspringt die (optionalen) Schul-Daten komplett → das Kind ergänzt sie beim ersten Login
+  // (SchoolDataClaimGate).
   //
-  // Screen 1/4 — Meta-Entscheidung "Wer füllt aus?" (BEWUSST ohne jegliche Datenfelder).
-  if (step === 'schoolIntro') {
-    return (
-      <OnboardingShell stepKey={step}
-        onBack={() => setStep('detailA')}
-        footer={
-          <div className="space-y-2.5">
-            <PrimaryButton onClick={() => setStep('schoolBundesland')}>Ich fülle es aus</PrimaryButton>
-            <SecondaryButton disabled={busy} onClick={() => submitA(false)}>Mein Kind macht das später</SecondaryButton>
-          </div>
-        }
-      >
-        <div className="flex flex-col gap-5">
-          <div className="flex items-start gap-3">
-            <MascotAvatar size={56} />
-            <ChatBubble>Schul-Informationen deines Kindes</ChatBubble>
-          </div>
-          <p className="font-['Poppins:Regular',sans-serif] text-[14px] text-white/55 px-1 -mt-1 leading-[1.5]">
-            Optional — Bundesland, Schulform und Klassenstufe helfen uns, passende Lerninhalte anzuzeigen.
-          </p>
-          {error && <ErrorText>{error}</ErrorText>}
-        </div>
-      </OnboardingShell>
-    );
-  }
-
-  // Screen 2/4 — nur Bundesland.
+  // Screen 1/3 — nur Bundesland.
   if (step === 'schoolBundesland') {
     return (
       <OnboardingShell stepKey={step}
-        onBack={() => setStep('schoolIntro')}
+        onBack={() => setStep('detailA')}
         progress={{ current: 0, total: 3 }}
-        footer={<PrimaryButton disabled={!childBundesland} onClick={() => setStep('schoolSchulform')}>Weiter</PrimaryButton>}
+        footer={
+          <div className="space-y-1">
+            <PrimaryButton disabled={!childBundesland} onClick={() => setStep('schoolSchulform')}>Weiter</PrimaryButton>
+            <TextLink onClick={() => submitA(false)}>Mein Kind macht das später</TextLink>
+          </div>
+        }
       >
         <div className="flex flex-col gap-5">
           <div className="flex items-start gap-3">
@@ -296,13 +273,18 @@ export default function AddChildFlow({ familyId, onDone, onCancel, allowSkip }: 
     );
   }
 
-  // Screen 3/4 — nur Schulform (MVP: in allen Bundesländern dieselben Schulformen).
+  // Screen 2/3 — nur Schulform (MVP: in allen Bundesländern dieselben Schulformen).
   if (step === 'schoolSchulform') {
     return (
       <OnboardingShell stepKey={step}
         onBack={() => setStep('schoolBundesland')}
         progress={{ current: 1, total: 3 }}
-        footer={<PrimaryButton disabled={!childSchool} onClick={() => setStep('schoolKlasse')}>Weiter</PrimaryButton>}
+        footer={
+          <div className="space-y-1">
+            <PrimaryButton disabled={!childSchool} onClick={() => setStep('schoolKlasse')}>Weiter</PrimaryButton>
+            <TextLink onClick={() => submitA(false)}>Mein Kind macht das später</TextLink>
+          </div>
+        }
       >
         <div className="flex flex-col gap-5">
           <div className="flex items-start gap-3">
@@ -321,7 +303,7 @@ export default function AddChildFlow({ familyId, onDone, onCancel, allowSkip }: 
     );
   }
 
-  // Screen 4/4 — nur Klassenstufe, gefiltert nach Schulform. Auswahl legt das Kind direkt an.
+  // Screen 3/3 — nur Klassenstufe, gefiltert nach Schulform. Auswahl + "Weiter" legt das Kind an.
   if (step === 'schoolKlasse') {
     const grades = gradesForSchoolType(childSchool);
     const isBerufsschule = childSchool === 'Berufsschule';
@@ -329,24 +311,24 @@ export default function AddChildFlow({ familyId, onDone, onCancel, allowSkip }: 
       <OnboardingShell stepKey={step}
         onBack={() => setStep('schoolSchulform')}
         progress={{ current: 2, total: 3 }}
+        footer={
+          <div className="space-y-1">
+            <PrimaryButton disabled={!childGrade || busy} loading={busy} onClick={() => submitA(true)}>Weiter</PrimaryButton>
+            <TextLink onClick={() => submitA(false)}>Mein Kind macht das später</TextLink>
+          </div>
+        }
       >
         <div className="flex flex-col gap-5">
           <div className="flex items-start gap-3">
             <MascotAvatar size={56} />
             <ChatBubble>In welcher Klasse ist dein Kind?</ChatBubble>
           </div>
-          {/* Auswahl löst direkt das Anlegen aus → gewählten Wert explizit durchreichen (Stale-State). */}
           <ChoiceList
             options={grades}
             value={childGrade}
-            onChange={(v) => { if (busy) return; setChildGrade(v); submitA(true, v); }}
+            onChange={setChildGrade}
             columns={isBerufsschule ? 1 : 3}
           />
-          {busy && (
-            <p className="font-['Poppins:Regular',sans-serif] text-[13px] text-white/45 px-1 text-center">
-              Konto wird angelegt…
-            </p>
-          )}
           {error && <ErrorText>{error}</ErrorText>}
         </div>
       </OnboardingShell>
