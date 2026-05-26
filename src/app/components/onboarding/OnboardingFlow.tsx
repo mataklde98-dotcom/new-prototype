@@ -111,9 +111,14 @@ export default function OnboardingFlow({ onComplete, onSwitchToLogin, onSwitchTo
           <SoStudyLogo />
           <MascotAvatar size={120} />
           <div>
-            <h1 className="font-['Poppins:Bold',sans-serif] text-[24px] leading-[1.3] text-white max-w-[330px] mx-auto">
-              Lerne mit KI, Karteikarten, Prüfungen und persönlicher Nachhilfe — alles an einem Ort.
+            <h1 className="font-['Poppins:Bold',sans-serif] text-[28px] leading-[1.2] text-white">
+              Bessere Noten.
+              <br />
+              Weniger Stress.
             </h1>
+            <p className="font-['Poppins:Regular',sans-serif] text-[15px] text-white/55 mt-3 max-w-[300px]">
+              Dein KI-Lernbuddy für Karteikarten, Probeklausuren und Nachhilfe.
+            </p>
           </div>
         </div>
       </OnboardingShell>
