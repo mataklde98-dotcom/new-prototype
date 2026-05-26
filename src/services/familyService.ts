@@ -30,7 +30,9 @@ import {
   findFamilyByInviteCode,
   generateInviteCode,
 } from '@/mocks/family.mock';
+import { recordLoginCode } from '@/mocks/loginCodes.mock';
 import { identityService } from '@/services/identityService';
+import { loginCodeService } from '@/services/loginCodeService';
 
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -89,6 +91,7 @@ export const familyService = {
       createdAt: new Date().toISOString(),
     };
     upsertIdentity(childIdentity);
+    recordLoginCode(anmeldeCode, childUserId); // Login-Code im Store anlegen (Änderung 6)
 
     const child: FamilyChild = {
       childUserId,
@@ -231,6 +234,7 @@ export const familyService = {
       createdAt: new Date().toISOString(),
     };
     upsertIdentity(childIdentity);
+    recordLoginCode(anmeldeCode, childUserId); // Login-Code im Store anlegen (Änderung 6)
 
     const child: FamilyChild = {
       ...pending,
@@ -259,7 +263,7 @@ export const familyService = {
     const child = family.children.find((c) => c.childUserId === childUserId);
     if (!child) return { ok: false, anmeldeCode: '', family: null };
 
-    const anmeldeCode = generateAnmeldeCode();
+    const anmeldeCode = loginCodeService.reset(childUserId); // Reset gegen Login-Code-Store (Änderung 6)
     child.anmeldeCode = anmeldeCode;
     // Auch die Kind-Identität aktualisieren, damit der Login mit dem neuen Code funktioniert.
     const identity = findIdentityById(childUserId);

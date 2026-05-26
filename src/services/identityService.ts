@@ -13,10 +13,12 @@ import type {
 import {
   MOCK_IDENTITIES,
   generateAnmeldeCode,
-  findIdentityByAnmeldeCode,
+  findIdentityById,
   persistIdentities,
 } from '@/mocks/identity.mock';
 import { MOCK_FAMILIES, persistFamilies, generateFamilyId } from '@/mocks/family.mock';
+import { recordLoginCode } from '@/mocks/loginCodes.mock';
+import { loginCodeService } from '@/services/loginCodeService';
 
 // Simuliere API-Delay (gleiches Muster wie userService)
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -124,6 +126,7 @@ export const identityService = {
     };
 
     persistSession(identity, true);
+    recordLoginCode(identity.anmeldeCode, identity.userId); // Code im Login-Code-Store anlegen (Änderung 6)
     return identity;
   },
 
@@ -251,7 +254,11 @@ export const identityService = {
    */
   loginWithAnmeldeCode: async (code: string): Promise<SoStudyIdentity | null> => {
     await delay(300);
-    const identity = findIdentityByAnmeldeCode(code);
+    // Server-seitige Code-Validierung (Änderung 6): unabhängig vom Frontend-Zustand,
+    // aktualisiert last_used_at. Mappt den Code → userUuid → Identität.
+    const userUuid = loginCodeService.login(code);
+    if (!userUuid) return null;
+    const identity = findIdentityById(userUuid);
     if (!identity) return null;
     persistSession(identity, false);
     return identity;
@@ -379,7 +386,8 @@ export const identityService = {
     await delay(250);
     const current = identityService.getIdentity();
     if (!current) return null;
-    const anmeldeCode = generateAnmeldeCode();
+    // Reset gegen den Login-Code-Store: alter Code wird deaktiviert, neuer aktiv (Änderung 6).
+    const anmeldeCode = loginCodeService.reset(current.userId);
     const updated: SoStudyIdentity = { ...current, anmeldeCode };
     persistSession(updated, false);
     syncFamilyChildCode(current.userId, anmeldeCode);
