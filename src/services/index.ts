@@ -7,4 +7,5 @@ export { todoService } from './todoService';
 export { sessionService } from './sessionService';
 export { userService } from './userService';
 export { errorService } from './errorService';
+export { identityService } from './identityService';
 export * from './cardGenerationService';

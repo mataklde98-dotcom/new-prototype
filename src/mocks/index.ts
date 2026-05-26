@@ -40,6 +40,13 @@ export {
 // User Registration Types
 export type { UserRegistrationData } from './user.mock';
 
+// Identity (Onboarding v5)
+export {
+  MOCK_IDENTITIES,
+  generateAnmeldeCode,
+  findIdentityByAnmeldeCode,
+} from './identity.mock';
+
 // Tutors (abgeleitet aus Chat-Räumen)
 export { MOCK_TUTORS, formatTutorName } from './tutors.mock';
 export type { Tutor } from './tutors.mock';

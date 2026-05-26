@@ -160,6 +160,10 @@ export const clearUserSession = (): void => {
   localStorage.removeItem('userAccountData');
   localStorage.removeItem('userName');
   localStorage.removeItem('userProfileImage');
+  // Onboarding v5 Session-Keys
+  localStorage.removeItem('isLoggedIn');
+  localStorage.removeItem('isNewRegistration');
+  localStorage.removeItem('sostudy_identity');
 };
 
 // ===== EXPORT MOCK USERS FOR TESTING =====

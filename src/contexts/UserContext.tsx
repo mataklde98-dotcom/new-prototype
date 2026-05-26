@@ -131,11 +131,20 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     if (userDataStr) {
       try {
         const userData = JSON.parse(userDataStr);
-        
-        // Update account data from userData
+
+        // ===== ZWEI-BUBBLE-NAMENSMODELL (Onboarding v5) =====
+        // Spitzname (display_name) treibt die App-Begrüßung (Casual-App).
+        // Klarname (real_name) füllt die Account-Felder (Nachhilfe-Kontext).
+        // Beides additiv mit Fallback auf die bestehenden firstName/lastName-Felder → keine Regression.
+        const legacyFullName = `${userData.firstName || userProfile.firstName} ${userData.lastName || userProfile.lastName}`.trim();
+        const displayName = (userData.display_name && userData.display_name.trim()) || legacyFullName;
+        const realName = (userData.real_name && userData.real_name.trim()) || legacyFullName;
+        const [realFirst, ...realRest] = realName.split(' ');
+
+        // Update account data from userData (Klarname-basiert)
         const updatedAccountData = {
-          firstName: userData.firstName || userProfile.firstName,
-          lastName: userData.lastName || userProfile.lastName,
+          firstName: realFirst || userData.firstName || userProfile.firstName,
+          lastName: realRest.join(' ') || userData.lastName || userProfile.lastName,
           email: userData.email || userProfile.email,
           phone: DEFAULT_ACCOUNT_DATA.phone,
           countryCode: DEFAULT_ACCOUNT_DATA.countryCode,
@@ -144,15 +153,14 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
           schoolType: userData.schoolType || DEFAULT_ACCOUNT_DATA.schoolType,
           grade: userData.grade || DEFAULT_ACCOUNT_DATA.grade
         };
-        
+
         setAccountDataState(updatedAccountData);
         localStorage.setItem('userAccountData', JSON.stringify(updatedAccountData));
-        
-        // Update userName
-        const fullName = `${userData.firstName || userProfile.firstName} ${userData.lastName || userProfile.lastName}`;
-        setUserNameState(fullName);
-        localStorage.setItem('userName', fullName);
-        
+
+        // Update userName mit Spitznamen
+        setUserNameState(displayName);
+        localStorage.setItem('userName', displayName);
+
         return;
       } catch (e) {
         console.error('Failed to parse userData:', e);

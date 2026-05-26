@@ -4,6 +4,7 @@
 import React, { useState, useEffect } from 'react';
 import LoginScreen from './LoginScreen';
 import RegisterScreen from './RegisterScreen';
+import OnboardingFlow from './onboarding/OnboardingFlow';
 
 // Social Auth info passed between screens
 export interface SocialAuthInfo {
@@ -20,7 +21,8 @@ interface AuthWrapperProps {
 export default function AuthWrapper({ children }: AuthWrapperProps) {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [userData, setUserData] = useState<any>(null);
-  const [authView, setAuthView] = useState<'login' | 'register'>('login');
+  // 'onboarding' = neuer Knowunity-Flow (Default-Einstieg). 'register' = alter Formular-Flow (Fallback).
+  const [authView, setAuthView] = useState<'login' | 'register' | 'onboarding'>('onboarding');
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
   const [socialAuth, setSocialAuth] = useState<SocialAuthInfo | null>(null);
   
@@ -74,6 +76,9 @@ export default function AuthWrapper({ children }: AuthWrapperProps) {
   const handleLogout = () => {
     localStorage.removeItem('isLoggedIn');
     localStorage.removeItem('userData');
+    // Onboarding v5: neue Session-Keys ebenfalls räumen (sonst Leak zwischen Mock-Usern)
+    localStorage.removeItem('sostudy_identity');
+    localStorage.removeItem('isNewRegistration');
     setIsLoggedIn(false);
     setUserData(null);
   };
@@ -93,11 +98,19 @@ export default function AuthWrapper({ children }: AuthWrapperProps) {
   
   // Show auth screens if not logged in
   if (!isLoggedIn) {
+    if (authView === 'onboarding') {
+      return (
+        <OnboardingFlow
+          onComplete={handleRegisterSuccess}
+          onSwitchToLogin={() => setAuthView('login')}
+        />
+      );
+    }
     if (authView === 'login') {
       return (
-        <LoginScreen 
+        <LoginScreen
           onLoginSuccess={handleLoginSuccess}
-          onSwitchToRegister={() => setAuthView('register')}
+          onSwitchToRegister={() => setAuthView('onboarding')}
           onSocialAuthNewUser={(info: SocialAuthInfo) => {
             setSocialAuth(info);
             setAuthView('register');
