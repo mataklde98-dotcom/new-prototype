@@ -24,12 +24,14 @@ import {
   GoogleIcon,
   AppleIcon,
 } from '@/app/components/onboarding/OnboardingShared';
+import { PhoneEntryFields, OtpEntryFields, PhoneVerifiedRow } from '@/app/components/onboarding/PhoneOtpFields';
+import { usePhoneOtp } from '@/hooks/usePhoneOtp';
 import SoStudyLogo from '@/app/components/SoStudyLogo';
 import AddChildFlow from './AddChildFlow';
 
-type Phase = 'welcome' | 'realName' | 'auth' | 'emailForm' | 'addChild' | 'done';
+type Phase = 'welcome' | 'realName' | 'phone' | 'auth' | 'emailForm' | 'addChild' | 'done';
 
-const PROGRESS: Phase[] = ['realName', 'auth'];
+const PROGRESS: Phase[] = ['realName', 'phone', 'auth'];
 
 interface ParentOnboardingFlowProps {
   onComplete: (userData: any) => void;
@@ -48,6 +50,13 @@ export default function ParentOnboardingFlow({ onComplete, onBack }: ParentOnboa
   const [showPw, setShowPw] = useState(false);
 
   const set = (patch: Partial<ParentOnboardingDraft>) => setDraft((d) => ({ ...d, ...patch }));
+
+  // Telefon-Verifikation (Pflicht, vor der Auth) — Änderung 3. Nach erfolgreicher OTP-Prüfung
+  // wird die Nummer in den Draft übernommen und direkt zur Auth-Auswahl weitergeleitet.
+  const phoneOtp = usePhoneOtp((fullPhone) => {
+    set({ phone: fullPhone });
+    setPhase('auth');
+  });
 
   const progress = PROGRESS.includes(phase)
     ? { current: PROGRESS.indexOf(phase), total: PROGRESS.length }
@@ -101,7 +110,7 @@ export default function ParentOnboardingFlow({ onComplete, onBack }: ParentOnboa
       <OnboardingShell stepKey={phase}
         onBack={() => setPhase('welcome')}
         progress={progress}
-        footer={<PrimaryButton disabled={!valid} onClick={() => setPhase('auth')}>Weiter</PrimaryButton>}
+        footer={<PrimaryButton disabled={!valid} onClick={() => setPhase('phone')}>Weiter</PrimaryButton>}
       >
         <div className="flex flex-col gap-6">
           <div className="flex items-start gap-3">
@@ -126,11 +135,88 @@ export default function ParentOnboardingFlow({ onComplete, onBack }: ParentOnboa
     );
   }
 
+  // ===== E2b: TELEFONNUMMER + SMS-OTP (Pflicht) — Änderung 3 =====
+  // Drei Zustände im selben Phase-Slot: Nummer eingeben → Code eingeben → bestätigt.
+  if (phase === 'phone') {
+    if (phoneOtp.stage === 'verify') {
+      return (
+        <OnboardingShell stepKey="phone-verify"
+          onBack={phoneOtp.changeNumber}
+          progress={progress}
+          footer={
+            <PrimaryButton
+              disabled={phoneOtp.otp.length !== 6 || phoneOtp.busy}
+              loading={phoneOtp.busy}
+              onClick={phoneOtp.verify}
+            >
+              Bestätigen
+            </PrimaryButton>
+          }
+        >
+          <div className="flex flex-col gap-6">
+            <div className="flex items-start gap-3">
+              <MascotAvatar size={56} />
+              <ChatBubble>SMS-Code eingeben</ChatBubble>
+            </div>
+            <p className="font-['Poppins:Regular',sans-serif] text-[14px] text-white/55 px-1 leading-[1.5]">
+              Wir haben dir einen 6-stelligen Code an <span className="text-white/80">{phoneOtp.fullPhone}</span> geschickt.
+            </p>
+            <OtpEntryFields otp={phoneOtp} />
+          </div>
+        </OnboardingShell>
+      );
+    }
+    if (phoneOtp.stage === 'verified') {
+      return (
+        <OnboardingShell stepKey="phone-verified"
+          onBack={() => setPhase('realName')}
+          progress={progress}
+          footer={<PrimaryButton onClick={() => setPhase('auth')}>Weiter</PrimaryButton>}
+        >
+          <div className="flex flex-col gap-6">
+            <div className="flex items-start gap-3">
+              <MascotAvatar size={56} />
+              <ChatBubble>Nummer bestätigt ✓</ChatBubble>
+            </div>
+            <PhoneVerifiedRow otp={phoneOtp} />
+          </div>
+        </OnboardingShell>
+      );
+    }
+    return (
+      <OnboardingShell stepKey="phone-enter"
+        onBack={() => setPhase('realName')}
+        progress={progress}
+        footer={
+          <PrimaryButton
+            disabled={!phoneOtp.phoneValid || phoneOtp.busy}
+            loading={phoneOtp.busy}
+            onClick={phoneOtp.sendCode}
+          >
+            Code per SMS senden
+          </PrimaryButton>
+        }
+      >
+        <div className="flex flex-col gap-6">
+          <div className="flex items-start gap-3">
+            <MascotAvatar size={56} />
+            <ChatBubble>Deine Telefonnummer</ChatBubble>
+          </div>
+          <p className="font-['Poppins:Regular',sans-serif] text-[14px] text-white/55 px-1 leading-[1.5]">
+            Für die Nachhilfe-Buchung kontaktieren wir dich telefonisch. Du erhältst gleich einen
+            6-stelligen Bestätigungs-Code per SMS.
+          </p>
+          <PhoneEntryFields otp={phoneOtp} />
+        </div>
+      </OnboardingShell>
+    );
+  }
+
   // ===== E3: ACCOUNT SICHERN (Apple/Google/E-Mail — gemockt) =====
   if (phase === 'auth') {
     const busy = authLoading !== null;
     return (
-      <OnboardingShell stepKey={phase} onBack={() => setPhase('realName')} progress={progress}>
+      <OnboardingShell stepKey={phase} onBack={() => setPhase('phone')} progress={progress}>
         <div className="flex flex-col gap-6">
           <div className="flex items-start gap-3">
             <MascotAvatar size={56} />

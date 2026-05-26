@@ -52,6 +52,7 @@ export interface SoStudyIdentity {
   linkedAuthMethods?: AuthMethod[];
   kiConsent: KiConsent;
   email?: string; // optional (z.B. bei reinem Anmelde-Code-Pfad nicht vorhanden)
+  phone?: string; // verifizierte Telefonnummer — Eltern: Pflicht; 18+-Schüler: für Nachhilfe (Änderung 3/4)
 
   // ===== FAMILIENKONTO-VERKNÜPFUNG =====
   // - Eltern (role 'parent'):  familyRole 'owner', familyId = eigenes Familienkonto.
@@ -85,6 +86,8 @@ export interface Familienkonto {
   familyId: string;
   parentUserId: string;
   parentRealName: string;    // Klarname des Elternteils (Pflicht im Vertrags-Kontext)
+  parentEmail?: string;      // für den Vertragsversand der Nachhilfe (Änderung 5)
+  parentPhone?: string;      // verifizierte Eltern-Telefonnummer für den Rückruf (Änderung 3/5)
   children: FamilyChild[];
   createdAt: string;         // ISO
 }
@@ -118,6 +121,7 @@ export const EMPTY_ONBOARDING_DRAFT: OnboardingDraft = {
 // Eltern arbeiten im Klarname-Kontext (Vertrag/Familienkonto) — daher real_name statt Spitzname.
 export interface ParentOnboardingDraft {
   real_name: string;          // Klarname des Elternteils (Pflicht)
+  phone?: string;             // verifizierte Telefonnummer (Pflicht, per SMS-OTP) — Änderung 3
   email?: string;
   kiConsentAccepted: boolean;
   authMethod: AuthMethod | null;
@@ -125,6 +129,7 @@ export interface ParentOnboardingDraft {
 
 export const EMPTY_PARENT_ONBOARDING_DRAFT: ParentOnboardingDraft = {
   real_name: '',
+  phone: undefined,
   email: undefined,
   kiConsentAccepted: false,
   authMethod: null,
