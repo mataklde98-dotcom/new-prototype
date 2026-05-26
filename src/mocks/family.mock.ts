@@ -27,6 +27,8 @@ const DEFAULT_FAMILIES: Record<string, Familienkonto> = {
     familyId: 'fam_mock_001',
     parentUserId: 'user_parent_mock_789',
     parentRealName: 'Sabine Baum',
+    parentEmail: 'parent@sostudytest.com',
+    parentPhone: '+49 151 23456789',
     createdAt: '2026-01-01T00:00:00.000Z',
     children: [
       {

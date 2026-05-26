@@ -146,6 +146,19 @@ const SelectionCard = ({
   </button>
 );
 
+/** Eine Zeile in der Nachhilfe-Daten-Übersicht (Änderung 5) */
+const SummaryRow = ({ icon, label, value }: { icon: React.ReactNode; label: string; value?: string }) => (
+  <div className="flex items-center gap-3">
+    <div className="w-5 flex justify-center flex-shrink-0 text-white/50">{icon}</div>
+    <div className="min-w-0">
+      <p className="font-['Poppins:Regular',sans-serif] text-[11px] text-white/40 uppercase tracking-wider">
+        {label}
+      </p>
+      <p className="font-['Poppins:Medium',sans-serif] text-[14px] text-white truncate">{value || '—'}</p>
+    </div>
+  </div>
+);
+
 /** Step progress indicator */
 const StepIndicator = ({ currentStep, totalSteps }: { currentStep: number; totalSteps: number }) => (
   <div className="flex items-center gap-2 mb-6">
@@ -210,6 +223,31 @@ function TutoringRequestFlow({
 
   // The effective partner (for online = ONLINE_PARTNER)
   const effectivePartner = tutoringType === 'online' ? ONLINE_PARTNER : selectedPartner;
+
+  // Welche Daten verwenden wir für die Nachhilfe? (Änderung 5)
+  // - unter 18 mit verknüpftem Familienkonto → Eltern sind Vertragspartner (Rückruf/Vertrag).
+  // - sonst (18+) → die eigenen, im 18+-Datenschritt erfassten Daten.
+  const nachhilfeData = useMemo(() => {
+    const id = identityService.getIdentity();
+    if (!id) return null;
+    const fam = id.familyId ? familyService.getFamilyById(id.familyId) : null;
+    const childEntry = fam?.children.find((c) => c.childUserId === id.userId) || null;
+    if (!id.volljaehrig && fam) {
+      return {
+        mode: 'parent' as const,
+        studentName: childEntry?.real_name?.trim() || id.real_name || id.display_name,
+        parentName: fam.parentRealName,
+        parentPhone: fam.parentPhone,
+        parentEmail: fam.parentEmail,
+      };
+    }
+    return {
+      mode: 'self' as const,
+      studentName: id.real_name || id.display_name,
+      email: id.email,
+      phone: id.phone,
+    };
+  }, []);
 
   // Navigation
   const goNext = () => {
@@ -516,6 +554,39 @@ function TutoringRequestFlow({
             </div>
           </div>
         </div>
+
+        {/* Nachhilfe-Daten-Übersicht (Änderung 5) */}
+        {nachhilfeData && (
+          <div
+            className="rounded-2xl px-5 py-4 mb-4"
+            style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}
+          >
+            <h4 className="font-['Poppins:SemiBold',sans-serif] text-[13px] text-white/60 uppercase tracking-wider mb-3">
+              Diese Daten verwenden wir für die Nachhilfe
+            </h4>
+            <div className="space-y-3">
+              {nachhilfeData.mode === 'parent' ? (
+                <>
+                  <SummaryRow icon={<UserIcon className="w-4 h-4" />} label="Vertragspartner" value={nachhilfeData.parentName} />
+                  <SummaryRow icon={<Phone className="w-4 h-4" />} label="Telefon für Rückruf" value={nachhilfeData.parentPhone} />
+                  <SummaryRow icon={<Mail className="w-4 h-4" />} label="E-Mail für Vertragsversand" value={nachhilfeData.parentEmail} />
+                  <SummaryRow icon={<GraduationCap className="w-4 h-4" />} label="Schüler:in" value={nachhilfeData.studentName} />
+                </>
+              ) : (
+                <>
+                  <SummaryRow icon={<UserIcon className="w-4 h-4" />} label="Name" value={nachhilfeData.studentName} />
+                  <SummaryRow icon={<Phone className="w-4 h-4" />} label="Telefon" value={nachhilfeData.phone} />
+                  <SummaryRow icon={<Mail className="w-4 h-4" />} label="E-Mail" value={nachhilfeData.email} />
+                </>
+              )}
+            </div>
+            {nachhilfeData.mode === 'parent' && (
+              <p className="font-['Poppins:Regular',sans-serif] text-[12px] text-white/40 mt-3 leading-[1.5]">
+                Weil du noch nicht volljährig bist, läuft der Nachhilfe-Vertrag über deine Eltern.
+              </p>
+            )}
+          </div>
+        )}
 
         {/* Contact info hint */}
         {effectivePartner && (
