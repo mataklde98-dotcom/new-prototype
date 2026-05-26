@@ -33,6 +33,8 @@ import LernStreakScreen from "./components/LernStreakScreen";
 import CreditHistoryScreen from "./components/CreditHistoryScreen";
 import OnboardingTrialPopup from "./components/OnboardingTrialPopup";
 import AuthWrapper from "@/app/components/AuthWrapper";
+import DemoSeedPanel from "@/app/components/DemoSeedPanel";
+import ParentDashboard from "@/app/components/parent/ParentDashboard";
 import { ScreenManager } from "@/app/components/ScreenManager";
 import { MobileRouteTransition } from "@/app/components/MobileRouteTransition";
 import { ErrorBoundary } from "@/app/components/ErrorBoundary";
@@ -99,11 +101,20 @@ function MobileSchuleUndKlasseOverlay({ onClose }: { onClose: () => void }) {
 export default function App() {
   // v1.5.9 force clean rebuild
   return (
-    <AuthWrapper>
-      {(userData, handleLogout) => (
-        <AppContent userData={userData} onLogout={handleLogout} />
-      )}
-    </AuthWrapper>
+    <>
+      <AuthWrapper>
+        {(userData, handleLogout) =>
+          // Onboarding v5: Eltern bekommen das Familienkonto-Dashboard, Schüler die Lern-App.
+          userData?.role === 'parent' ? (
+            <ParentDashboard userData={userData} onLogout={handleLogout} />
+          ) : (
+            <AppContent userData={userData} onLogout={handleLogout} />
+          )
+        }
+      </AuthWrapper>
+      {/* Demo-Seeding: schwebender Knopf für Präsentations-Zustände (Onboarding v5) */}
+      <DemoSeedPanel />
+    </>
   );
 }
 
@@ -852,6 +863,18 @@ function AppContent({ userData, onLogout }: { userData: any; onLogout: () => voi
             externalTransition
           />
         </MobileRouteTransition>
+      )}
+
+      {/* Desktop Tutoring Activation Flow — full-screen overlay (Mobile/Desktop-Parität) */}
+      {!isMobile && navigation.showTutoringActivation && (
+        <div className="fixed inset-0 z-[9000]" style={{ backgroundColor: '#0a0a0a' }}>
+          <div className="mx-auto w-full max-w-[600px] h-full">
+            <TutoringActivationFlow
+              onClose={() => navigation.setShowTutoringActivation(false)}
+              externalTransition
+            />
+          </div>
+        </div>
       )}
 
       {/* Mobile Tutoring Progress Screen - Overlay with Slide-In/Out */}

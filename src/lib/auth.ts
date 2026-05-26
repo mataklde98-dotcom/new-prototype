@@ -10,6 +10,12 @@ export interface UserProfile {
   firstName: string;
   lastName: string;
   createdAt: string;
+  // ===== Onboarding v5 (additiv, optional — bricht bestehende Aufrufer nicht) =====
+  role?: 'student' | 'parent';
+  display_name?: string;   // Spitzname (Casual-App)
+  real_name?: string;      // Klarname (Nachhilfe-/Vertrags-Kontext)
+  familyId?: string;       // Familienkonto-Verknüpfung
+  familyRole?: 'owner' | 'child';
 }
 
 // ===== MOCK USERS (Development) =====
@@ -22,6 +28,9 @@ const MOCK_USER_ALEXANDER: UserProfile = {
   firstName: 'Alexander Johannes',
   lastName: 'Baum',
   createdAt: '2026-01-01T00:00:00.000Z',
+  role: 'student',
+  display_name: 'Alex',
+  real_name: 'Alexander Johannes Baum',
 };
 
 // User 2: Fresh User (Day 0 experience - no mock data)
@@ -31,12 +40,30 @@ const MOCK_USER_NEW: UserProfile = {
   firstName: 'Max',
   lastName: 'Mustermann',
   createdAt: new Date().toISOString(),
+  role: 'student',
+  display_name: 'Maxi',
+  real_name: '', // Day-0: Klarname noch nicht gesetzt
+};
+
+// User 3: Elternteil (Familienkonto-Demo, Onboarding v5)
+const MOCK_USER_PARENT: UserProfile = {
+  userId: 'user_parent_mock_789',
+  email: 'parent@sostudytest.com',
+  firstName: 'Sabine',
+  lastName: 'Baum',
+  createdAt: '2026-01-01T00:00:00.000Z',
+  role: 'parent',
+  display_name: 'Sabine',
+  real_name: 'Sabine Baum',
+  familyId: 'fam_mock_001',
+  familyRole: 'owner',
 };
 
 // Map email to mock user
 const MOCK_USERS_MAP: Record<string, UserProfile> = {
   'alexanderbaum@gmail.com': MOCK_USER_ALEXANDER,
   'newuser@sostudytest.com': MOCK_USER_NEW,
+  'parent@sostudytest.com': MOCK_USER_PARENT,
 };
 
 /**
@@ -54,9 +81,15 @@ export const getCurrentUserId = (): string => {
   if (userDataStr) {
     try {
       const userData = JSON.parse(userDataStr);
+
+      // Onboarding v5: kanonische userId hat Vorrang (isoliert user-scoped Storage korrekt,
+      // auch für zur Laufzeit angelegte Konten wie Eltern oder per Eltern erstellte Kinder).
+      if (userData.userId) {
+        return userData.userId;
+      }
+
+      // Legacy-Fallback: Mapping per E-Mail
       const email = userData.email?.toLowerCase();
-      
-      // Return correct mock user ID based on email
       if (MOCK_USERS_MAP[email]) {
         return MOCK_USERS_MAP[email].userId;
       }
@@ -90,15 +123,22 @@ export const getCurrentUserProfile = (): UserProfile => {
       const userData = JSON.parse(userDataStr);
       const email = userData.email?.toLowerCase();
       
-      // Get correct mock user based on email
+      // Get correct mock user based on email (Legacy-Basis)
       const mockUser = MOCK_USERS_MAP[email] || MOCK_USER_ALEXANDER;
-      
+
       return {
-        userId: mockUser.userId,
+        // userId aus userData bevorzugen (Onboarding v5), sonst Mock-Basis
+        userId: userData.userId || mockUser.userId,
         email: userData.email || mockUser.email,
         firstName: userData.firstName || mockUser.firstName,
         lastName: userData.lastName || mockUser.lastName,
         createdAt: mockUser.createdAt,
+        // Onboarding-v5-Felder additiv durchreichen
+        role: userData.role || mockUser.role,
+        display_name: userData.display_name || mockUser.display_name,
+        real_name: userData.real_name ?? mockUser.real_name,
+        familyId: userData.familyId || mockUser.familyId,
+        familyRole: userData.familyRole || mockUser.familyRole,
       };
     } catch (e) {
       console.error('Failed to parse userData:', e);
@@ -160,10 +200,15 @@ export const clearUserSession = (): void => {
   localStorage.removeItem('userAccountData');
   localStorage.removeItem('userName');
   localStorage.removeItem('userProfileImage');
+  // Tutoring-State (sonst leakt der Status zum nächsten Mock-User)
+  localStorage.removeItem('tutoringStatus');
+  localStorage.removeItem('tutoringRequestData');
   // Onboarding v5 Session-Keys
   localStorage.removeItem('isLoggedIn');
   localStorage.removeItem('isNewRegistration');
   localStorage.removeItem('sostudy_identity');
+  // Bewusst NICHT geräumt: sostudy_identities / sostudy_families
+  // → angelegte Konten bleiben erhalten, damit der Anmelde-Code-Login danach weiter funktioniert.
 };
 
 // ===== EXPORT MOCK USERS FOR TESTING =====

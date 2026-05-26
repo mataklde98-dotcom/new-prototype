@@ -1,6 +1,7 @@
 import { createRoot } from "react-dom/client";
 import App from "./app/App.tsx";
 import "./styles/index.css";
+import { applyDemoFromQuery } from "./lib/demoSeed";
 
 // Force rebuild v1.6.7
 
@@ -55,4 +56,7 @@ document.addEventListener('wheel', (e) => {
   }
 }, { passive: false });
 
-createRoot(document.getElementById("root")!).render(<App />);
+// Deep-Link-Demo-Zustände (?demo=...) vor dem Rendern anwenden; lädt ggf. einmal neu.
+if (!applyDemoFromQuery()) {
+  createRoot(document.getElementById("root")!).render(<App />);
+}

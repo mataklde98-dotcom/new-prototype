@@ -102,12 +102,16 @@ export function OnboardingShell({
   progress,
   children,
   footer,
+  stepKey,
 }: {
   onBack?: () => void;
   progress?: { current: number; total: number };
   children: React.ReactNode;
   footer?: React.ReactNode;
+  stepKey?: string | number; // wechselt pro Schritt → sanftes Einblenden (onbStepIn)
 }) {
+  // Zentrierte Spalte (max. 480px) für Desktop-Parität; mobil unverändert vollflächig.
+  const COL = 'max-w-[480px] mx-auto w-full';
   return (
     <div
       className="fixed inset-0 flex flex-col"
@@ -116,37 +120,37 @@ export function OnboardingShell({
       }}
     >
       {/* Kopfzeile */}
-      <div
-        className="flex items-center justify-between px-5 pb-2"
-        style={{ paddingTop: 'calc(var(--safe-area-inset-top) + 16px)' }}
-      >
-        {onBack ? (
-          <button
-            onClick={onBack}
-            className="w-9 h-9 flex items-center justify-center rounded-full bg-white/[0.05] border border-white/[0.08] active:scale-90 transition-transform"
-            aria-label="Zurück"
-          >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-              <path d="M15 18l-6-6 6-6" stroke="rgba(255,255,255,0.7)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          </button>
-        ) : (
+      <div className="px-5 pb-2" style={{ paddingTop: 'calc(var(--safe-area-inset-top) + 16px)' }}>
+        <div className={`${COL} flex items-center justify-between`}>
+          {onBack ? (
+            <button
+              onClick={onBack}
+              className="w-9 h-9 flex items-center justify-center rounded-full bg-white/[0.05] border border-white/[0.08] active:scale-90 transition-transform"
+              aria-label="Zurück"
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                <path d="M15 18l-6-6 6-6" stroke="rgba(255,255,255,0.7)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </button>
+          ) : (
+            <div className="w-9 h-9" />
+          )}
+          {progress && <ProgressDots current={progress.current} total={progress.total} />}
           <div className="w-9 h-9" />
-        )}
-        {progress && <ProgressDots current={progress.current} total={progress.total} />}
-        <div className="w-9 h-9" />
+        </div>
       </div>
 
-      {/* Inhalt */}
-      <div className="flex-1 overflow-y-auto px-5 pt-4 pb-4">{children}</div>
+      {/* Inhalt — pro Schritt sanft eingeblendet */}
+      <div className="flex-1 overflow-y-auto px-5 pt-4 pb-4">
+        <div key={stepKey} className={`${COL} h-full animate-[onbStepIn_0.3s_ease-out]`}>
+          {children}
+        </div>
+      </div>
 
       {/* Footer */}
       {footer && (
-        <div
-          className="px-5 pt-3"
-          style={{ paddingBottom: 'calc(var(--safe-area-inset-bottom) + 20px)' }}
-        >
-          {footer}
+        <div className="px-5 pt-3" style={{ paddingBottom: 'calc(var(--safe-area-inset-bottom) + 20px)' }}>
+          <div className={COL}>{footer}</div>
         </div>
       )}
     </div>
@@ -329,8 +333,10 @@ export function GoogleIcon() {
 }
 
 export function AppleIcon() {
+  // fill via currentColor → Textfarbe des Buttons steuert die Logo-Farbe
+  // (weiß auf dunkel, schwarz auf weißem Apple-Button).
   return (
-    <svg width="16" height="18" viewBox="0 0 16 20" fill="white" style={{ overflow: 'visible' }}>
+    <svg width="16" height="18" viewBox="0 0 16 20" fill="currentColor" style={{ overflow: 'visible' }}>
       <path d="M13.04 10.58c-.03-2.78 2.27-4.12 2.37-4.18-1.29-1.89-3.3-2.15-4.02-2.18-1.71-.17-3.34 1.01-4.21 1.01-.87 0-2.22-.98-3.65-.96-1.88.03-3.61 1.09-4.58 2.78-1.95 3.39-.5 8.41 1.4 11.16.93 1.35 2.04 2.86 3.5 2.81 1.4-.06 1.93-.91 3.63-.91 1.7 0 2.18.91 3.67.88 1.51-.03 2.48-1.37 3.4-2.72 1.07-1.56 1.51-3.07 1.54-3.15-.03-.01-2.95-1.13-2.98-4.5zM10.23 2.54c.77-.94 1.29-2.24 1.15-3.54-1.11.05-2.45.74-3.25 1.67-.72.83-1.34 2.16-1.18 3.43 1.24.1 2.5-.63 3.28-1.56z" />
     </svg>
   );

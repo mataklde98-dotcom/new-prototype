@@ -40,8 +40,7 @@ type Step =
   | 'grade'
   | 'kiConsent'
   | 'authChoice'
-  | 'codeDisplay'
-  | 'parentNotice';
+  | 'codeDisplay';
 
 // Lineare Reihenfolge des Schüler-Pfads (für goNext/goBack & Fortschritt)
 const FLOW: Step[] = [
@@ -53,9 +52,10 @@ const PROGRESS_STEPS: Step[] = FLOW.slice(2); // ab Maskottchen-Intro Fortschrit
 interface OnboardingFlowProps {
   onComplete: (userData: any) => void;
   onSwitchToLogin: () => void;
+  onSwitchToParent: () => void; // Rolle "Elternteil" → Eltern-Onboarding (E1–E8)
 }
 
-export default function OnboardingFlow({ onComplete, onSwitchToLogin }: OnboardingFlowProps) {
+export default function OnboardingFlow({ onComplete, onSwitchToLogin, onSwitchToParent }: OnboardingFlowProps) {
   const [step, setStep] = useState<Step>('landing');
   const [draft, setDraft] = useState<OnboardingDraft>(EMPTY_ONBOARDING_DRAFT);
   const [socialLoading, setSocialLoading] = useState<AuthMethod | null>(null);
@@ -67,7 +67,6 @@ export default function OnboardingFlow({ onComplete, onSwitchToLogin }: Onboardi
   const idx = FLOW.indexOf(step);
   const goNext = () => setStep(FLOW[Math.min(idx + 1, FLOW.length - 1)]);
   const goBack = () => {
-    if (step === 'parentNotice') return setStep('role');
     if (idx > 0) setStep(FLOW[idx - 1]);
   };
 
@@ -99,7 +98,7 @@ export default function OnboardingFlow({ onComplete, onSwitchToLogin }: Onboardi
   // ===== STEP: LANDING =====
   if (step === 'landing') {
     return (
-      <OnboardingShell
+      <OnboardingShell stepKey={step}
         footer={
           <div className="space-y-2.5">
             <PrimaryButton onClick={() => setStep('role')}>Neuen Account erstellen</PrimaryButton>
@@ -129,12 +128,12 @@ export default function OnboardingFlow({ onComplete, onSwitchToLogin }: Onboardi
   // ===== STEP: ROLLE-AUSWAHL =====
   if (step === 'role') {
     return (
-      <OnboardingShell
+      <OnboardingShell stepKey={step}
         onBack={goBack}
         footer={
           <PrimaryButton
             disabled={!draft.role}
-            onClick={() => (draft.role === 'parent' ? setStep('parentNotice') : goNext())}
+            onClick={() => (draft.role === 'parent' ? onSwitchToParent() : goNext())}
           >
             Weiter
           </PrimaryButton>
@@ -166,38 +165,10 @@ export default function OnboardingFlow({ onComplete, onSwitchToLogin }: Onboardi
     );
   }
 
-  // ===== STEP: PARENT NOTICE (Eltern-Pfad folgt in einer späteren Phase) =====
-  if (step === 'parentNotice') {
-    return (
-      <OnboardingShell
-        onBack={goBack}
-        footer={
-          <div className="space-y-1">
-            <PrimaryButton onClick={() => { set({ role: 'student' }); setStep('mascotIntro'); }}>
-              Als Schüler:in fortfahren
-            </PrimaryButton>
-            <TextLink onClick={goBack}>Zurück</TextLink>
-          </div>
-        }
-      >
-        <div className="flex flex-col gap-6">
-          <div className="flex items-start gap-3">
-            <MascotAvatar size={56} />
-            <ChatBubble>Der Eltern-Pfad ist gerade in Arbeit. 🛠️</ChatBubble>
-          </div>
-          <p className="font-['Poppins:Regular',sans-serif] text-[15px] text-white/55 px-1">
-            Bald kannst du hier ein Familienkonto anlegen, dein Kind verknüpfen und Nachhilfe
-            verwalten. Für diesen Prototyp führen wir dich durch den Schüler-Pfad.
-          </p>
-        </div>
-      </OnboardingShell>
-    );
-  }
-
   // ===== STEP: MASKOTTCHEN-INTRO =====
   if (step === 'mascotIntro') {
     return (
-      <OnboardingShell
+      <OnboardingShell stepKey={step}
         onBack={goBack}
         progress={progress}
         footer={<PrimaryButton onClick={goNext}>Cool, weiter!</PrimaryButton>}
@@ -216,7 +187,7 @@ export default function OnboardingFlow({ onComplete, onSwitchToLogin }: Onboardi
   if (step === 'nickname') {
     const valid = draft.display_name.trim().length >= 2;
     return (
-      <OnboardingShell
+      <OnboardingShell stepKey={step}
         onBack={goBack}
         progress={progress}
         footer={<PrimaryButton disabled={!valid} onClick={goNext}>Weiter</PrimaryButton>}
@@ -248,7 +219,7 @@ export default function OnboardingFlow({ onComplete, onSwitchToLogin }: Onboardi
   // ===== STEP: BUNDESLAND =====
   if (step === 'bundesland') {
     return (
-      <OnboardingShell
+      <OnboardingShell stepKey={step}
         onBack={goBack}
         progress={progress}
         footer={<PrimaryButton disabled={!draft.bundesland} onClick={goNext}>Weiter</PrimaryButton>}
@@ -272,7 +243,7 @@ export default function OnboardingFlow({ onComplete, onSwitchToLogin }: Onboardi
   // ===== STEP: SCHULFORM =====
   if (step === 'schoolType') {
     return (
-      <OnboardingShell
+      <OnboardingShell stepKey={step}
         onBack={goBack}
         progress={progress}
         footer={<PrimaryButton disabled={!draft.schoolType} onClick={goNext}>Weiter</PrimaryButton>}
@@ -293,18 +264,13 @@ export default function OnboardingFlow({ onComplete, onSwitchToLogin }: Onboardi
     );
   }
 
-  // ===== STEP: KLASSENSTUFE (optional / überspringbar) =====
+  // ===== STEP: KLASSENSTUFE (Pflicht — nicht überspringbar) =====
   if (step === 'grade') {
     return (
-      <OnboardingShell
+      <OnboardingShell stepKey={step}
         onBack={goBack}
         progress={progress}
-        footer={
-          <div className="space-y-1">
-            <PrimaryButton onClick={goNext}>Weiter</PrimaryButton>
-            <TextLink onClick={() => { set({ grade: undefined }); goNext(); }}>Überspringen</TextLink>
-          </div>
-        }
+        footer={<PrimaryButton disabled={!draft.grade} onClick={goNext}>Weiter</PrimaryButton>}
       >
         <div className="flex flex-col gap-6">
           <div className="flex items-start gap-3">
@@ -325,7 +291,7 @@ export default function OnboardingFlow({ onComplete, onSwitchToLogin }: Onboardi
   // ===== STEP: KI-EINWILLIGUNG =====
   if (step === 'kiConsent') {
     return (
-      <OnboardingShell
+      <OnboardingShell stepKey={step}
         onBack={goBack}
         progress={progress}
         footer={
@@ -359,7 +325,7 @@ export default function OnboardingFlow({ onComplete, onSwitchToLogin }: Onboardi
   if (step === 'authChoice') {
     const busy = socialLoading !== null;
     return (
-      <OnboardingShell onBack={goBack} progress={progress}>
+      <OnboardingShell stepKey={step} onBack={goBack} progress={progress}>
         <div className="flex flex-col gap-6">
           <div className="flex items-start gap-3">
             <MascotAvatar size={56} />
@@ -408,7 +374,7 @@ export default function OnboardingFlow({ onComplete, onSwitchToLogin }: Onboardi
   // ===== STEP: ANMELDE-CODE-ANZEIGE =====
   if (step === 'codeDisplay' && registered) {
     return (
-      <OnboardingShell
+      <OnboardingShell stepKey={step}
         footer={<PrimaryButton onClick={finish}>Weiter zum Dashboard</PrimaryButton>}
       >
         <div className="h-full flex flex-col items-center justify-center text-center gap-6">

@@ -7,6 +7,7 @@ import ReactDOM from 'react-dom';
 import { ChevronLeft, Check, Mail, User as UserIcon, Phone, ChevronDown } from 'lucide-react';
 import CloseButton from '@/app/components/CloseButton';
 import VisionProTextField from './VisionProTextField';
+import LinkedAccountsSection from './LinkedAccountsSection';
 import './AccountEditScreenMobile.css';
 
 interface AccountEditScreenMobileProps {
@@ -280,6 +281,12 @@ const AccountEditScreenMobile = React.forwardRef<HTMLDivElement, AccountEditScre
             <ChevronDown className="absolute right-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30 pointer-events-none" strokeWidth={2} />
           </div>
         </div>
+
+        {/* Trennlinie */}
+        <div className="border-t border-white/[0.06] my-5" />
+
+        {/* Verknüpfte Konten (Onboarding v5, Phase 2) — speichert sofort, unabhängig vom Speichern-Button */}
+        <LinkedAccountsSection />
       </div>
 
       {/* Fixed Save Button */}

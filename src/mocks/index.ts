@@ -45,7 +45,21 @@ export {
   MOCK_IDENTITIES,
   generateAnmeldeCode,
   findIdentityByAnmeldeCode,
+  findIdentityById,
+  persistIdentities,
+  upsertIdentity,
 } from './identity.mock';
+
+// Familienkonto (Onboarding v5)
+export {
+  MOCK_FAMILIES,
+  persistFamilies,
+  findFamilyById,
+  findFamilyByParent,
+  findFamilyByInviteCode,
+  generateFamilyId,
+  generateInviteCode,
+} from './family.mock';
 
 // Tutors (abgeleitet aus Chat-Räumen)
 export { MOCK_TUTORS, formatTutorName } from './tutors.mock';

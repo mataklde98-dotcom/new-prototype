@@ -1,17 +1,25 @@
 // ===== LOGIN SCREEN =====
-// Apple Vision Pro Style Login mit E-Mail & Passwort
+// Vollflächiger Look (konsistent zum Onboarding). Methode-zuerst:
+// Apple/Google primär (beide Rollen), Anmelde-Code als Box (Schüler:innen),
+// E-Mail/Passwort eingeklappt hinter Button (meist Eltern).
+// Logik (Mock-Login, Code-Login, Social) unverändert.
 
 import React, { useState } from 'react';
-import { Mail, Lock, Eye, EyeOff, AlertCircle } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, AlertCircle, KeyRound, ChevronDown } from 'lucide-react';
 import { projectId, publicAnonKey } from '/utils/supabase/info';
 import SoStudyLogo from './SoStudyLogo';
 import type { SocialAuthInfo } from './AuthWrapper';
+import { identityService } from '@/services/identityService';
+import { BRAND, MascotAvatar, GoogleIcon, AppleIcon } from './onboarding/OnboardingShared';
 
 interface LoginScreenProps {
   onLoginSuccess: (userData: any) => void;
   onSwitchToRegister: () => void;
   onSocialAuthNewUser: (info: SocialAuthInfo) => void;
 }
+
+// Welche Sekundär-Methode ist aufgeklappt
+type OpenMethod = 'none' | 'email' | 'code';
 
 const LoginScreen = React.memo(function LoginScreen({ onLoginSuccess, onSwitchToRegister, onSocialAuthNewUser }: LoginScreenProps) {
   const [email, setEmail] = useState('');
@@ -20,6 +28,35 @@ const LoginScreen = React.memo(function LoginScreen({ onLoginSuccess, onSwitchTo
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [socialLoading, setSocialLoading] = useState<'google' | 'apple' | null>(null);
+  const [openMethod, setOpenMethod] = useState<OpenMethod>('none');
+  const [code, setCode] = useState('');
+  const [codeLoading, setCodeLoading] = useState(false);
+
+  const toggle = (m: OpenMethod) => {
+    setError('');
+    setOpenMethod((prev) => (prev === m ? 'none' : m));
+  };
+
+  const handleCodeLogin = async () => {
+    setError('');
+    const trimmed = code.trim();
+    if (!trimmed) {
+      setError('Bitte Anmelde-Code eingeben');
+      return;
+    }
+    setCodeLoading(true);
+    try {
+      const identity = await identityService.loginWithAnmeldeCode(trimmed);
+      if (!identity) throw new Error('Ungültiger Anmelde-Code');
+      // loginWithAnmeldeCode hat Session + userData bereits gesetzt
+      const stored = localStorage.getItem('userData');
+      onLoginSuccess(stored ? JSON.parse(stored) : identity);
+    } catch (err: any) {
+      setError(err.message || 'Anmeldung fehlgeschlagen');
+    } finally {
+      setCodeLoading(false);
+    }
+  };
 
   const handleSocialAuth = async (provider: 'google' | 'apple') => {
     setSocialLoading(provider);
@@ -29,8 +66,8 @@ const LoginScreen = React.memo(function LoginScreen({ onLoginSuccess, onSwitchTo
       // Simulate OAuth flow delay
       await new Promise(resolve => setTimeout(resolve, 1200));
 
-      const mockSocialEmail = provider === 'google' 
-        ? 'alexander.baum@gmail.com' 
+      const mockSocialEmail = provider === 'google'
+        ? 'alexander.baum@gmail.com'
         : 'alexander.baum@icloud.com';
       const mockFirstName = 'Alexander';
       const mockLastName = 'Baum';
@@ -63,7 +100,7 @@ const LoginScreen = React.memo(function LoginScreen({ onLoginSuccess, onSwitchTo
 
   const handleLogin = async () => {
     setError('');
-    
+
     if (!email || !password) {
       setError('Bitte E-Mail und Passwort eingeben');
       return;
@@ -74,12 +111,12 @@ const LoginScreen = React.memo(function LoginScreen({ onLoginSuccess, onSwitchTo
     try {
       // Check if real Supabase credentials are configured
       const hasRealCredentials = projectId !== 'YOUR_PROJECT_ID_HERE' && publicAnonKey !== 'YOUR_ANON_KEY_HERE';
-      
+
       if (hasRealCredentials) {
         // Real Supabase Login
         const response = await fetch(`https://${projectId}.supabase.co/functions/v1/make-server-5cb2ed3a/auth/login`, {
           method: 'POST',
-          headers: { 
+          headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${publicAnonKey}`
           },
@@ -95,22 +132,42 @@ const LoginScreen = React.memo(function LoginScreen({ onLoginSuccess, onSwitchTo
         // Store user data in localStorage
         localStorage.setItem('isLoggedIn', 'true');
         localStorage.setItem('userData', JSON.stringify(data.user));
-        
+
         onLoginSuccess(data.user);
       } else {
         // Mock Login (Development Mode)
-        const mockUsers: Record<string, { email: string; password: string; firstName: string; lastName: string }> = {
+        // userId = kanonische Mock-ID (konsistent zu src/lib/auth.ts → getCurrentUserId nutzt sie fürs Storage-Scoping)
+        // role/familyId mitschreiben, damit App.tsx Eltern korrekt zur ParentDashboard routet.
+        type MockLoginUser = {
+          email: string; password: string; firstName: string; lastName: string;
+          userId: string; role: 'student' | 'parent'; familyId?: string; familyRole?: 'owner' | 'child';
+        };
+        const mockUsers: Record<string, MockLoginUser> = {
           'alexanderbaum@gmail.com': {
             email: 'alexanderbaum@gmail.com',
             password: '12345678',
             firstName: 'Alexander Johannes',
-            lastName: 'Baum'
+            lastName: 'Baum',
+            userId: 'user_alexanderbaum_mock_123',
+            role: 'student',
           },
           'newuser@sostudytest.com': {
             email: 'newuser@sostudytest.com',
             password: '12345678',
             firstName: 'Max',
-            lastName: 'Mustermann'
+            lastName: 'Mustermann',
+            userId: 'user_newuser_mock_456',
+            role: 'student',
+          },
+          'parent@sostudytest.com': {
+            email: 'parent@sostudytest.com',
+            password: '12345678',
+            firstName: 'Sabine',
+            lastName: 'Baum',
+            userId: 'user_parent_mock_789',
+            role: 'parent',
+            familyId: 'fam_mock_001',
+            familyRole: 'owner',
           }
         };
 
@@ -125,14 +182,19 @@ const LoginScreen = React.memo(function LoginScreen({ onLoginSuccess, onSwitchTo
           email: mockUser.email,
           firstName: mockUser.firstName,
           lastName: mockUser.lastName,
-          userId: `user_${normalizedEmail.split('@')[0]}_mock_123`,
+          userId: mockUser.userId,
+          role: mockUser.role,
+          familyId: mockUser.familyId,
+          familyRole: mockUser.familyRole,
           createdAt: new Date().toISOString()
         };
 
         // Store user data in localStorage
         localStorage.setItem('isLoggedIn', 'true');
         localStorage.setItem('userData', JSON.stringify(userData));
-        
+        // Kanonische Identität (sostudy_identity) ableiten → familyService/Tutoring-Gate funktionieren auch beim E-Mail-Login
+        identityService.ensureIdentity();
+
         console.log('✅ Mock Login erfolgreich:', mockUser.email);
         onLoginSuccess(userData);
       }
@@ -143,155 +205,204 @@ const LoginScreen = React.memo(function LoginScreen({ onLoginSuccess, onSwitchTo
     }
   };
 
+  // ===== UI-Bausteine (lokal) =====
+  const inputBase =
+    "w-full bg-white/[0.04] border border-white/[0.08] rounded-2xl py-3.5 text-white font-['Poppins:Regular',sans-serif] placeholder:text-white/30 outline-none focus:border-[#009379] transition-colors";
+
   return (
-    <div className="fixed inset-0 overflow-y-auto flex items-center justify-center px-5 py-10"
+    <div
+      className="fixed inset-0 overflow-y-auto"
       style={{
-        background: '#0a0a0a',
+        background: `radial-gradient(120% 80% at 50% 0%, rgba(0,147,121,0.10) 0%, ${BRAND.bg} 55%)`,
         WebkitOverflowScrolling: 'touch',
       }}
     >
-      <div className="w-full max-w-md">
-        {/* Logo */}
-        <div className="text-center mb-8">
-          <SoStudyLogo className="h-10 mx-auto mb-3" />
-          <p className="text-white/60 font-['Poppins:Regular',sans-serif] text-[15px]">
-            Anmelden und weiter lernen
-          </p>
-        </div>
+      <div
+        className="min-h-full flex flex-col justify-center px-5"
+        style={{
+          paddingTop: 'calc(var(--safe-area-inset-top) + 32px)',
+          paddingBottom: 'calc(var(--safe-area-inset-bottom) + 24px)',
+        }}
+      >
+        <div className="w-full max-w-[400px] mx-auto">
+          {/* Header */}
+          <div className="flex flex-col items-center text-center mb-7">
+            <SoStudyLogo className="h-9 mb-4" />
+            <MascotAvatar size={64} />
+            <p className="text-white/60 font-['Poppins:Medium',sans-serif] text-[15px] mt-3">
+              Willkommen zurück!
+            </p>
+          </div>
 
-        {/* Login Card */}
-        <div 
-          className="relative bg-gradient-to-br from-white/[0.06] to-white/[0.03] border border-white/[0.10] rounded-3xl p-6 mb-4"
-        >
-          {/* Error Message */}
+          {/* Error */}
           {error && (
-            <div className="mb-4 px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/20 flex items-center gap-2">
-              <AlertCircle className="w-5 h-5 text-red-400" />
-              <span className="text-red-200 text-sm font-['Poppins:Regular',sans-serif]">
-                {error}
-              </span>
+            <div className="mb-4 px-4 py-3 rounded-2xl bg-red-500/10 border border-red-500/20 flex items-center gap-2">
+              <AlertCircle className="w-5 h-5 text-red-400 shrink-0" />
+              <span className="text-red-200 text-[13px] font-['Poppins:Regular',sans-serif]">{error}</span>
             </div>
           )}
 
-          {/* E-Mail Input */}
-          <div className="mb-4">
-            <label className="block text-white/80 font-['Poppins:Medium',sans-serif] text-sm mb-2">
-              E-Mail
-            </label>
-            <div className="relative">
-              <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/40" />
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="alexanderbaum@gmail.com"
-                className="w-full bg-white/[0.04] border border-white/[0.08] rounded-xl pl-12 pr-4 py-3.5 text-white font-['Poppins:Regular',sans-serif] placeholder:text-white/30 outline-none focus:border-white/[0.25] transition-colors"
-              />
-            </div>
-          </div>
-
-          {/* Password Input */}
-          <div className="mb-6">
-            <label className="block text-white/80 font-['Poppins:Medium',sans-serif] text-sm mb-2">
-              Passwort
-            </label>
-            <div className="relative">
-              <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/40" />
-              <input
-                type={showPassword ? "text" : "password"}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
-                className="w-full bg-white/[0.04] border border-white/[0.08] rounded-xl px-12 py-3.5 text-white font-['Poppins:Regular',sans-serif] placeholder:text-white/30 outline-none focus:border-white/[0.25] transition-colors"
-                onKeyDown={(e) => e.key === 'Enter' && handleLogin()}
-              />
-              <button
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-4 top-1/2 -translate-y-1/2 text-white/40 active:scale-95 transition-transform"
-              >
-                {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-              </button>
-            </div>
-          </div>
-
-          {/* Login Button */}
-          <button
-            onClick={handleLogin}
-            disabled={isLoading}
-            className="w-full font-['Poppins:SemiBold',sans-serif] text-[14px] py-3.5 rounded-xl active:scale-[0.98] transition-all duration-200 disabled:opacity-30 disabled:cursor-not-allowed"
-            style={{
-              background: isLoading
-                ? 'rgba(255,255,255,0.04)'
-                : 'rgba(0,184,148,0.07)',
-              border: isLoading
-                ? '1px solid rgba(255,255,255,0.06)'
-                : '1px solid rgba(0,184,148,0.25)',
-              color: isLoading ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.9)',
-            }}
-          >
-            {isLoading ? 'Wird geladen...' : 'Anmelden'}
-          </button>
-        </div>
-
-        {/* Register Link */}
-        <div className="text-center">
-          <span className="text-white/60 font-['Poppins:Regular',sans-serif] text-sm">
-            Noch kein Konto?{' '}
-          </span>
-          <button
-            onClick={onSwitchToRegister}
-            className="text-white font-['Poppins:SemiBold',sans-serif] text-sm active:opacity-70 transition-opacity"
-          >
-            Jetzt registrieren
-          </button>
-        </div>
-
-        {/* Divider */}
-        <div className="flex items-center gap-4 my-5">
-          <div className="flex-1 h-px bg-white/[0.06]" />
-          <span className="font-['Poppins:Regular',sans-serif] text-[11px] text-white/25 uppercase tracking-widest">
-            oder
-          </span>
-          <div className="flex-1 h-px bg-white/[0.06]" />
-        </div>
-
-        {/* Social Login */}
-        <div className="flex gap-3">
-          <button
-            onClick={() => handleSocialAuth('google')}
-            disabled={socialLoading !== null}
-            className="flex-1 flex items-center justify-center gap-2.5 py-3 rounded-xl bg-white/[0.04] border border-white/[0.08] active:scale-[0.97] active:bg-white/[0.07] transition-all duration-150 disabled:opacity-50 disabled:active:scale-100"
-          >
-            {socialLoading === 'google' ? (
-              <div className="w-[18px] h-[18px] border-2 border-white/20 border-t-white/60 rounded-full animate-spin" />
-            ) : (
-              <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-                <path d="M17.64 9.205c0-.639-.057-1.252-.164-1.841H9v3.481h4.844a4.14 4.14 0 0 1-1.796 2.716v2.259h2.908c1.702-1.567 2.684-3.875 2.684-6.615z" fill="#4285F4"/>
-                <path d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z" fill="#34A853"/>
-                <path d="M3.964 10.71A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.997 8.997 0 0 0 0 9c0 1.452.348 2.827.957 4.042l3.007-2.332z" fill="#FBBC05"/>
-                <path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z" fill="#EA4335"/>
-              </svg>
-            )}
-            <span className="font-['Poppins:Medium',sans-serif] text-[13px] text-white/60">
-              {socialLoading === 'google' ? 'Verbinden...' : 'Google'}
-            </span>
-          </button>
+          {/* Apple (primär, beide Rollen) */}
           <button
             onClick={() => handleSocialAuth('apple')}
             disabled={socialLoading !== null}
-            className="flex-1 flex items-center justify-center gap-2.5 py-3 rounded-xl bg-white/[0.04] border border-white/[0.08] active:scale-[0.97] active:bg-white/[0.07] transition-all duration-150 disabled:opacity-50 disabled:active:scale-100"
+            className="w-full flex items-center justify-center gap-2.5 py-4 rounded-2xl bg-white text-black font-['Poppins:SemiBold',sans-serif] text-[16px] active:scale-[0.98] transition-all duration-150 disabled:opacity-60"
           >
             {socialLoading === 'apple' ? (
-              <div className="w-[16px] h-[16px] border-2 border-white/20 border-t-white/60 rounded-full animate-spin" />
+              <div className="w-[18px] h-[18px] border-2 border-black/20 border-t-black/60 rounded-full animate-spin" />
             ) : (
-              <svg width="16" height="18" viewBox="0 0 16 20" fill="white" style={{ overflow: 'visible' }}>
-                <path d="M13.04 10.58c-.03-2.78 2.27-4.12 2.37-4.18-1.29-1.89-3.3-2.15-4.02-2.18-1.71-.17-3.34 1.01-4.21 1.01-.87 0-2.22-.98-3.65-.96-1.88.03-3.61 1.09-4.58 2.78-1.95 3.39-.5 8.41 1.4 11.16.93 1.35 2.04 2.86 3.5 2.81 1.4-.06 1.93-.91 3.63-.91 1.7 0 2.18.91 3.67.88 1.51-.03 2.48-1.37 3.4-2.72 1.07-1.56 1.51-3.07 1.54-3.15-.03-.01-2.95-1.13-2.98-4.5zM10.23 2.54c.77-.94 1.29-2.24 1.15-3.54-1.11.05-2.45.74-3.25 1.67-.72.83-1.34 2.16-1.18 3.43 1.24.1 2.5-.63 3.28-1.56z"/>
-              </svg>
+              <AppleIcon />
             )}
-            <span className="font-['Poppins:Medium',sans-serif] text-[13px] text-white/60">
-              {socialLoading === 'apple' ? 'Verbinden...' : 'Apple'}
-            </span>
+            {socialLoading === 'apple' ? 'Verbinden…' : 'Mit Apple fortfahren'}
           </button>
+
+          {/* Google + E-Mail (Sekundär-Reihe) */}
+          <div className="grid grid-cols-2 gap-3 mt-3">
+            <button
+              onClick={() => handleSocialAuth('google')}
+              disabled={socialLoading !== null}
+              className="flex items-center justify-center gap-2.5 py-3.5 rounded-2xl bg-white/[0.05] border border-white/[0.10] text-white/80 font-['Poppins:Medium',sans-serif] text-[14px] active:scale-[0.97] transition-all duration-150 disabled:opacity-50"
+            >
+              {socialLoading === 'google' ? (
+                <div className="w-[18px] h-[18px] border-2 border-white/20 border-t-white/60 rounded-full animate-spin" />
+              ) : (
+                <GoogleIcon />
+              )}
+              Google
+            </button>
+            <button
+              onClick={() => toggle('email')}
+              className="flex items-center justify-center gap-2 py-3.5 rounded-2xl bg-white/[0.05] border text-white/80 font-['Poppins:Medium',sans-serif] text-[14px] active:scale-[0.97] transition-all duration-150"
+              style={{ borderColor: openMethod === 'email' ? BRAND.primary : 'rgba(255,255,255,0.10)' }}
+            >
+              <Mail className="w-4 h-4 text-white/55" />
+              E-Mail
+              <ChevronDown
+                className="w-4 h-4 text-white/40 transition-transform duration-200"
+                style={{ transform: openMethod === 'email' ? 'rotate(180deg)' : 'none' }}
+              />
+            </button>
+          </div>
+
+          {/* E-Mail/Passwort-Panel (meist Eltern) */}
+          {openMethod === 'email' && (
+            <div className="mt-3 space-y-3 animate-[onbBubbleIn_0.25s_ease-out]">
+              <p className="font-['Poppins:Regular',sans-serif] text-[12px] text-white/40 px-1">
+                Meist für Eltern — mit E-Mail & Passwort anmelden.
+              </p>
+              <div className="relative">
+                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/40" />
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="deine@email.de"
+                  className={`${inputBase} pl-12 pr-4`}
+                  style={{ fontSize: 16 }}
+                />
+              </div>
+              <div className="relative">
+                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/40" />
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Passwort"
+                  className={`${inputBase} px-12`}
+                  style={{ fontSize: 16 }}
+                  onKeyDown={(e) => e.key === 'Enter' && handleLogin()}
+                />
+                <button
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-white/40 active:scale-95 transition-transform"
+                  aria-label={showPassword ? 'Passwort verbergen' : 'Passwort anzeigen'}
+                >
+                  {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                </button>
+              </div>
+              <button
+                onClick={handleLogin}
+                disabled={isLoading}
+                className="w-full flex items-center justify-center gap-2 py-4 rounded-2xl font-['Poppins:SemiBold',sans-serif] text-[16px] text-white active:scale-[0.98] transition-all duration-150 disabled:opacity-40"
+                style={{
+                  background: isLoading ? 'rgba(255,255,255,0.08)' : `linear-gradient(135deg, ${BRAND.primaryLight}, ${BRAND.primary})`,
+                  boxShadow: isLoading ? 'none' : '0 8px 24px rgba(0,147,121,0.35)',
+                }}
+              >
+                {isLoading && <div className="w-[18px] h-[18px] border-2 border-white/30 border-t-white rounded-full animate-spin" />}
+                {isLoading ? 'Wird geladen…' : 'Anmelden'}
+              </button>
+            </div>
+          )}
+
+          {/* Anmelde-Code (Box, für Schüler:innen) */}
+          <button
+            onClick={() => toggle('code')}
+            className="w-full flex items-center gap-3 p-4 rounded-2xl mt-3 text-left active:scale-[0.98] transition-all duration-150"
+            style={{
+              background: openMethod === 'code' ? 'rgba(0,147,121,0.12)' : 'rgba(255,255,255,0.04)',
+              border: `1px solid ${openMethod === 'code' ? BRAND.primary : 'rgba(255,255,255,0.08)'}`,
+            }}
+          >
+            <div
+              className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0"
+              style={{ background: 'rgba(0,147,121,0.16)' }}
+            >
+              <KeyRound className="w-5 h-5" style={{ color: BRAND.primaryLight }} />
+            </div>
+            <div className="flex-1">
+              <div className="font-['Poppins:SemiBold',sans-serif] text-[15px] text-white">Anmelde-Code</div>
+              <div className="font-['Poppins:Regular',sans-serif] text-[12px] text-white/45">für Schüler:innen</div>
+            </div>
+            <ChevronDown
+              className="w-5 h-5 text-white/40 transition-transform duration-200"
+              style={{ transform: openMethod === 'code' ? 'rotate(180deg)' : 'none' }}
+            />
+          </button>
+
+          {/* Anmelde-Code-Panel */}
+          {openMethod === 'code' && (
+            <div className="mt-3 space-y-3 animate-[onbBubbleIn_0.25s_ease-out]">
+              <input
+                type="text"
+                value={code}
+                onChange={(e) => setCode(e.target.value.toUpperCase())}
+                placeholder="z.B. ALEX-7K2P"
+                autoCapitalize="characters"
+                autoCorrect="off"
+                spellCheck={false}
+                className={`${inputBase} px-4 text-center font-['Poppins:SemiBold',sans-serif] tracking-[0.18em] placeholder:tracking-normal`}
+                style={{ fontSize: 16 }}
+                onKeyDown={(e) => e.key === 'Enter' && handleCodeLogin()}
+              />
+              <p className="font-['Poppins:Regular',sans-serif] text-[12px] text-white/40 px-1">
+                Den Code hast du bei der Registrierung erhalten — er funktioniert auf jedem Gerät.
+              </p>
+              <button
+                onClick={handleCodeLogin}
+                disabled={codeLoading}
+                className="w-full flex items-center justify-center gap-2 py-4 rounded-2xl font-['Poppins:SemiBold',sans-serif] text-[16px] text-white active:scale-[0.98] transition-all duration-150 disabled:opacity-40"
+                style={{
+                  background: codeLoading ? 'rgba(255,255,255,0.08)' : `linear-gradient(135deg, ${BRAND.primaryLight}, ${BRAND.primary})`,
+                  boxShadow: codeLoading ? 'none' : '0 8px 24px rgba(0,147,121,0.35)',
+                }}
+              >
+                {codeLoading && <div className="w-[18px] h-[18px] border-2 border-white/30 border-t-white rounded-full animate-spin" />}
+                {codeLoading ? 'Wird geprüft…' : 'Mit Code anmelden'}
+              </button>
+            </div>
+          )}
+
+          {/* Register-Link */}
+          <div className="text-center mt-7">
+            <span className="text-white/55 font-['Poppins:Regular',sans-serif] text-[14px]">Noch kein Konto? </span>
+            <button
+              onClick={onSwitchToRegister}
+              className="text-white font-['Poppins:SemiBold',sans-serif] text-[14px] active:opacity-70 transition-opacity"
+            >
+              Registrieren
+            </button>
+          </div>
         </div>
       </div>
     </div>

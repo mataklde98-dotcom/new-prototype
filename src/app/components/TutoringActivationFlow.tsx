@@ -8,10 +8,11 @@
 //   3. Subject Selection
 //   4. Confirmation / Send Request
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   ArrowLeft, Globe, MapPin, Search, Check, CheckCircle2,
   Phone, Mail, BookOpen, GraduationCap, ChevronRight, Star, Clock,
+  User as UserIcon, Cake, ShieldCheck, Users, Copy, Hourglass, Mail as MailIcon,
 } from 'lucide-react';
 import { useUser } from '@/contexts/UserContext';
 import type { TutoringRequestData } from '@/contexts/UserContext';
@@ -22,6 +23,10 @@ import {
 } from '@/mocks/tutoringPartners.mock';
 import type { TutoringPartner } from '@/mocks/tutoringPartners.mock';
 import Button from './Button';
+import { identityService } from '@/services/identityService';
+import { familyService } from '@/services/familyService';
+import { generateInviteCode } from '@/mocks/family.mock';
+import type { SoStudyIdentity } from '@/types/identity';
 
 // ===================================================================
 // TYPES
@@ -160,9 +165,10 @@ const StepIndicator = ({ currentStep, totalSteps }: { currentStep: number; total
 );
 
 // ===================================================================
-// MAIN COMPONENT
+// REQUEST-FLOW (Typ → Partner → Fächer → Bestätigung)
+// Wird erst gerendert, wenn der Eligibility-Gate (Klarname/Alter/Eltern) bestanden ist.
 // ===================================================================
-export default function TutoringActivationFlow({
+function TutoringRequestFlow({
   onClose,
   externalTransition,
 }: TutoringActivationFlowProps) {
@@ -641,5 +647,254 @@ export default function TutoringActivationFlow({
         </div>
       )}
     </div>
+  );
+}
+
+// ===================================================================
+// ELIGIBILITY-GATE (Phase 4 Klarname-Gate + Phase 5 Volljährigkeit & 4-Felder-Matrix)
+// Reihenfolge: Klarname (wenn leer) → Volljährigkeits-Toggle → Eltern-Matrix.
+// 4-Felder-Matrix = Alter (volljährig/minderjährig) × Familienverknüpfung (mit/ohne Elternkonto):
+//   volljährig                → selbst aktivierbar (mit/ohne Elternkonto)
+//   minderjährig + Elternkonto → Eltern-Einwilligung (✓ weiter / ⏳ ausstehend)
+//   minderjährig + kein Konto  → Eltern-Einladung erstellen
+// Erst nach bestandenem Gate wird der eigentliche Request-Flow gerendert.
+// ===================================================================
+type GateStep = 'klarname' | 'age' | 'consent';
+
+function GateShell({ onBack, children }: { onBack: () => void; children: React.ReactNode }) {
+  return (
+    <div className="size-full flex flex-col overflow-hidden overscroll-none" style={{ background: '#0a0a0a' }}>
+      <div className="flex-1 overflow-y-auto scrollbar-hide px-6 py-8 min-h-0">
+        <div className="max-w-md mx-auto flex flex-col" style={{ minHeight: '100%' }}>
+          <BackButton onClick={onBack} />
+          {children}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** Großer Auswahl-Button (Alter) */
+const ChoiceButton = ({
+  icon, title, subtitle, onClick, disabled,
+}: { icon: React.ReactNode; title: string; subtitle: string; onClick: () => void; disabled?: boolean }) => (
+  <button
+    onClick={onClick}
+    disabled={disabled}
+    className="w-full text-left px-5 py-4 rounded-2xl transition-all duration-200 active:scale-[0.98] disabled:opacity-60 flex items-center gap-4"
+    style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}
+  >
+    <div className="flex-shrink-0 w-12 h-12 rounded-xl flex items-center justify-center" style={{ background: 'rgba(255,255,255,0.06)' }}>
+      {icon}
+    </div>
+    <div className="flex-1 min-w-0">
+      <div className="font-['Poppins:SemiBold',sans-serif] text-[15px] text-white">{title}</div>
+      <div className="font-['Poppins:Regular',sans-serif] text-[13px] text-white/45 mt-0.5">{subtitle}</div>
+    </div>
+    <ChevronRight className="w-5 h-5 text-white/30 flex-shrink-0" />
+  </button>
+);
+
+export default function TutoringActivationFlow(props: TutoringActivationFlowProps) {
+  const { onClose } = props;
+  const [loaded, setLoaded] = useState(false);
+  const [eligible, setEligible] = useState(false);
+  const [identity, setIdentity] = useState<SoStudyIdentity | null>(null);
+  const [gateStep, setGateStep] = useState<GateStep>('klarname');
+
+  const [nameInput, setNameInput] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const [inviteCode, setInviteCode] = useState('');
+  const [consentRequested, setConsentRequested] = useState(false);
+
+  useEffect(() => {
+    const id = identityService.ensureIdentity();
+    setIdentity(id);
+    if (!id) { setEligible(true); setLoaded(true); return; }
+    setNameInput(id.real_name || '');
+    if (!id.real_name.trim()) setGateStep('klarname');
+    else if (!id.volljaehrig) setGateStep('age');
+    else setEligible(true);
+    setLoaded(true);
+  }, []);
+
+  // Kurzer Leerzustand, bis die Identität gelesen ist
+  if (!loaded) return <div className="size-full" style={{ background: '#0a0a0a' }} />;
+  // Gate bestanden (oder keine Identität ableitbar) → eigentlicher Request-Flow
+  if (eligible || !identity) return <TutoringRequestFlow {...props} />;
+
+  const copy = (t: string) => {
+    navigator.clipboard?.writeText(t).catch(() => {});
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1600);
+  };
+
+  const submitName = async () => {
+    if (nameInput.trim().length < 2) return;
+    setBusy(true);
+    const updated = await identityService.setRealName(nameInput);
+    setBusy(false);
+    if (updated) {
+      setIdentity(updated);
+      if (!updated.volljaehrig) setGateStep('age');
+      else setEligible(true);
+    }
+  };
+
+  const answerAge = async (isAdult: boolean) => {
+    setBusy(true);
+    const updated = await identityService.setVolljaehrig(isAdult);
+    setBusy(false);
+    if (updated) {
+      setIdentity(updated);
+      if (isAdult) setEligible(true);
+      else setGateStep('consent');
+    }
+  };
+
+  // ----- KLARNAME-GATE -----
+  if (gateStep === 'klarname') {
+    return (
+      <GateShell onBack={onClose}>
+        <div className="w-14 h-14 rounded-2xl flex items-center justify-center mb-5" style={{ background: 'rgba(0,184,148,0.12)' }}>
+          <UserIcon className="w-7 h-7" style={{ color: '#00B894' }} />
+        </div>
+        <StepHeader
+          title="Wie heißt du wirklich?"
+          subtitle={`Für die Nachhilfe brauchen wir deinen echten Namen (für Vertrag & Tutor:in). In der App bleibst du sonst „${identity.display_name}".`}
+        />
+        <input
+          autoFocus
+          value={nameInput}
+          onChange={(e) => setNameInput(e.target.value)}
+          placeholder="Vor- und Nachname"
+          onKeyDown={(e) => e.key === 'Enter' && submitName()}
+          className="w-full mb-6 px-5 py-4 rounded-2xl bg-white/[0.05] border border-white/[0.10] text-white text-[16px] font-['Poppins:Medium',sans-serif] outline-none focus:border-[#009379] transition-colors"
+          style={{ fontSize: 16 }}
+        />
+        <Button onClick={submitName} disabled={busy || nameInput.trim().length < 2}>
+          {busy ? 'Speichern…' : 'Weiter'}
+        </Button>
+      </GateShell>
+    );
+  }
+
+  // ----- VOLLJÄHRIGKEITS-TOGGLE -----
+  if (gateStep === 'age') {
+    return (
+      <GateShell onBack={onClose}>
+        <div className="w-14 h-14 rounded-2xl flex items-center justify-center mb-5" style={{ background: 'rgba(0,184,148,0.12)' }}>
+          <Cake className="w-7 h-7" style={{ color: '#00B894' }} />
+        </div>
+        <StepHeader
+          title="Bist du volljährig?"
+          subtitle="Das entscheidet, ob ein Elternteil der Nachhilfe zustimmen muss."
+        />
+        <div className="space-y-3">
+          <ChoiceButton
+            icon={<ShieldCheck className="w-6 h-6 text-white" />}
+            title="Ich bin 18 oder älter"
+            subtitle="Ich kann selbst zustimmen."
+            onClick={() => answerAge(true)}
+            disabled={busy}
+          />
+          <ChoiceButton
+            icon={<Users className="w-6 h-6 text-white" />}
+            title="Ich bin noch nicht 18"
+            subtitle="Ein Elternteil muss zustimmen."
+            onClick={() => answerAge(false)}
+            disabled={busy}
+          />
+        </div>
+      </GateShell>
+    );
+  }
+
+  // ----- 4-FELDER-MATRIX: minderjährig (Eltern-Dimension) -----
+  const family = identity.familyId ? familyService.getFamilyById(identity.familyId) : null;
+  const childEntry = family?.children.find((c) => c.childUserId === identity.userId) || null;
+  const hasParent = !!family;
+  const parentConsent = !!childEntry?.tutoringConsent;
+
+  return (
+    <GateShell onBack={onClose}>
+      {hasParent && parentConsent && (
+        <>
+          <div className="w-14 h-14 rounded-2xl flex items-center justify-center mb-5" style={{ background: 'rgba(0,184,148,0.12)' }}>
+            <ShieldCheck className="w-7 h-7" style={{ color: '#00B894' }} />
+          </div>
+          <StepHeader
+            title="Deine Eltern haben zugestimmt"
+            subtitle={`${family!.parentRealName} hat die Nachhilfe für dich freigegeben. Du kannst jetzt loslegen.`}
+          />
+          <Button onClick={() => setEligible(true)}>Weiter zur Nachhilfe</Button>
+        </>
+      )}
+
+      {hasParent && !parentConsent && (
+        <>
+          <div className="w-14 h-14 rounded-2xl flex items-center justify-center mb-5" style={{ background: 'rgba(245,158,11,0.14)' }}>
+            <Hourglass className="w-7 h-7" style={{ color: '#fbbf24' }} />
+          </div>
+          <StepHeader
+            title="Einwilligung deiner Eltern nötig"
+            subtitle={`Dein Konto ist mit ${family!.parentRealName} verknüpft. Für die Nachhilfe fehlt noch die Freigabe.`}
+          />
+          {consentRequested ? (
+            <div className="flex items-center gap-2.5 mb-6 px-4 py-3 rounded-xl" style={{ background: 'rgba(0,184,148,0.10)', border: '1px solid rgba(0,184,148,0.25)' }}>
+              <CheckCircle2 className="w-5 h-5 flex-shrink-0" style={{ color: '#00B894' }} />
+              <p className="font-['Poppins:Regular',sans-serif] text-[13px] text-white/70">
+                Wir haben {family!.parentRealName} benachrichtigt. Sobald die Freigabe da ist, geht's weiter.
+              </p>
+            </div>
+          ) : (
+            <Button onClick={() => setConsentRequested(true)}>Eltern um Freigabe bitten</Button>
+          )}
+          <button onClick={onClose} className="w-full text-center py-3 mt-2 font-['Poppins:Medium',sans-serif] text-[14px] text-white/45 active:text-white/70 transition-colors">
+            Schließen
+          </button>
+        </>
+      )}
+
+      {!hasParent && (
+        <>
+          <div className="w-14 h-14 rounded-2xl flex items-center justify-center mb-5" style={{ background: 'rgba(0,184,148,0.12)' }}>
+            <Users className="w-7 h-7" style={{ color: '#00B894' }} />
+          </div>
+          <StepHeader
+            title="Hol deine Eltern dazu"
+            subtitle="Weil du noch nicht volljährig bist, muss ein Elternteil zustimmen. Erstelle eine Einladung und gib sie deinen Eltern."
+          />
+          {inviteCode ? (
+            <>
+              <button
+                onClick={() => copy(inviteCode)}
+                className="w-full rounded-3xl py-6 px-4 mb-4 active:scale-[0.98] transition-transform"
+                style={{ background: 'rgba(0,147,121,0.12)', border: '1.5px solid #009379' }}
+              >
+                <div className="font-['Poppins:Medium',sans-serif] text-[12px] text-white/50 mb-1">Einladungs-Code für deine Eltern</div>
+                <div className="font-['Poppins:Bold',sans-serif] text-[24px] tracking-[0.08em] text-white break-all">{inviteCode}</div>
+                <div className="flex items-center justify-center gap-1.5 mt-2 text-[13px] font-['Poppins:Medium',sans-serif] text-white/55">
+                  {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                  {copied ? 'Kopiert!' : 'Tippen zum Kopieren'}
+                </div>
+              </button>
+              <div className="flex items-start gap-2.5 mb-6 px-4 py-3 rounded-xl" style={{ background: 'rgba(59,130,246,0.06)', border: '1px solid rgba(59,130,246,0.15)' }}>
+                <MailIcon className="w-4 h-4 flex-shrink-0 mt-0.5" style={{ color: 'rgba(96,165,250,0.8)' }} />
+                <p className="font-['Poppins:Regular',sans-serif] text-[12px] leading-relaxed" style={{ color: 'rgba(96,165,250,0.75)' }}>
+                  Deine Eltern erstellen mit diesem Code ein Familienkonto und geben die Nachhilfe frei. Danach kannst du sie aktivieren.
+                </p>
+              </div>
+              <button onClick={onClose} className="w-full text-center py-3 font-['Poppins:Medium',sans-serif] text-[14px] text-white/45 active:text-white/70 transition-colors">
+                Schließen
+              </button>
+            </>
+          ) : (
+            <Button onClick={() => setInviteCode(generateInviteCode())}>Einladung erstellen</Button>
+          )}
+        </>
+      )}
+    </GateShell>
   );
 }

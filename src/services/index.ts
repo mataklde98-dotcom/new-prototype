@@ -8,4 +8,6 @@ export { sessionService } from './sessionService';
 export { userService } from './userService';
 export { errorService } from './errorService';
 export { identityService } from './identityService';
+export { familyService } from './familyService';
+export type { NewChildInput, LinkResult } from './familyService';
 export * from './cardGenerationService';

@@ -3,12 +3,20 @@
 // JETZT: Mock + localStorage (Prototyp, kein Backend).
 // SPÄTER: Mock-Aufrufe durch echte Supabase-Calls ersetzen (Auth + Profil-Tabelle).
 
-import type { SoStudyIdentity, OnboardingDraft, AuthMethod } from '@/types/identity';
+import type {
+  SoStudyIdentity,
+  OnboardingDraft,
+  ParentOnboardingDraft,
+  AuthMethod,
+  Familienkonto,
+} from '@/types/identity';
 import {
   MOCK_IDENTITIES,
   generateAnmeldeCode,
   findIdentityByAnmeldeCode,
+  persistIdentities,
 } from '@/mocks/identity.mock';
+import { MOCK_FAMILIES, persistFamilies, generateFamilyId } from '@/mocks/family.mock';
 
 // Simuliere API-Delay (gleiches Muster wie userService)
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -21,7 +29,7 @@ const USER_DATA_KEY = 'userData';         // bestehende Kompat-Shape (UserContex
 // Schreibt einen userData-Datensatz, den UserContext & AuthWrapper bereits verstehen.
 // Wichtig: Im Zwei-Bubble-Modell treibt der SPITZNAME (display_name) die App-Begrüßung,
 // der Klarname (real_name) bleibt für den Nachhilfe-Kontext separat.
-function toUserData(identity: SoStudyIdentity) {
+export function identityToUserData(identity: SoStudyIdentity) {
   return {
     userId: identity.userId,
     role: identity.role,
@@ -38,13 +46,18 @@ function toUserData(identity: SoStudyIdentity) {
     volljaehrig: identity.volljaehrig,
     anmeldeCode: identity.anmeldeCode,
     authMethod: identity.authMethod,
+    linkedAuthMethods: identity.linkedAuthMethods ?? [],
+    // Familienkonto-Verknüpfung (für Parent-/Student-Routing & Tutoring-Matrix)
+    familyId: identity.familyId,
+    familyRole: identity.familyRole,
   };
 }
 
 function persistSession(identity: SoStudyIdentity, isNew: boolean) {
   MOCK_IDENTITIES[identity.userId] = identity;
+  persistIdentities(); // Laufzeit-Identität überlebt Reload (Demo-Verlässlichkeit)
   localStorage.setItem(IDENTITY_KEY, JSON.stringify(identity));
-  localStorage.setItem(USER_DATA_KEY, JSON.stringify(toUserData(identity)));
+  localStorage.setItem(USER_DATA_KEY, JSON.stringify(identityToUserData(identity)));
   localStorage.setItem('isLoggedIn', 'true');
   if (isNew) localStorage.setItem('isNewRegistration', 'true');
 }
@@ -66,9 +79,11 @@ export const identityService = {
       bundesland: draft.bundesland,
       schoolType: draft.schoolType,
       grade: draft.grade,
-      volljaehrig: false, // TODO: später per Volljährigkeits-Toggle setzbar
+      volljaehrig: false, // später per Volljährigkeits-Toggle setzbar (Phase 5)
       anmeldeCode: generateAnmeldeCode(),
       authMethod: (draft.authMethod ?? 'anmeldeCode') as AuthMethod,
+      linkedAuthMethods:
+        draft.authMethod === 'apple' || draft.authMethod === 'google' ? [draft.authMethod] : [],
       kiConsent: {
         accepted: draft.kiConsentAccepted,
         timestamp: draft.kiConsentAccepted ? new Date().toISOString() : undefined,
@@ -82,6 +97,57 @@ export const identityService = {
   },
 
   /**
+   * Registriert ein Elternteil aus dem Eltern-Onboarding (E1–E8).
+   * Legt die Eltern-Identität (Klarname-Kontext) UND ein leeres Familienkonto an.
+   * SPÄTER: Supabase Auth + Profil-Insert (role 'parent') + `families`-Insert.
+   */
+  registerParent: async (
+    draft: ParentOnboardingDraft
+  ): Promise<{ identity: SoStudyIdentity; family: Familienkonto }> => {
+    await delay(400);
+
+    const userId = `user_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+    const familyId = generateFamilyId();
+    const realName = draft.real_name.trim();
+
+    const family: Familienkonto = {
+      familyId,
+      parentUserId: userId,
+      parentRealName: realName,
+      children: [],
+      createdAt: new Date().toISOString(),
+    };
+    MOCK_FAMILIES[familyId] = family;
+    persistFamilies();
+
+    const identity: SoStudyIdentity = {
+      userId,
+      role: 'parent',
+      // Eltern arbeiten im Klarname-Kontext; Spitzname = Vorname für eine freundliche Begrüßung.
+      display_name: realName.split(' ')[0] || realName,
+      real_name: realName,
+      bundesland: '',
+      schoolType: '',
+      volljaehrig: true,
+      anmeldeCode: generateAnmeldeCode(),
+      authMethod: (draft.authMethod ?? 'email') as AuthMethod,
+      linkedAuthMethods:
+        draft.authMethod === 'apple' || draft.authMethod === 'google' ? [draft.authMethod] : [],
+      kiConsent: {
+        accepted: draft.kiConsentAccepted,
+        timestamp: draft.kiConsentAccepted ? new Date().toISOString() : undefined,
+      },
+      email: draft.email,
+      familyId,
+      familyRole: 'owner',
+      createdAt: new Date().toISOString(),
+    };
+
+    persistSession(identity, true);
+    return { identity, family };
+  },
+
+  /**
    * Liest die aktuell eingeloggte Identität (oder null).
    */
   getIdentity: (): SoStudyIdentity | null => {
@@ -89,6 +155,45 @@ export const identityService = {
     if (!raw) return null;
     try {
       return JSON.parse(raw) as SoStudyIdentity;
+    } catch {
+      return null;
+    }
+  },
+
+  /**
+   * Stellt sicher, dass eine kanonische Identität existiert.
+   * Brücke für Legacy-Login (E-Mail/Passwort schreibt nur `userData`): leitet daraus
+   * eine SoStudyIdentity ab und persistiert sie, damit identitätsabhängige Features
+   * (Klarname-Gate, Volljährigkeit, Familienkonto) zuverlässig funktionieren.
+   */
+  ensureIdentity: (): SoStudyIdentity | null => {
+    const existing = identityService.getIdentity();
+    if (existing) return existing;
+    const raw = localStorage.getItem(USER_DATA_KEY);
+    if (!raw) return null;
+    try {
+      const ud = JSON.parse(raw);
+      const legacyName = `${ud.firstName ?? ''} ${ud.lastName ?? ''}`.trim();
+      const identity: SoStudyIdentity = {
+        userId: ud.userId || `user_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+        role: ud.role || 'student',
+        display_name: ud.display_name || ud.firstName || legacyName || 'Ich',
+        real_name: ud.real_name || legacyName || '',
+        bundesland: ud.bundesland || '',
+        schoolType: ud.schoolType || '',
+        grade: ud.grade,
+        volljaehrig: !!ud.volljaehrig,
+        anmeldeCode: ud.anmeldeCode || generateAnmeldeCode(),
+        authMethod: (ud.authMethod || 'email') as AuthMethod,
+        linkedAuthMethods: ud.linkedAuthMethods || [],
+        kiConsent: { accepted: true, timestamp: new Date().toISOString() },
+        email: ud.email,
+        familyId: ud.familyId,
+        familyRole: ud.familyRole,
+        createdAt: ud.createdAt || new Date().toISOString(),
+      };
+      persistSession(identity, false);
+      return identity;
     } catch {
       return null;
     }
@@ -126,6 +231,39 @@ export const identityService = {
     const current = identityService.getIdentity();
     if (!current) return null;
     const updated: SoStudyIdentity = { ...current, volljaehrig: value };
+    persistSession(updated, false);
+    return updated;
+  },
+
+  /**
+   * Verknüpft nachträglich eine Social-Login-Methode (Apple/Google) — visuell gemockt.
+   * SPÄTER: Supabase `linkIdentity` (OAuth-Verknüpfung am bestehenden Konto).
+   */
+  linkAuthMethod: async (method: AuthMethod): Promise<SoStudyIdentity | null> => {
+    await delay(600); // simulierte OAuth-Weiterleitung
+    const current = identityService.getIdentity();
+    if (!current) return null;
+    const existing = current.linkedAuthMethods ?? [];
+    if (existing.includes(method)) return current; // bereits verknüpft → idempotent
+    const updated: SoStudyIdentity = {
+      ...current,
+      linkedAuthMethods: [...existing, method],
+    };
+    persistSession(updated, false);
+    return updated;
+  },
+
+  /**
+   * Entfernt eine verknüpfte Social-Login-Methode wieder.
+   */
+  unlinkAuthMethod: async (method: AuthMethod): Promise<SoStudyIdentity | null> => {
+    await delay(300);
+    const current = identityService.getIdentity();
+    if (!current) return null;
+    const updated: SoStudyIdentity = {
+      ...current,
+      linkedAuthMethods: (current.linkedAuthMethods ?? []).filter((m) => m !== method),
+    };
     persistSession(updated, false);
     return updated;
   },

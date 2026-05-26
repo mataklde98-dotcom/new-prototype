@@ -5,6 +5,8 @@ import React, { useState, useEffect } from 'react';
 import LoginScreen from './LoginScreen';
 import RegisterScreen from './RegisterScreen';
 import OnboardingFlow from './onboarding/OnboardingFlow';
+import ParentOnboardingFlow from './parent/ParentOnboardingFlow';
+import { clearUserSession } from '@/lib/auth';
 
 // Social Auth info passed between screens
 export interface SocialAuthInfo {
@@ -21,8 +23,9 @@ interface AuthWrapperProps {
 export default function AuthWrapper({ children }: AuthWrapperProps) {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [userData, setUserData] = useState<any>(null);
-  // 'onboarding' = neuer Knowunity-Flow (Default-Einstieg). 'register' = alter Formular-Flow (Fallback).
-  const [authView, setAuthView] = useState<'login' | 'register' | 'onboarding'>('onboarding');
+  // 'onboarding' = neuer Knowunity-Flow (Default-Einstieg). 'parentOnboarding' = Eltern-Pfad (E1–E8).
+  // 'register' = alter Formular-Flow (Fallback).
+  const [authView, setAuthView] = useState<'login' | 'register' | 'onboarding' | 'parentOnboarding'>('onboarding');
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
   const [socialAuth, setSocialAuth] = useState<SocialAuthInfo | null>(null);
   
@@ -74,11 +77,9 @@ export default function AuthWrapper({ children }: AuthWrapperProps) {
   };
   
   const handleLogout = () => {
-    localStorage.removeItem('isLoggedIn');
-    localStorage.removeItem('userData');
-    // Onboarding v5: neue Session-Keys ebenfalls räumen (sonst Leak zwischen Mock-Usern)
-    localStorage.removeItem('sostudy_identity');
-    localStorage.removeItem('isNewRegistration');
+    // Vollständige Session-Bereinigung (inkl. Profilbild/Name/Account/Tutoring) →
+    // kein Daten-Leak zwischen Mock-Usern. Lässt sostudy_identities/-families absichtlich stehen.
+    clearUserSession();
     setIsLoggedIn(false);
     setUserData(null);
   };
@@ -103,6 +104,15 @@ export default function AuthWrapper({ children }: AuthWrapperProps) {
         <OnboardingFlow
           onComplete={handleRegisterSuccess}
           onSwitchToLogin={() => setAuthView('login')}
+          onSwitchToParent={() => setAuthView('parentOnboarding')}
+        />
+      );
+    }
+    if (authView === 'parentOnboarding') {
+      return (
+        <ParentOnboardingFlow
+          onComplete={handleRegisterSuccess}
+          onBack={() => setAuthView('onboarding')}
         />
       );
     }
