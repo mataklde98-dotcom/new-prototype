@@ -26,6 +26,22 @@ export const SCHOOL_TYPES = [
 
 export const GRADES = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13'];
 
+// Klassenstufen je Schulform — verhindert fachlich falsche Optionen (z.B. "Klasse 13" für
+// Grundschule). MVP: Schulformen selbst sind in allen Bundesländern gleich verfügbar.
+// SPÄTER: ggf. serverseitig / pro Bundesland verfeinern.
+export const KLASSEN_BY_SCHULFORM: Record<string, string[]> = {
+  Grundschule: ['1', '2', '3', '4'],
+  Hauptschule: ['5', '6', '7', '8', '9', '10'],
+  Realschule: ['5', '6', '7', '8', '9', '10'],
+  Gymnasium: ['5', '6', '7', '8', '9', '10', '11', '12', '13'],
+  Gesamtschule: ['5', '6', '7', '8', '9', '10', '11', '12', '13'],
+  Berufsschule: ['1. Lehrjahr', '2. Lehrjahr', '3. Lehrjahr'],
+};
+
+/** Gültige Klassenstufen für eine Schulform (Fallback: alle, falls Schulform leer/unbekannt). */
+export const gradesForSchoolType = (schoolType: string): string[] =>
+  KLASSEN_BY_SCHULFORM[schoolType] ?? GRADES;
+
 // ===== MASKOTTCHEN (Inline-SVG-Platzhalter) =====
 // Freundliches Blob-Maskottchen im Brand-Verlauf. Später 1:1 gegen ein echtes Asset austauschbar.
 export function MascotAvatar({ size = 96 }: { size?: number }) {

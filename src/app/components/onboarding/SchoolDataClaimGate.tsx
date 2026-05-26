@@ -9,7 +9,7 @@ import { identityService } from '@/services/identityService';
 import {
   BUNDESLAENDER,
   SCHOOL_TYPES,
-  GRADES,
+  gradesForSchoolType,
   MascotAvatar,
   ChatBubble,
   OnboardingShell,
@@ -79,7 +79,7 @@ export default function SchoolDataClaimGate({ userData, onDone }: SchoolDataClai
             <MascotAvatar size={56} />
             <ChatBubble>Auf welche Schule gehst du?</ChatBubble>
           </div>
-          <ChoiceList options={SCHOOL_TYPES} value={schoolType} onChange={setSchoolType} columns={2} />
+          <ChoiceList options={SCHOOL_TYPES} value={schoolType} onChange={(v) => { setSchoolType(v); setGrade(''); }} columns={2} />
         </div>
       </OnboardingShell>
     );
@@ -98,7 +98,7 @@ export default function SchoolDataClaimGate({ userData, onDone }: SchoolDataClai
           <MascotAvatar size={56} />
           <ChatBubble>In welcher Klasse bist du?</ChatBubble>
         </div>
-        <ChoiceList options={GRADES} value={grade} onChange={setGrade} columns={3} />
+        <ChoiceList options={gradesForSchoolType(schoolType)} value={grade} onChange={setGrade} columns={schoolType === 'Berufsschule' ? 1 : 3} />
       </div>
     </OnboardingShell>
   );
