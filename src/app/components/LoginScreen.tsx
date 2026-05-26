@@ -1,11 +1,12 @@
 // ===== LOGIN SCREEN =====
-// Vollflächiger Look (konsistent zum Onboarding). Methode-zuerst:
-// Apple/Google primär (beide Rollen), Anmelde-Code als Box (Schüler:innen),
-// E-Mail/Passwort eingeklappt hinter Button (meist Eltern).
+// Vollflächiger Look (konsistent zum Onboarding). Zwei interne Views (state-basiert, kein Router):
+//   'main'  → "Willkommen zurück!": Apple + Google gleich prominent (App-Store-Richtlinie 4.8),
+//             Anmelde-Code-Karte (Schüler:innen), dezenter Text-Link "Mit E-Mail anmelden".
+//   'email' → eigener Screen: E-Mail + Passwort + "Anmelden" + "Passwort vergessen?".
 // Logik (Mock-Login, Code-Login, Social) unverändert.
 
 import React, { useState } from 'react';
-import { Mail, Lock, Eye, EyeOff, AlertCircle, KeyRound, ChevronDown } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, AlertCircle, KeyRound, ChevronDown, ArrowLeft } from 'lucide-react';
 import { projectId, publicAnonKey } from '/utils/supabase/info';
 import SoStudyLogo from './SoStudyLogo';
 import type { SocialAuthInfo } from './AuthWrapper';
@@ -22,24 +23,24 @@ interface LoginScreenProps {
   onSocialAuthNewUser: (info: SocialAuthInfo) => void;
 }
 
-// Welche Sekundär-Methode ist aufgeklappt
-type OpenMethod = 'none' | 'email' | 'code';
+// Interner Screen-Wechsel & welche Sekundär-Methode aufgeklappt ist.
+type View = 'main' | 'email';
 
 const LoginScreen = React.memo(function LoginScreen({ onLoginSuccess, onSwitchToRegister, onSocialAuthNewUser }: LoginScreenProps) {
+  const [view, setView] = useState<View>('main');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
+  const [info, setInfo] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [socialLoading, setSocialLoading] = useState<'google' | 'apple' | null>(null);
-  const [openMethod, setOpenMethod] = useState<OpenMethod>('none');
+  const [codeOpen, setCodeOpen] = useState(false);
   const [code, setCode] = useState('');
   const [codeLoading, setCodeLoading] = useState(false);
 
-  const toggle = (m: OpenMethod) => {
-    setError('');
-    setOpenMethod((prev) => (prev === m ? 'none' : m));
-  };
+  const goEmail = () => { setError(''); setInfo(''); setView('email'); };
+  const goMain = () => { setError(''); setInfo(''); setView('main'); };
 
   const handleCodeLogin = async () => {
     setError('');
@@ -87,6 +88,7 @@ const LoginScreen = React.memo(function LoginScreen({ onLoginSuccess, onSwitchTo
 
   const handleLogin = async () => {
     setError('');
+    setInfo('');
 
     if (!email || !password) {
       setError('Bitte E-Mail und Passwort eingeben');
@@ -192,95 +194,81 @@ const LoginScreen = React.memo(function LoginScreen({ onLoginSuccess, onSwitchTo
     }
   };
 
+  const handleForgotPassword = () => {
+    setError('');
+    if (!email.trim()) {
+      setError('Bitte zuerst deine E-Mail-Adresse eingeben.');
+      return;
+    }
+    setInfo(`Wir haben dir einen Link zum Zurücksetzen an ${email.trim()} gesendet.`);
+  };
+
   // ===== UI-Bausteine (lokal) =====
   const inputBase =
     "w-full bg-white/[0.04] border border-white/[0.08] rounded-2xl py-3.5 text-white font-['Poppins:Regular',sans-serif] placeholder:text-white/30 outline-none focus:border-[#009379] transition-colors";
 
-  return (
-    <div
-      className="fixed inset-0 overflow-y-auto"
-      style={{
-        background: `radial-gradient(120% 80% at 50% 0%, rgba(0,147,121,0.10) 0%, ${BRAND.bg} 55%)`,
-        WebkitOverflowScrolling: 'touch',
-      }}
-    >
-      <div
-        className="min-h-full flex flex-col justify-center px-5"
-        style={{
-          paddingTop: 'calc(var(--safe-area-inset-top) + 32px)',
-          paddingBottom: 'calc(var(--safe-area-inset-bottom) + 24px)',
-        }}
-      >
-        <div className="w-full max-w-[400px] mx-auto">
-          {/* Header */}
-          <div className="flex flex-col items-center text-center mb-7">
-            <SoStudyLogo className="h-9 mb-4" />
-            <MascotAvatar size={64} />
-            <p className="text-white/60 font-['Poppins:Medium',sans-serif] text-[15px] mt-3">
-              Willkommen zurück!
-            </p>
-          </div>
+  const screenBg = {
+    background: `radial-gradient(120% 80% at 50% 0%, rgba(0,147,121,0.10) 0%, ${BRAND.bg} 55%)`,
+    WebkitOverflowScrolling: 'touch' as const,
+  };
 
-          {/* Error */}
-          {error && (
-            <div className="mb-4 px-4 py-3 rounded-2xl bg-red-500/10 border border-red-500/20 flex items-center gap-2">
-              <AlertCircle className="w-5 h-5 text-red-400 shrink-0" />
-              <span className="text-red-200 text-[13px] font-['Poppins:Regular',sans-serif]">{error}</span>
+  const ErrorBox = () => error ? (
+    <div className="mb-4 px-4 py-3 rounded-2xl bg-red-500/10 border border-red-500/20 flex items-center gap-2">
+      <AlertCircle className="w-5 h-5 text-red-400 shrink-0" />
+      <span className="text-red-200 text-[13px] font-['Poppins:Regular',sans-serif]">{error}</span>
+    </div>
+  ) : null;
+
+  // ===== VIEW: E-MAIL-LOGIN (eigener Screen) =====
+  if (view === 'email') {
+    return (
+      <div className="fixed inset-0 overflow-y-auto" style={screenBg}>
+        {/* Zurück */}
+        <button
+          onClick={goMain}
+          aria-label="Zurück"
+          className="absolute left-5 z-10 w-9 h-9 flex items-center justify-center rounded-full bg-white/[0.05] border border-white/[0.08] active:scale-90 transition-transform"
+          style={{ top: 'calc(var(--safe-area-inset-top) + 16px)' }}
+        >
+          <ArrowLeft className="w-[18px] h-[18px] text-white/70" />
+        </button>
+
+        <div
+          className="min-h-full flex flex-col justify-center px-5"
+          style={{
+            paddingTop: 'calc(var(--safe-area-inset-top) + 32px)',
+            paddingBottom: 'calc(var(--safe-area-inset-bottom) + 24px)',
+          }}
+        >
+          <div className="w-full max-w-[400px] mx-auto">
+            {/* Header */}
+            <div className="flex flex-col items-center text-center mb-7">
+              <SoStudyLogo className="h-9 mb-4" />
+              <MascotAvatar size={64} />
+              <h1 className="text-white font-['Poppins:SemiBold',sans-serif] text-[20px] mt-3">
+                Mit E-Mail anmelden
+              </h1>
             </div>
-          )}
 
-          {/* Apple (primär, beide Rollen) */}
-          <button
-            onClick={() => handleSocialAuth('apple')}
-            disabled={socialLoading !== null}
-            className="w-full flex items-center justify-center gap-2.5 py-4 rounded-2xl bg-white text-black font-['Poppins:SemiBold',sans-serif] text-[16px] active:scale-[0.98] transition-all duration-150 disabled:opacity-60"
-          >
-            {socialLoading === 'apple' ? (
-              <div className="w-[18px] h-[18px] border-2 border-black/20 border-t-black/60 rounded-full animate-spin" />
-            ) : (
-              <AppleIcon />
+            <ErrorBox />
+            {info && (
+              <div
+                className="mb-4 px-4 py-3 rounded-2xl"
+                style={{ background: 'rgba(0,147,121,0.10)', border: '1px solid rgba(0,147,121,0.25)' }}
+              >
+                <span className="text-[13px] font-['Poppins:Regular',sans-serif]" style={{ color: BRAND.primaryLight }}>{info}</span>
+              </div>
             )}
-            {socialLoading === 'apple' ? 'Verbinden…' : 'Mit Apple fortfahren'}
-          </button>
 
-          {/* Google + E-Mail (Sekundär-Reihe) */}
-          <div className="grid grid-cols-2 gap-3 mt-3">
-            <button
-              onClick={() => handleSocialAuth('google')}
-              disabled={socialLoading !== null}
-              className="flex items-center justify-center gap-2.5 py-3.5 rounded-2xl bg-white/[0.05] border border-white/[0.10] text-white/80 font-['Poppins:Medium',sans-serif] text-[14px] active:scale-[0.97] transition-all duration-150 disabled:opacity-50"
-            >
-              {socialLoading === 'google' ? (
-                <div className="w-[18px] h-[18px] border-2 border-white/20 border-t-white/60 rounded-full animate-spin" />
-              ) : (
-                <GoogleIcon />
-              )}
-              Google
-            </button>
-            <button
-              onClick={() => toggle('email')}
-              className="flex items-center justify-center gap-2 py-3.5 rounded-2xl bg-white/[0.05] border text-white/80 font-['Poppins:Medium',sans-serif] text-[14px] active:scale-[0.97] transition-all duration-150"
-              style={{ borderColor: openMethod === 'email' ? BRAND.primary : 'rgba(255,255,255,0.10)' }}
-            >
-              <Mail className="w-4 h-4 text-white/55" />
-              E-Mail
-              <ChevronDown
-                className="w-4 h-4 text-white/40 transition-transform duration-200"
-                style={{ transform: openMethod === 'email' ? 'rotate(180deg)' : 'none' }}
-              />
-            </button>
-          </div>
-
-          {/* E-Mail/Passwort-Panel (meist Eltern) */}
-          {openMethod === 'email' && (
-            <div className="mt-3 space-y-3 animate-[onbBubbleIn_0.25s_ease-out]">
-              <p className="font-['Poppins:Regular',sans-serif] text-[12px] text-white/40 px-1">
-                Meist für Eltern — mit E-Mail & Passwort anmelden.
-              </p>
+            <div className="space-y-3">
               <div className="relative">
                 <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/40" />
                 <input
                   type="email"
+                  inputMode="email"
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  autoFocus
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="deine@email.de"
@@ -320,15 +308,78 @@ const LoginScreen = React.memo(function LoginScreen({ onLoginSuccess, onSwitchTo
                 {isLoading ? 'Wird geladen…' : 'Anmelden'}
               </button>
             </div>
-          )}
 
-          {/* Anmelde-Code (Box, für Schüler:innen) */}
+            <div className="text-center mt-5">
+              <button
+                onClick={handleForgotPassword}
+                className="text-white/50 font-['Poppins:Medium',sans-serif] text-[13px] active:opacity-70 transition-opacity"
+              >
+                Passwort vergessen?
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ===== VIEW: HAUPT-LOGIN ("Willkommen zurück!") =====
+  return (
+    <div className="fixed inset-0 overflow-y-auto" style={screenBg}>
+      <div
+        className="min-h-full flex flex-col justify-center px-5"
+        style={{
+          paddingTop: 'calc(var(--safe-area-inset-top) + 32px)',
+          paddingBottom: 'calc(var(--safe-area-inset-bottom) + 24px)',
+        }}
+      >
+        <div className="w-full max-w-[400px] mx-auto">
+          {/* Header */}
+          <div className="flex flex-col items-center text-center mb-7">
+            <SoStudyLogo className="h-9 mb-4" />
+            <MascotAvatar size={64} />
+            <p className="text-white/60 font-['Poppins:Medium',sans-serif] text-[15px] mt-3">
+              Willkommen zurück!
+            </p>
+          </div>
+
+          <ErrorBox />
+
+          {/* Apple (primär) — voll-breit */}
           <button
-            onClick={() => toggle('code')}
+            onClick={() => handleSocialAuth('apple')}
+            disabled={socialLoading !== null}
+            className="w-full flex items-center justify-center gap-2.5 py-4 rounded-2xl bg-white text-black font-['Poppins:SemiBold',sans-serif] text-[16px] active:scale-[0.98] transition-all duration-150 disabled:opacity-60"
+          >
+            {socialLoading === 'apple' ? (
+              <div className="w-[18px] h-[18px] border-2 border-black/20 border-t-black/60 rounded-full animate-spin" />
+            ) : (
+              <AppleIcon />
+            )}
+            {socialLoading === 'apple' ? 'Verbinden…' : 'Mit Apple fortfahren'}
+          </button>
+
+          {/* Google (sekundär) — voll-breit, gleiche Größe wie Apple */}
+          <button
+            onClick={() => handleSocialAuth('google')}
+            disabled={socialLoading !== null}
+            className="w-full flex items-center justify-center gap-2.5 py-4 rounded-2xl bg-white/[0.05] border border-white/[0.10] text-white font-['Poppins:SemiBold',sans-serif] text-[16px] active:scale-[0.98] transition-all duration-150 disabled:opacity-60 mt-3"
+          >
+            {socialLoading === 'google' ? (
+              <div className="w-[18px] h-[18px] border-2 border-white/20 border-t-white/60 rounded-full animate-spin" />
+            ) : (
+              <GoogleIcon />
+            )}
+            {socialLoading === 'google' ? 'Verbinden…' : 'Mit Google fortfahren'}
+          </button>
+
+          {/* Anmelde-Code (Box, für Schüler:innen) — unverändert */}
+          <button
+            onClick={() => { setError(''); setCodeOpen((v) => !v); }}
             className="w-full flex items-center gap-3 p-4 rounded-2xl mt-3 text-left active:scale-[0.98] transition-all duration-150"
             style={{
-              background: openMethod === 'code' ? 'rgba(0,147,121,0.12)' : 'rgba(255,255,255,0.04)',
-              border: `1px solid ${openMethod === 'code' ? BRAND.primary : 'rgba(255,255,255,0.08)'}`,
+              background: codeOpen ? 'rgba(0,147,121,0.12)' : 'rgba(255,255,255,0.04)',
+              border: `1px solid ${codeOpen ? BRAND.primary : 'rgba(255,255,255,0.08)'}`,
             }}
           >
             <div
@@ -343,12 +394,12 @@ const LoginScreen = React.memo(function LoginScreen({ onLoginSuccess, onSwitchTo
             </div>
             <ChevronDown
               className="w-5 h-5 text-white/40 transition-transform duration-200"
-              style={{ transform: openMethod === 'code' ? 'rotate(180deg)' : 'none' }}
+              style={{ transform: codeOpen ? 'rotate(180deg)' : 'none' }}
             />
           </button>
 
           {/* Anmelde-Code-Panel */}
-          {openMethod === 'code' && (
+          {codeOpen && (
             <div className="mt-3 space-y-3 animate-[onbBubbleIn_0.25s_ease-out]">
               <input
                 type="text"
@@ -380,8 +431,16 @@ const LoginScreen = React.memo(function LoginScreen({ onLoginSuccess, onSwitchTo
             </div>
           )}
 
+          {/* Dezenter Text-Link: E-Mail-Login (eigener Screen) */}
+          <button
+            onClick={goEmail}
+            className="w-full text-center mt-5 text-white/55 font-['Poppins:Medium',sans-serif] text-[14px] active:opacity-70 transition-opacity"
+          >
+            Mit E-Mail anmelden
+          </button>
+
           {/* Register-Link */}
-          <div className="text-center mt-7">
+          <div className="text-center mt-4">
             <span className="text-white/55 font-['Poppins:Regular',sans-serif] text-[14px]">Noch kein Konto? </span>
             <button
               onClick={onSwitchToRegister}
