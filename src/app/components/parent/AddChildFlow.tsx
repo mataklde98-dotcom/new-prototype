@@ -14,6 +14,7 @@ import { clearUserSession } from '@/lib/auth';
 import type { ActivationMode, Familienkonto } from '@/types/identity';
 import {
   BRAND,
+  BUNDESLAENDER,
   SCHOOL_TYPES,
   GRADES,
   MascotAvatar,
@@ -25,9 +26,9 @@ import {
   ChoiceList,
   BigSelectionCard,
 } from '@/app/components/onboarding/OnboardingShared';
-import { Copy, Check } from 'lucide-react';
+import { Copy, Check, ChevronDown } from 'lucide-react';
 
-type SubStep = 'mode' | 'detailA' | 'detailB' | 'detailC' | 'result';
+type SubStep = 'mode' | 'detailA' | 'schoolA' | 'detailB' | 'detailC' | 'result';
 
 interface AddChildFlowProps {
   familyId: string;
@@ -55,9 +56,12 @@ export default function AddChildFlow({ familyId, onDone, onCancel, allowSkip }: 
 
   // Gemeinsame Kind-Felder (Weg ② Code & Weg ① E-Mail) — Eltern geben nur den echten Namen.
   const [childReal, setChildReal] = useState('');
+  const [childBundesland, setChildBundesland] = useState('');
   const [childSchool, setChildSchool] = useState('');
   const [childGrade, setChildGrade] = useState('');
   const [childEmail, setChildEmail] = useState(''); // nur Weg ①
+  // Weg ② — optionaler Schul-Daten-Aufklapp-Bereich (Änderung 2; default eingeklappt)
+  const [schoolExpanded, setSchoolExpanded] = useState(false);
 
   // Weg ③ — bestehender Login-Code
   const [linkCode, setLinkCode] = useState('');
@@ -78,15 +82,24 @@ export default function AddChildFlow({ familyId, onDone, onCancel, allowSkip }: 
   const firstName = (full: string) => full.trim().split(' ')[0] || 'Dein Kind';
 
   // ===== AKTIONEN =====
-  // Weg ② — Login-Code erstellen
-  const submitA = async () => {
+  // Weg ② — Name validieren, dann zum (optionalen) Schul-Daten-Schritt.
+  const goToSchoolA = () => {
+    setError('');
+    if (childReal.trim().length < 2) { setError('Bitte den Namen des Kindes eingeben.'); return; }
+    setStep('schoolA');
+  };
+
+  // Weg ② — Login-Code-Konto anlegen. includeSchool=false → Schul-Daten bleiben leer,
+  // das Kind ergänzt sie beim ersten Login (Änderung 2 / SchoolDataClaimGate).
+  const submitA = async (includeSchool: boolean) => {
     setError('');
     if (childReal.trim().length < 2) { setError('Bitte den Namen des Kindes eingeben.'); return; }
     setBusy(true);
     const res = await familyService.addChildNew(familyId, {
       real_name: childReal,
-      schoolType: childSchool,
-      grade: childGrade || undefined,
+      bundesland: includeSchool ? childBundesland || undefined : undefined,
+      schoolType: includeSchool ? childSchool || undefined : undefined,
+      grade: includeSchool ? childGrade || undefined : undefined,
     });
     setBusy(false);
     if (res.ok) {
@@ -156,6 +169,7 @@ export default function AddChildFlow({ familyId, onDone, onCancel, allowSkip }: 
     setError('');
     if (step === 'mode') return onCancel();
     if (step === 'result') return onCancel();
+    if (step === 'schoolA') return setStep('detailA');
     setStep('mode');
   };
 
@@ -198,30 +212,93 @@ export default function AddChildFlow({ familyId, onDone, onCancel, allowSkip }: 
     );
   }
 
-  // ===== STEP: WEG ② — Login-Code erstellen =====
+  // ===== STEP: WEG ② — Login-Code erstellen (1/2: Name) =====
   if (step === 'detailA') {
     return (
       <OnboardingShell stepKey={step}
         onBack={back}
-        footer={<PrimaryButton loading={busy} disabled={busy} onClick={submitA}>Login-Code erstellen</PrimaryButton>}
+        footer={<PrimaryButton onClick={goToSchoolA}>Weiter</PrimaryButton>}
       >
         <div className="flex flex-col gap-5">
           <div className="flex items-start gap-3">
             <MascotAvatar size={56} />
-            <ChatBubble>Erzähl mir kurz etwas über dein Kind.</ChatBubble>
+            <ChatBubble>Wie heißt dein Kind?</ChatBubble>
           </div>
           <Field label="Vor- und Nachname des Kindes *">
             <TextInput value={childReal} onChange={setChildReal} placeholder="Vor- und Nachname" autoFocus />
           </Field>
-          <Field label="Schulform">
-            <ChoiceList options={SCHOOL_TYPES} value={childSchool} onChange={setChildSchool} columns={2} />
-          </Field>
-          <Field label="Klasse (optional)">
-            <ChoiceList options={GRADES} value={childGrade} onChange={setChildGrade} columns={3} />
-          </Field>
           <p className="font-['Poppins:Regular',sans-serif] text-[13px] text-white/45 px-1">
             Den Spitznamen wählt dein Kind beim ersten Login selbst.
           </p>
+          {error && <ErrorText>{error}</ErrorText>}
+        </div>
+      </OnboardingShell>
+    );
+  }
+
+  // ===== STEP: WEG ② — Schul-Informationen (2/2, optional — Änderung 2) =====
+  // Default eingeklappt. "Speichern & weiter" erscheint nur, wenn aufgeklappt UND mind.
+  // die Schulform gewählt ist; sonst trägt das Kind die Daten beim ersten Login selbst nach.
+  if (step === 'schoolA') {
+    const canSave = schoolExpanded && !!childSchool;
+    return (
+      <OnboardingShell stepKey={step}
+        onBack={back}
+        footer={
+          <div className="space-y-2.5">
+            {canSave && (
+              <PrimaryButton loading={busy} disabled={busy} onClick={() => submitA(true)}>
+                Schul-Daten speichern & weiter
+              </PrimaryButton>
+            )}
+            {canSave ? (
+              <SecondaryButton disabled={busy} onClick={() => submitA(false)}>
+                Weiter (dein Kind macht es selbst)
+              </SecondaryButton>
+            ) : (
+              <PrimaryButton loading={busy} disabled={busy} onClick={() => submitA(false)}>
+                Weiter (dein Kind macht es selbst)
+              </PrimaryButton>
+            )}
+          </div>
+        }
+      >
+        <div className="flex flex-col gap-5">
+          <div className="flex items-start gap-3">
+            <MascotAvatar size={56} />
+            <ChatBubble>Schul-Informationen deines Kindes</ChatBubble>
+          </div>
+          <p className="font-['Poppins:Regular',sans-serif] text-[14px] text-white/55 px-1 -mt-1 leading-[1.5]">
+            Optional — du kannst sie jetzt eintragen oder dein Kind macht das selbst beim ersten Login.
+          </p>
+
+          {/* Aufklapp-Bereich */}
+          <div
+            className="rounded-2xl overflow-hidden"
+            style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}
+          >
+            <button
+              onClick={() => setSchoolExpanded((v) => !v)}
+              className="w-full flex items-center justify-between px-5 py-4 active:scale-[0.99] transition-transform"
+              aria-expanded={schoolExpanded}
+            >
+              <span className="font-['Poppins:Medium',sans-serif] text-[15px] text-white/85">Jetzt eintragen</span>
+              <ChevronDown className={`w-5 h-5 text-white/50 transition-transform duration-200 ${schoolExpanded ? 'rotate-180' : ''}`} />
+            </button>
+            {schoolExpanded && (
+              <div className="px-4 pb-4 pt-1 flex flex-col gap-4 border-t" style={{ borderColor: 'rgba(255,255,255,0.06)' }}>
+                <Field label="Bundesland">
+                  <ChoiceList options={BUNDESLAENDER} value={childBundesland} onChange={setChildBundesland} columns={2} />
+                </Field>
+                <Field label="Schulform">
+                  <ChoiceList options={SCHOOL_TYPES} value={childSchool} onChange={setChildSchool} columns={2} />
+                </Field>
+                <Field label="Klasse">
+                  <ChoiceList options={GRADES} value={childGrade} onChange={setChildGrade} columns={3} />
+                </Field>
+              </div>
+            )}
+          </div>
           {error && <ErrorText>{error}</ErrorText>}
         </div>
       </OnboardingShell>

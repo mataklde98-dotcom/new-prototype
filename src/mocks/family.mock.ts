@@ -34,6 +34,7 @@ const DEFAULT_FAMILIES: Record<string, Familienkonto> = {
         display_name: 'Lena',
         real_name: 'Lena Baum',
         anmeldeCode: 'LENA-3F8K',
+        bundesland: 'Bayern',
         schoolType: 'Gymnasium',
         grade: '7',
         activationMode: 'A',

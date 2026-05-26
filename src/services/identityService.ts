@@ -75,6 +75,21 @@ function syncFamilyChildCode(childUserId: string, anmeldeCode: string) {
   if (changed) persistFamilies();
 }
 
+/** Hält die Schul-Daten eines Kindes im Familienkonto synchron (z.B. nach dem Erst-Login-Schul-Wizard). */
+function syncFamilyChildSchool(childUserId: string, identity: SoStudyIdentity) {
+  let changed = false;
+  for (const family of Object.values(MOCK_FAMILIES)) {
+    const child = family.children.find((c) => c.childUserId === childUserId);
+    if (child) {
+      child.bundesland = identity.bundesland;
+      child.schoolType = identity.schoolType;
+      child.grade = identity.grade;
+      changed = true;
+    }
+  }
+  if (changed) persistFamilies();
+}
+
 export const identityService = {
   /**
    * Registriert einen Schüler aus dem Onboarding-Draft.
@@ -260,6 +275,29 @@ export const identityService = {
     if (!current) return null;
     const updated: SoStudyIdentity = { ...current, display_name: displayName.trim() };
     persistSession(updated, false);
+    return updated;
+  },
+
+  /**
+   * Setzt/ergänzt die Schul-Daten (Bundesland/Schulform/Klasse). Genutzt vom Schul-Daten-Schritt
+   * beim ERSTEN Login eines von Eltern angelegten Kindes, dessen Schul-Daten die Eltern
+   * übersprungen haben (Änderung 2). Synchronisiert auch den Familienkonto-Eintrag.
+   * SPÄTER: Profil-Update gegen Supabase.
+   */
+  setSchoolData: async (
+    data: { bundesland?: string; schoolType?: string; grade?: string }
+  ): Promise<SoStudyIdentity | null> => {
+    await delay(200);
+    const current = identityService.getIdentity();
+    if (!current) return null;
+    const updated: SoStudyIdentity = {
+      ...current,
+      bundesland: data.bundesland ?? current.bundesland,
+      schoolType: data.schoolType ?? current.schoolType,
+      grade: data.grade ?? current.grade,
+    };
+    persistSession(updated, false);
+    syncFamilyChildSchool(current.userId, updated);
     return updated;
   },
 

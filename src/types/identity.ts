@@ -72,6 +72,7 @@ export interface FamilyChild {
   real_name: string;         // Klarname (für Nachhilfe/Vertrag); '' bis gesetzt
   anmeldeCode: string;       // Login-Code des Kindes (von Eltern verwaltbar); bei E-Mail-Einladung das Invite-Token
   email?: string;            // bei E-Mail-Einladung (Weg ①): Adresse, an die eingeladen wurde
+  bundesland?: string;       // Schul-Daten optional: Eltern können sie überspringen → Kind ergänzt sie beim ersten Login
   schoolType?: string;
   grade?: string;
   activationMode: ActivationMode; // wie das Kind angebunden wurde (A/B/C)

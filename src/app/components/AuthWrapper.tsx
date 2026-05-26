@@ -7,6 +7,7 @@ import RegisterScreen from './RegisterScreen';
 import OnboardingFlow from './onboarding/OnboardingFlow';
 import ParentOnboardingFlow from './parent/ParentOnboardingFlow';
 import NicknameClaimGate from './onboarding/NicknameClaimGate';
+import SchoolDataClaimGate from './onboarding/SchoolDataClaimGate';
 import AcceptInviteFlow from './onboarding/AcceptInviteFlow';
 import { clearUserSession } from '@/lib/auth';
 
@@ -169,6 +170,17 @@ export default function AuthWrapper({ children }: AuthWrapperProps) {
   // Schüler ohne Spitznamen (frisch von Eltern angelegt/eingeladen) vergeben ihn zuerst selbst.
   if (userData?.role === 'student' && !(userData.display_name ?? '').trim()) {
     return <NicknameClaimGate userData={userData} onDone={(u) => setUserData(u)} />;
+  }
+
+  // Verknüpftes Kind, dessen Eltern die Schul-Daten übersprungen haben (Änderung 2):
+  // beim ERSTEN Login selbst ergänzen (NACH dem Spitznamen). Greift nur bei Kind-Konten,
+  // da selbst-registrierte Schüler diese Felder im Onboarding zwingend setzen.
+  if (
+    userData?.role === 'student' &&
+    userData?.familyRole === 'child' &&
+    (!(userData.schoolType ?? '').trim() || !(userData.grade ?? '').toString().trim())
+  ) {
+    return <SchoolDataClaimGate userData={userData} onDone={(u) => setUserData(u)} />;
   }
 
   // User is logged in - render app with userData
