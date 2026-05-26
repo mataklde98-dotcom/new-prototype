@@ -12,7 +12,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import {
   ArrowLeft, Globe, MapPin, Search, Check, CheckCircle2,
   Phone, Mail, BookOpen, GraduationCap, ChevronRight, Star, Clock,
-  User as UserIcon, Cake, ShieldCheck, Users, Copy, Hourglass, Mail as MailIcon,
+  User as UserIcon, Cake, ShieldCheck, Users, Hourglass,
 } from 'lucide-react';
 import { useUser } from '@/contexts/UserContext';
 import type { TutoringRequestData } from '@/contexts/UserContext';
@@ -779,7 +779,6 @@ export default function TutoringActivationFlow(props: TutoringActivationFlowProp
   const [gateStep, setGateStep] = useState<GateStep>('age');
 
   const [busy, setBusy] = useState(false);
-  const [copied, setCopied] = useState(false);
   const [consentRequested, setConsentRequested] = useState(false);
 
   // Eltern-Einladung (Pfad 4, Änderung 7): unter-18-Schüler ohne Familienkonto laden Eltern ein.

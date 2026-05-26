@@ -47,7 +47,93 @@ Methode). Der Code wird nie gelöscht, nur regeneriert. Eltern haben **keinen** 
 
 ---
 
-## 2. Weitere Verarbeitungspunkte
+## 2. SMS-OTP-Verifikation (Änderung 3 + 4)
 
-> Wird in der Tracking-Konsolidierung ergänzt (SMS-OTP-Versand, KI-Drittlandsübermittlung,
-> Eltern-Magic-Link-Einladung).
+Telefonnummern werden per 6-stelligem SMS-Code verifiziert: bei der **Eltern-Registrierung**
+(Pflichtfeld vor der Auth) und beim **18+-Schüler** vor der Nachhilfe-Anfrage.
+
+**Aktueller Mock-Stand:**
+- `src/services/otpService.ts` (Code clientseitig erzeugt, 10 Min gültig, 3 Fehlversuche → neuer
+  Code) + `usePhoneOtp`-Hook + `PhoneOtpFields`. Der Code wird **im Demo-UI angezeigt** (keine
+  echte SMS). 60-Sekunden-Resend-Timer.
+
+**Backend-Anforderung:**
+- Code **serverseitig** generieren und mit Ablaufzeit (10 Min) speichern; Versand über einen
+  SMS-Dienstleister (**Twilio** oder Vonage). Server-Validierung, kein Client-Vergleich.
+- Endpoints (Vorschlag): `POST /api/auth/phone/send-otp`, `POST /api/auth/phone/verify-otp`.
+- Drei Fehlversuche → Code invalidieren, neuer Code nötig.
+
+**DSGVO-Klausel (für die Datenschutzerklärung):**
+> „Zur Verifikation deiner Telefonnummer übermitteln wir den 6-stelligen Code an unseren
+> SMS-Dienstleister Twilio (Irland/Deutschland). Die Telefonnummer wird zur Erfüllung des Vertrags
+> gemäß Art. 6 Abs. 1 lit. b DSGVO verarbeitet."
+
+---
+
+## 3. KI-Drittlandsübermittlung (Änderung 1)
+
+Die Lernfunktionen nutzen KI-Anbieter (**OpenAI, Anthropic, Google**) als Kernfunktion.
+
+- **Rechtsgrundlage Verarbeitung:** Art. 6 Abs. 1 lit. b DSGVO (Vertragserfüllung — KI ist das
+  Kernangebot, daher keine separate, widerrufbare Einwilligung für die Verarbeitung selbst →
+  vermeidet das Kopplungsverbot, Art. 7 Abs. 4).
+- **Rechtsgrundlage Drittlandsübermittlung (USA):** Art. 49 Abs. 1 lit. a DSGVO (ausdrückliche
+  Einwilligung in die Übermittlung), abgefragt im KI-Consent-Schritt mit „Zustimmen & weiter".
+- **Tracking:** `kiConsent.accepted` + `kiConsent.timestamp` werden pro Identität gespeichert
+  (Audit). Eltern willigen beim Anlegen/Einladen eines Kindes in dessen Namen ein.
+
+---
+
+## 4. Eltern-Einladung per Magic-Link (Änderung 7, Pfad 4)
+
+Ein **selbst-registrierter Schüler unter 18 ohne Familienkonto** lädt seine Eltern per E-Mail ein,
+ein Familienkonto zu erstellen und die Nachhilfe freizugeben.
+
+**Aktueller Mock-Stand:**
+- `src/mocks/parentInvites.mock.ts` + `src/services/parentInviteService.ts`
+  (create / resend / changeEmail / withdraw / accept), localStorage-Schlüssel
+  `sostudy_parent_invites`. Magic-Link-Versand ist **gemockt** (Token im Frontend,
+  Demo-Öffnen über `?parentinvite=<token>`).
+
+**Ziel-Datenbanktabelle `parent_invites`:**
+
+| Spalte           | Typ            | Hinweise                                  |
+|------------------|----------------|-------------------------------------------|
+| `token`          | `VARCHAR` PK   | Magic-Link-Token                          |
+| `student_uuid`   | `UUID` FK      | wer eingeladen hat                        |
+| `parent_email`   | `VARCHAR`      | Einladungsadresse (wird Vertrags-E-Mail)  |
+| `parent_mobile`  | `VARCHAR` NULL | optional, SMS-Backup                      |
+| `status`         | `ENUM`         | `pending` / `accepted` / `withdrawn`      |
+| `created_at`     | `TIMESTAMP`    |                                           |
+| `updated_at`     | `TIMESTAMP`    | Resend / Statuswechsel                    |
+
+**Backend-Anforderung:** Magic-Link per E-Mail (und optional SMS-Backup an `parent_mobile`)
+versenden. Beim Annehmen: Eltern-Konto + Familienkonto anlegen, Schüler verknüpfen,
+Nachhilfe-Einwilligung setzen, Einladung auf `accepted`.
+
+**DSGVO-Klausel (für die Datenschutzerklärung):** Versand der Einladungs-E-Mail/SMS an die vom
+Schüler angegebene Eltern-Adresse zur Anbahnung des Nachhilfe-Vertrags (Art. 6 Abs. 1 lit. b DSGVO).
+
+---
+
+## 5. Übersicht: DSGVO-relevante Verarbeitungspunkte
+
+Für die spätere juristische Datenschutzerklärung relevant:
+
+| Punkt                         | Datenarten                         | Dienstleister / Drittland         | Rechtsgrundlage                          |
+|-------------------------------|------------------------------------|-----------------------------------|------------------------------------------|
+| KI-Lernfunktionen             | Nutzereingaben                     | OpenAI / Anthropic / Google (USA) | Art. 6 (1) b; Drittland: Art. 49 (1) a   |
+| SMS-OTP-Versand               | Telefonnummer, 6-stelliger Code    | Twilio (Irland/DE)                | Art. 6 (1) b                             |
+| Anmelde-Code-Speicherung      | Code, user_uuid, Login-Zeitpunkte  | eigenes Backend                   | Art. 6 (1) b                             |
+| Eltern-Einladung (Magic-Link) | Eltern-E-Mail, optional Mobilnr.   | E-Mail-/SMS-Provider              | Art. 6 (1) b                             |
+| Klarname/Kontakt (Nachhilfe)  | Vor-/Nachname, E-Mail, Telefon     | eigenes Backend                   | Art. 6 (1) b                             |
+
+> Hinweis Spitzname/Klarname: Der **Spitzname** (`display_name`) treibt die Casual-App-UI; der
+> **Klarname** (`real_name`) wird nur im Nachhilfe-/Vertrags-/Familienkonto-Kontext verarbeitet.
+
+---
+
+## 6. Offene Punkte / spätere Schritte
+
+- Klassenstufen-Liste um „Universität", „Ausbildung", „Sonstige" erweitern (bewusst noch nicht umgesetzt).
+- Datenschutzerklärung wird separat juristisch erstellt (nutzt obige Tracking-Punkte als Input).
