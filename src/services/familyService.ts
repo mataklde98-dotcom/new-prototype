@@ -235,7 +235,7 @@ export const familyService = {
     const family = findFamilyByInviteCode(token);
     if (!family) return null;
     const child = family.children.find(
-      (c) => c.pending && c.anmeldeCode.toUpperCase() === token.trim().toUpperCase()
+      (c) => c.pending && c.anmeldeCode?.toUpperCase() === token.trim().toUpperCase()
     );
     return child ? { family, child } : null;
   },
@@ -252,7 +252,7 @@ export const familyService = {
     if (!family) return { ok: false, reason: 'not_found' };
 
     const pendingIdx = family.children.findIndex(
-      (c) => c.pending && c.anmeldeCode.toUpperCase() === token.trim().toUpperCase()
+      (c) => c.pending && c.anmeldeCode?.toUpperCase() === token.trim().toUpperCase()
     );
     if (pendingIdx === -1) return { ok: false, reason: 'not_found' };
     const pending = family.children[pendingIdx];

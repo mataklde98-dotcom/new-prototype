@@ -229,7 +229,7 @@ function ChildCard({
             border: child.pending ? '1px solid rgba(245,158,11,0.3)' : '1px solid rgba(255,255,255,0.08)',
           }}
         >
-          {child.pending ? 'Einladung offen' : MODE_LABEL[child.activationMode]}
+          {child.pending ? 'Einladung offen' : (MODE_LABEL[child.activationMode] ?? 'Konto')}
         </span>
       </div>
 

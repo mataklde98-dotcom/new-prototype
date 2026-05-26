@@ -102,7 +102,7 @@ export function findFamilyByInviteCode(inviteCode: string): Familienkonto | null
   const normalized = inviteCode.trim().toUpperCase();
   return (
     Object.values(MOCK_FAMILIES).find((f) =>
-      f.children.some((c) => c.pending && c.anmeldeCode.toUpperCase() === normalized)
+      f.children.some((c) => c.pending && c.anmeldeCode?.toUpperCase() === normalized)
     ) ?? null
   );
 }

@@ -181,7 +181,9 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     }
     if (savedAccountData) {
       // Merge saved data with defaults to fill any missing fields (e.g. schoolType/grade added later)
-      const parsed = JSON.parse(savedAccountData);
+      // Korrupte/veraltete Daten dürfen den Provider nicht crashen → auf Defaults zurückfallen.
+      let parsed: any = {};
+      try { parsed = JSON.parse(savedAccountData); } catch { parsed = {}; }
       const merged = { ...DEFAULT_ACCOUNT_DATA, ...parsed };
       // Backfill schoolType & grade if they were never set
       if (!merged.schoolType) merged.schoolType = DEFAULT_ACCOUNT_DATA.schoolType;

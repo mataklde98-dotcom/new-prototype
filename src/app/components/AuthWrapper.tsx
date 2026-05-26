@@ -53,8 +53,15 @@ export default function AuthWrapper({ children }: AuthWrapperProps) {
     const storedUserData = localStorage.getItem('userData');
 
     if (loggedIn === 'true' && storedUserData) {
-      setIsLoggedIn(true);
-      setUserData(JSON.parse(storedUserData));
+      try {
+        const parsed = JSON.parse(storedUserData);
+        setUserData(parsed);
+        setIsLoggedIn(true);
+      } catch {
+        // Korrupte/veraltete userData → sauber ausloggen statt schwarzem Bildschirm beim Start.
+        localStorage.removeItem('userData');
+        localStorage.removeItem('isLoggedIn');
+      }
     } else if (invite) {
       // Kind öffnet eine E-Mail-Einladung (Weg ①) → direkt in den Annehmen-Flow.
       setInviteToken(invite);

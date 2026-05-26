@@ -1,5 +1,6 @@
 import { createRoot } from "react-dom/client";
 import App from "./app/App.tsx";
+import { ErrorBoundary } from "./app/components/ErrorBoundary";
 import "./styles/index.css";
 import { applyDemoFromQuery } from "./lib/demoSeed";
 
@@ -58,5 +59,12 @@ document.addEventListener('wheel', (e) => {
 
 // Deep-Link-Demo-Zustände (?demo=...) vor dem Rendern anwenden; lädt ggf. einmal neu.
 if (!applyDemoFromQuery()) {
-  createRoot(document.getElementById("root")!).render(<App />);
+  // Globale ErrorBoundary um die GESAMTE App: Fängt Render-Abstürze auch in Auth-,
+  // Onboarding- und Eltern-Flows ab (die innere Boundary in App.tsx umschließt nur AppContent).
+  // Statt eines schwarzen Bildschirms erscheint die Wiederherstellungs-Karte.
+  createRoot(document.getElementById("root")!).render(
+    <ErrorBoundary>
+      <App />
+    </ErrorBoundary>
+  );
 }

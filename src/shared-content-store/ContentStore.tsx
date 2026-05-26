@@ -147,11 +147,17 @@ export function ContentStoreProvider({ children }: { children: React.ReactNode }
     const savedSubtopics = localStorage.getItem('shared_content_subtopics');
     const savedAIContent = localStorage.getItem('shared_content_ai');
     
-    setSubjects(savedSubjects ? JSON.parse(savedSubjects) : INITIAL_SUBJECTS);
-    setCategories(savedCategories ? JSON.parse(savedCategories) : INITIAL_CATEGORIES);
-    setTopics(savedTopics ? JSON.parse(savedTopics) : INITIAL_TOPICS);
-    setSubtopics(savedSubtopics ? JSON.parse(savedSubtopics) : INITIAL_SUBTOPICS);
-    setAIGeneratedContent(savedAIContent ? JSON.parse(savedAIContent) : []);
+    // Sicheres Parsen: ein einzelner korrupter Key darf nicht den ganzen Content-Store (und damit
+    // Probeklausuren + Karteikarten-Generierung) mit einem schwarzen Bildschirm lahmlegen.
+    const parse = <T,>(raw: string | null, fallback: T): T => {
+      if (!raw) return fallback;
+      try { return JSON.parse(raw) as T; } catch { return fallback; }
+    };
+    setSubjects(parse(savedSubjects, INITIAL_SUBJECTS));
+    setCategories(parse(savedCategories, INITIAL_CATEGORIES));
+    setTopics(parse(savedTopics, INITIAL_TOPICS));
+    setSubtopics(parse(savedSubtopics, INITIAL_SUBTOPICS));
+    setAIGeneratedContent(parse(savedAIContent, []));
   }, []);
   
   // Save to localStorage whenever data changes
