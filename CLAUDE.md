@@ -22,7 +22,7 @@ pnpm cap:add:ios        # scaffold the iOS native project (first time only)
 
 There is **no lint, test, or typecheck tooling** and **no `tsconfig.json`** — TypeScript is transpiled by Vite/esbuild without type checking. Do not assume `tsc`, `jest`, `vitest`, or `eslint` are available. "Testing" in `docs/TESTING_GUIDE.md` refers to manual DevTools performance profiling, not automated tests.
 
-⚠️ **`pnpm build` currently fails** — this Figma bundle ships without a `src/assets/` directory, so the 16 `figma:asset/` image imports can't resolve (Rollup bundles everything eagerly). Use **`pnpm dev`** for development: it transforms on demand, so pre-login screens (e.g. the onboarding flow) render fine; the missing assets only break the specific components that import them once you're in the logged-in app. To verify a change compiles, the dev server (HTTP 200 on the entry) is the practical smoke test, not `build`.
+**`pnpm build` works and deploys on Vercel.** The Figma bundle ships without a `src/assets/` directory, so a few `figma:asset/` images are missing. The `figmaAssetResolver` in `vite.config.ts` handles this: existing assets resolve normally; **missing ones fall back to a transparent 1×1 placeholder** (logged as `[figma-asset] fehlt…` at build time) so Rollup doesn't abort. Drop the real PNGs into `src/assets/` with their exact hashed filenames and they're picked up automatically — no code change. The bundle is one large JS chunk (~3 MB) — acceptable for the prototype; code-split later if needed.
 
 ## Build & tooling specifics (`vite.config.ts`)
 
