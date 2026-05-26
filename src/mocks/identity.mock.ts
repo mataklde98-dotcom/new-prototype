@@ -37,7 +37,7 @@ const DEFAULT_IDENTITIES: Record<string, SoStudyIdentity> = {
     schoolType: 'Gymnasium',
     grade: '10',
     volljaehrig: false,
-    anmeldeCode: 'ALEX-7K2P',
+    anmeldeCode: 'ALEX-7K2P', // Schüler haben immer einen Login-Code, auch mit verknüpfter Auth
     authMethod: 'email',
     linkedAuthMethods: ['apple'],
     kiConsent: { accepted: true, timestamp: '2026-01-01T00:00:00.000Z' },
@@ -71,7 +71,7 @@ const DEFAULT_IDENTITIES: Record<string, SoStudyIdentity> = {
     bundesland: '',
     schoolType: '',
     volljaehrig: true,
-    anmeldeCode: 'ELTE-RN42',
+    anmeldeCode: '', // Eltern melden sich per Auth an → kein Anmelde-Code
     authMethod: 'email',
     linkedAuthMethods: ['apple', 'google'],
     kiConsent: { accepted: true, timestamp: '2026-01-01T00:00:00.000Z' },
@@ -145,9 +145,11 @@ export function upsertIdentity(identity: SoStudyIdentity): void {
 // ===== HELPER: Lookup per Anmelde-Code (für Code-Login) =====
 export function findIdentityByAnmeldeCode(code: string): SoStudyIdentity | null {
   const normalized = code.trim().toUpperCase();
+  if (!normalized) return null; // leere Eingabe matcht nie
   return (
     Object.values(MOCK_IDENTITIES).find(
-      (identity) => identity.anmeldeCode.toUpperCase() === normalized
+      // Identitäten ohne aktiven Code (Auth-Nutzer, anmeldeCode '') überspringen.
+      (identity) => identity.anmeldeCode && identity.anmeldeCode.toUpperCase() === normalized
     ) ?? null
   );
 }

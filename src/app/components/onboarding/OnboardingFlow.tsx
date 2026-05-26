@@ -363,7 +363,7 @@ export default function OnboardingFlow({ onComplete, onSwitchToLogin, onSwitchTo
           {/* Anmelde-Code (Anton-Style, dezent) */}
           <div className="pt-2">
             <TextLink onClick={() => handleRegister('anmeldeCode')}>
-              Lieber ohne Apple/Google? Anmelde-Code erstellen
+              Lieber ohne Apple/Google? Login-Code nutzen
             </TextLink>
           </div>
         </div>
@@ -371,15 +371,20 @@ export default function OnboardingFlow({ onComplete, onSwitchToLogin, onSwitchTo
     );
   }
 
-  // ===== STEP: ANMELDE-CODE-ANZEIGE =====
+  // ===== STEP: LOGIN-CODE-ANZEIGE (Backup, immer — auch nach Apple/Google) =====
   if (step === 'codeDisplay' && registered) {
+    const usesAuth = registered.authMethod === 'apple' || registered.authMethod === 'google';
     return (
       <OnboardingShell stepKey={step}
         footer={<PrimaryButton onClick={finish}>Weiter zum Dashboard</PrimaryButton>}
       >
         <div className="h-full flex flex-col items-center justify-center text-center gap-6">
           <MascotAvatar size={96} />
-          <ChatBubble>Das ist dein Anmelde-Code — bitte gut aufbewahren!</ChatBubble>
+          <ChatBubble>
+            {usesAuth
+              ? 'Geschafft! 🎉 Und hier ist dein Login-Code als Backup.'
+              : 'Das ist dein Login-Code — bitte gut aufbewahren!'}
+          </ChatBubble>
 
           <button
             onClick={copyCode}
@@ -395,8 +400,9 @@ export default function OnboardingFlow({ onComplete, onSwitchToLogin, onSwitchTo
           </button>
 
           <p className="font-['Poppins:Regular',sans-serif] text-[13px] text-white/45 max-w-[300px]">
-            Mit diesem Code kannst du dich jederzeit von jedem Gerät einloggen. Apple oder Google
-            kannst du später in den Einstellungen verknüpfen.
+            {usesAuth
+              ? 'Falls du dich mal nicht mit Apple oder Google anmelden kannst, kommst du hiermit rein. Dein Elternteil sieht ihn auch im Familienkonto.'
+              : 'Mit diesem Code meldest du dich auf jedem Gerät an. Apple oder Google kannst du später in den Einstellungen verknüpfen.'}
           </p>
         </div>
       </OnboardingShell>

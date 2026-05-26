@@ -31,7 +31,7 @@ export interface SoStudyIdentity {
   role: UserRole;
 
   // Zwei-Bubble-Namensmodell
-  display_name: string; // Spitzname — Pflicht
+  display_name: string; // Spitzname — '' bis das Kind ihn beim ersten Login selbst vergibt
   real_name: string;    // Klarname — anfangs '' (wird erst bei Tutoring-Aktivierung erforderlich)
 
   // Schul-Personalisierung (bei Eltern leer)
@@ -42,7 +42,8 @@ export interface SoStudyIdentity {
   // Volljährigkeit (Self-Declaration) — steuert die Tutoring-Aktivierungs-Matrix
   volljaehrig: boolean;
 
-  // Anmelde-Code (Anton-Style, permanent) — für Login ohne Apple/Google
+  // Anmelde-Code (Anton-Style) — für Login ohne Apple/Google.
+  // '' = kein aktiver Code: echte Auth (Apple/Google/E-Mail) löst den teilbaren Code ab.
   anmeldeCode: string;
 
   // Auth & Consent
@@ -69,7 +70,8 @@ export interface FamilyChild {
   childUserId: string;       // referenziert eine SoStudyIdentity (role 'student')
   display_name: string;      // Spitzname (Anzeige in der Kinder-Liste)
   real_name: string;         // Klarname (für Nachhilfe/Vertrag); '' bis gesetzt
-  anmeldeCode: string;       // Login-Code des Kindes (von Eltern verwaltbar)
+  anmeldeCode: string;       // Login-Code des Kindes (von Eltern verwaltbar); bei E-Mail-Einladung das Invite-Token
+  email?: string;            // bei E-Mail-Einladung (Weg ①): Adresse, an die eingeladen wurde
   schoolType?: string;
   grade?: string;
   activationMode: ActivationMode; // wie das Kind angebunden wurde (A/B/C)

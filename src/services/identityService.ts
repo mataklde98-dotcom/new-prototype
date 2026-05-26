@@ -62,6 +62,19 @@ function persistSession(identity: SoStudyIdentity, isNew: boolean) {
   if (isNew) localStorage.setItem('isNewRegistration', 'true');
 }
 
+/** Hält den Login-Code eines Kindes im Familienkonto synchron (Eltern-Recovery-Anker). */
+function syncFamilyChildCode(childUserId: string, anmeldeCode: string) {
+  let changed = false;
+  for (const family of Object.values(MOCK_FAMILIES)) {
+    const child = family.children.find((c) => c.childUserId === childUserId);
+    if (child) {
+      child.anmeldeCode = anmeldeCode;
+      changed = true;
+    }
+  }
+  if (changed) persistFamilies();
+}
+
 export const identityService = {
   /**
    * Registriert einen Schüler aus dem Onboarding-Draft.
@@ -80,6 +93,8 @@ export const identityService = {
       schoolType: draft.schoolType,
       grade: draft.grade,
       volljaehrig: false, // später per Volljährigkeits-Toggle setzbar (Phase 5)
+      // Jeder Schüler erhält IMMER einen Login-Code (vollwertige Methode + Backup, Anton-Style) —
+      // auch bei Apple/Google. Der Code wird nie gelöscht, nur bei Bedarf regenerierbar.
       anmeldeCode: generateAnmeldeCode(),
       authMethod: (draft.authMethod ?? 'anmeldeCode') as AuthMethod,
       linkedAuthMethods:
@@ -129,7 +144,8 @@ export const identityService = {
       bundesland: '',
       schoolType: '',
       volljaehrig: true,
-      anmeldeCode: generateAnmeldeCode(),
+      // Eltern melden sich per Auth (Apple/Google/E-Mail) an — kein Anmelde-Code.
+      anmeldeCode: '',
       authMethod: (draft.authMethod ?? 'email') as AuthMethod,
       linkedAuthMethods:
         draft.authMethod === 'apple' || draft.authMethod === 'google' ? [draft.authMethod] : [],
@@ -145,6 +161,15 @@ export const identityService = {
 
     persistSession(identity, true);
     return { identity, family };
+  },
+
+  /**
+   * Setzt die Session für eine extern erstellte Identität (z.B. ein per E-Mail-Einladung
+   * aktiviertes Kind aus familyService). SPÄTER: entspricht dem Supabase-Session-Setzen.
+   */
+  establishSession: (identity: SoStudyIdentity, isNew = true): SoStudyIdentity => {
+    persistSession(identity, isNew);
+    return identity;
   },
 
   /**
@@ -183,7 +208,9 @@ export const identityService = {
         schoolType: ud.schoolType || '',
         grade: ud.grade,
         volljaehrig: !!ud.volljaehrig,
-        anmeldeCode: ud.anmeldeCode || generateAnmeldeCode(),
+        // Schüler haben immer einen Login-Code; Eltern (E-Mail-Track) keinen.
+        anmeldeCode:
+          ud.anmeldeCode || ((ud.role || 'student') === 'parent' ? '' : generateAnmeldeCode()),
         authMethod: (ud.authMethod || 'email') as AuthMethod,
         linkedAuthMethods: ud.linkedAuthMethods || [],
         kiConsent: { accepted: true, timestamp: new Date().toISOString() },
@@ -224,6 +251,19 @@ export const identityService = {
   },
 
   /**
+   * Setzt den Spitznamen (display_name). Genutzt vom Spitzname-Schritt beim ersten Login
+   * eines von Eltern angelegten Kindes (Modus A), das seinen Namen selbst vergibt.
+   */
+  setDisplayName: async (displayName: string): Promise<SoStudyIdentity | null> => {
+    await delay(200);
+    const current = identityService.getIdentity();
+    if (!current) return null;
+    const updated: SoStudyIdentity = { ...current, display_name: displayName.trim() };
+    persistSession(updated, false);
+    return updated;
+  },
+
+  /**
    * Aktualisiert den Volljährigkeits-Toggle (Self-Declaration).
    */
   setVolljaehrig: async (value: boolean): Promise<SoStudyIdentity | null> => {
@@ -247,6 +287,7 @@ export const identityService = {
     if (existing.includes(method)) return current; // bereits verknüpft → idempotent
     const updated: SoStudyIdentity = {
       ...current,
+      // Auth kommt additiv dazu; der Login-Code bleibt als vollwertige Backup-Methode bestehen.
       linkedAuthMethods: [...existing, method],
     };
     persistSession(updated, false);
@@ -260,11 +301,27 @@ export const identityService = {
     await delay(300);
     const current = identityService.getIdentity();
     if (!current) return null;
+    // Der Login-Code bleibt als Backup bestehen → das Trennen einer Auth-Methode sperrt nie aus.
     const updated: SoStudyIdentity = {
       ...current,
       linkedAuthMethods: (current.linkedAuthMethods ?? []).filter((m) => m !== method),
     };
     persistSession(updated, false);
+    return updated;
+  },
+
+  /**
+   * Schüler ändert seinen eigenen Login-Code (z.B. wenn ihn jemand kennt) — der alte wird
+   * ungültig. Gehört das Kind zu einem Familienkonto, zieht der Code im Eltern-Dashboard mit.
+   */
+  regenerateAnmeldeCode: async (): Promise<SoStudyIdentity | null> => {
+    await delay(250);
+    const current = identityService.getIdentity();
+    if (!current) return null;
+    const anmeldeCode = generateAnmeldeCode();
+    const updated: SoStudyIdentity = { ...current, anmeldeCode };
+    persistSession(updated, false);
+    syncFamilyChildCode(current.userId, anmeldeCode);
     return updated;
   },
 };

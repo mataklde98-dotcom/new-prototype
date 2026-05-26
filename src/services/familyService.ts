@@ -12,6 +12,7 @@ import type {
   SoStudyIdentity,
   Familienkonto,
   FamilyChild,
+  AuthMethod,
 } from '@/types/identity';
 import {
   MOCK_IDENTITIES,
@@ -34,8 +35,8 @@ import { identityService } from '@/services/identityService';
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 export interface NewChildInput {
-  display_name: string;        // Spitzname (Pflicht)
-  real_name?: string;          // Klarname (optional; für Nachhilfe/Vertrag)
+  real_name: string;           // Klarname — primärer Name (Eltern geben nur den echten Namen ein)
+  display_name?: string;       // Spitzname — bleibt leer; das Kind vergibt ihn beim ersten Login selbst
   bundesland?: string;
   schoolType?: string;
   grade?: string;
@@ -72,8 +73,8 @@ export const familyService = {
     const childIdentity: SoStudyIdentity = {
       userId: childUserId,
       role: 'student',
-      display_name: input.display_name.trim(),
-      real_name: (input.real_name ?? '').trim(),
+      display_name: (input.display_name ?? '').trim(), // leer → Kind vergibt Spitzname beim ersten Login
+      real_name: input.real_name.trim(),
       bundesland: input.bundesland ?? '',
       schoolType: input.schoolType ?? '',
       grade: input.grade,
@@ -145,23 +146,27 @@ export const familyService = {
   },
 
   /**
-   * MODUS C — Kind per EINLADUNG verknüpfen.
-   * Legt einen `pending`-Eintrag mit Invite-Code an. Das Kind nimmt später per acceptInvite an.
+   * WEG ① — Eltern laden ihr Kind per E-Mail ein.
+   * Legt einen `pending`-Eintrag mit echtem Namen + E-Mail + Invite-Token an. Das Kind öffnet
+   * die (gemockte) Einladung und wählt selbst Auth → acceptInviteWithAuth.
    */
-  inviteChild: async (
+  inviteChildByEmail: async (
     familyId: string,
-    displayNameHint?: string
-  ): Promise<{ ok: boolean; inviteCode: string; family: Familienkonto | null }> => {
+    input: { real_name: string; email: string; schoolType?: string; grade?: string }
+  ): Promise<{ ok: boolean; inviteToken: string; family: Familienkonto | null }> => {
     await delay(350);
     const family = findFamilyById(familyId);
-    if (!family) return { ok: false, inviteCode: '', family: null };
+    if (!family) return { ok: false, inviteToken: '', family: null };
 
-    const inviteCode = generateInviteCode();
+    const inviteToken = generateInviteCode();
     const child: FamilyChild = {
       childUserId: `pending_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
-      display_name: (displayNameHint ?? 'Eingeladenes Kind').trim() || 'Eingeladenes Kind',
-      real_name: '',
-      anmeldeCode: inviteCode, // hält das Einladungs-Token bis zur Annahme
+      display_name: '', // Spitzname vergibt das Kind selbst nach dem Annehmen
+      real_name: input.real_name.trim(),
+      anmeldeCode: inviteToken, // hält das Invite-Token bis zur Annahme
+      email: input.email.trim(),
+      schoolType: input.schoolType,
+      grade: input.grade,
       activationMode: 'C',
       tutoringConsent: false,
       pending: true,
@@ -170,42 +175,73 @@ export const familyService = {
     family.children.push(child);
     persistFamilies();
 
-    return { ok: true, inviteCode, family };
+    return { ok: true, inviteToken, family };
+  },
+
+  /** Liefert Familie + offenen Einladungs-Eintrag zu einem Invite-Token (für den Annehmen-Flow). */
+  getPendingInviteByToken: (
+    token: string
+  ): { family: Familienkonto; child: FamilyChild } | null => {
+    const family = findFamilyByInviteCode(token);
+    if (!family) return null;
+    const child = family.children.find(
+      (c) => c.pending && c.anmeldeCode.toUpperCase() === token.trim().toUpperCase()
+    );
+    return child ? { family, child } : null;
   },
 
   /**
-   * Kind nimmt eine Einladung an (Modus C). Verknüpft die (bestehende oder neue) Kind-Identität.
-   * SPÄTER: vom Kind-Konto aus aufgerufen (eingeloggtes Kind tippt den Invite-Code ein).
+   * WEG ① (Annahme) — Kind nimmt die E-Mail-Einladung an und wählt eine Auth-Methode (Apple/Google).
+   * Erstellt eine NEUE Schüler-Identität (echter Name aus der Einladung, Spitzname leer → wird
+   * beim ersten Login vergeben) MIT eigenem Login-Code (Backup), bindet sie ans Familienkonto
+   * und setzt die Session — das Kind ist danach eingeloggt.
    */
-  acceptInvite: async (
-    inviteCode: string,
-    childIdentity: SoStudyIdentity
-  ): Promise<LinkResult> => {
-    await delay(300);
-    const family = findFamilyByInviteCode(inviteCode);
+  acceptInviteWithAuth: async (token: string, authMethod: AuthMethod): Promise<LinkResult> => {
+    await delay(400);
+    const family = findFamilyByInviteCode(token);
     if (!family) return { ok: false, reason: 'not_found' };
 
     const pendingIdx = family.children.findIndex(
-      (c) => c.pending && c.anmeldeCode.toUpperCase() === inviteCode.trim().toUpperCase()
+      (c) => c.pending && c.anmeldeCode.toUpperCase() === token.trim().toUpperCase()
     );
     if (pendingIdx === -1) return { ok: false, reason: 'not_found' };
+    const pending = family.children[pendingIdx];
 
-    // Kind-Identität ans Familienkonto binden
-    upsertIdentity({ ...childIdentity, familyId: family.familyId, familyRole: 'child' });
+    const childUserId = `user_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+    const anmeldeCode = generateAnmeldeCode();
+    const childIdentity: SoStudyIdentity = {
+      userId: childUserId,
+      role: 'student',
+      display_name: '', // Spitzname vergibt das Kind beim ersten Login selbst
+      real_name: pending.real_name,
+      bundesland: '',
+      schoolType: pending.schoolType ?? '',
+      grade: pending.grade,
+      volljaehrig: false,
+      anmeldeCode, // Schüler haben immer einen Login-Code (Backup), zusätzlich zur Auth
+      authMethod,
+      linkedAuthMethods: authMethod === 'apple' || authMethod === 'google' ? [authMethod] : [],
+      // Eltern haben im Namen des Kindes in die KI-Nutzung eingewilligt.
+      kiConsent: { accepted: true, timestamp: new Date().toISOString() },
+      email: pending.email,
+      familyId: family.familyId,
+      familyRole: 'child',
+      createdAt: new Date().toISOString(),
+    };
+    upsertIdentity(childIdentity);
 
     const child: FamilyChild = {
-      ...family.children[pendingIdx],
-      childUserId: childIdentity.userId,
-      display_name: childIdentity.display_name,
-      real_name: childIdentity.real_name,
-      anmeldeCode: childIdentity.anmeldeCode,
-      schoolType: childIdentity.schoolType,
-      grade: childIdentity.grade,
+      ...pending,
+      childUserId,
+      anmeldeCode,
       pending: false,
       linkedAt: new Date().toISOString(),
     };
     family.children[pendingIdx] = child;
     persistFamilies();
+
+    // Session für das frisch aktivierte Kind setzen (es ist jetzt eingeloggt).
+    identityService.establishSession(childIdentity, true);
 
     return { ok: true, family, child };
   },

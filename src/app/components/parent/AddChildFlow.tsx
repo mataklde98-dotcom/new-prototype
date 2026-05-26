@@ -1,13 +1,16 @@
-// ===== KIND HINZUFÜGEN (Onboarding v5 — Aktivierungs-Modi A/B/C) =====
-// Wiederverwendbarer Sub-Flow: wird im Eltern-Onboarding (E5–E7) UND im Eltern-Dashboard
-// (Multi-Kind) genutzt. Vollflächig im Onboarding-Look (OnboardingShell).
+// ===== KIND HINZUFÜGEN (Onboarding v5 — 3 Wege) =====
+// Wiederverwendbarer Sub-Flow: Eltern-Onboarding (E5–E7) UND Eltern-Dashboard (Multi-Kind).
+// Vollflächig im Onboarding-Look (OnboardingShell). Drei Wege, wie ein Kind ans Familienkonto kommt:
 //
-//   A = Neues Kind-Konto erstellen (System generiert Anmelde-Code)
-//   B = Bestehendes Kind-Konto per Anmelde-Code verknüpfen
-//   C = Kind per Einladung (Invite-Code) verknüpfen
+//   ① E-Mail einladen   → Kind wählt selbst Apple/Google (Mode 'C' → acceptInviteWithAuth)
+//   ② Login-Code        → System erzeugt einen Code, Eltern geben ihn weiter (Mode 'A')
+//   ③ Konto verknüpfen  → Kind nutzt SoStudy schon, per Login-Code anbinden (Mode 'B')
+//
+// In ALLEN Fällen geben die Eltern nur den ECHTEN Namen — den Spitznamen vergibt das Kind selbst.
 
 import React, { useState } from 'react';
 import { familyService } from '@/services/familyService';
+import { clearUserSession } from '@/lib/auth';
 import type { ActivationMode, Familienkonto } from '@/types/identity';
 import {
   BRAND,
@@ -17,6 +20,7 @@ import {
   ChatBubble,
   OnboardingShell,
   PrimaryButton,
+  SecondaryButton,
   TextLink,
   ChoiceList,
   BigSelectionCard,
@@ -33,11 +37,14 @@ interface AddChildFlowProps {
   allowSkip?: boolean;
 }
 
+// Reihenfolge = Empfehlung: E-Mail zuerst (sicherster Weg, Kind nutzt eigene Auth).
 const MODE_CARDS: { mode: ActivationMode; emoji: string; title: string; subtitle: string }[] = [
-  { mode: 'A', emoji: '🆕', title: 'Neues Kind-Konto erstellen', subtitle: 'Wir legen ein Konto an — du erhältst einen Anmelde-Code für dein Kind.' },
-  { mode: 'B', emoji: '🔗', title: 'Bestehendes Konto verknüpfen', subtitle: 'Dein Kind nutzt SoStudy bereits? Gib seinen Anmelde-Code ein.' },
-  { mode: 'C', emoji: '✉️', title: 'Per Einladung verknüpfen', subtitle: 'Sende deinem Kind eine Einladung zum Beitreten.' },
+  { mode: 'C', emoji: '✉️', title: 'Per E-Mail einladen', subtitle: 'Dein Kind meldet sich selbst mit Apple oder Google an.' },
+  { mode: 'A', emoji: '🔑', title: 'Login-Code erstellen', subtitle: 'Wir erzeugen einen Code, den du deinem Kind weitergibst.' },
+  { mode: 'B', emoji: '🔗', title: 'Bestehendes Konto verknüpfen', subtitle: 'Dein Kind nutzt SoStudy schon? Gib seinen Login-Code ein.' },
 ];
+
+const isValidEmail = (v: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.trim());
 
 export default function AddChildFlow({ familyId, onDone, onCancel, allowSkip }: AddChildFlowProps) {
   const [step, setStep] = useState<SubStep>('mode');
@@ -46,21 +53,21 @@ export default function AddChildFlow({ familyId, onDone, onCancel, allowSkip }: 
   const [error, setError] = useState('');
   const [copied, setCopied] = useState(false);
 
-  // Modus A — neues Kind
-  const [childName, setChildName] = useState('');
+  // Gemeinsame Kind-Felder (Weg ② Code & Weg ① E-Mail) — Eltern geben nur den echten Namen.
   const [childReal, setChildReal] = useState('');
   const [childSchool, setChildSchool] = useState('');
   const [childGrade, setChildGrade] = useState('');
+  const [childEmail, setChildEmail] = useState(''); // nur Weg ①
 
-  // Modus B — Code; Modus C — Name-Hinweis
+  // Weg ③ — bestehender Login-Code
   const [linkCode, setLinkCode] = useState('');
-  const [inviteName, setInviteName] = useState('');
 
   // Ergebnis
   const [resultFamily, setResultFamily] = useState<Familienkonto | null>(null);
   const [resultKind, setResultKind] = useState<'created' | 'linked' | 'invited' | null>(null);
-  const [resultCode, setResultCode] = useState(''); // Anmelde-Code (A) oder Invite-Code (C)
+  const [resultCode, setResultCode] = useState(''); // Login-Code (②) oder Invite-Token (①)
   const [resultName, setResultName] = useState('');
+  const [resultEmail, setResultEmail] = useState('');
 
   const copy = (text: string) => {
     navigator.clipboard?.writeText(text).catch(() => {});
@@ -68,13 +75,15 @@ export default function AddChildFlow({ familyId, onDone, onCancel, allowSkip }: 
     setTimeout(() => setCopied(false), 1600);
   };
 
+  const firstName = (full: string) => full.trim().split(' ')[0] || 'Dein Kind';
+
   // ===== AKTIONEN =====
+  // Weg ② — Login-Code erstellen
   const submitA = async () => {
     setError('');
-    if (childName.trim().length < 2) { setError('Bitte einen Spitznamen eingeben.'); return; }
+    if (childReal.trim().length < 2) { setError('Bitte den Namen des Kindes eingeben.'); return; }
     setBusy(true);
     const res = await familyService.addChildNew(familyId, {
-      display_name: childName,
       real_name: childReal,
       schoolType: childSchool,
       grade: childGrade || undefined,
@@ -84,23 +93,24 @@ export default function AddChildFlow({ familyId, onDone, onCancel, allowSkip }: 
       setResultFamily(res.family);
       setResultKind('created');
       setResultCode(res.child.anmeldeCode);
-      setResultName(res.child.display_name);
+      setResultName(firstName(childReal));
       setStep('result');
     } else {
       setError('Konnte das Kind-Konto nicht anlegen.');
     }
   };
 
+  // Weg ③ — bestehendes Konto verknüpfen
   const submitB = async () => {
     setError('');
-    if (!linkCode.trim()) { setError('Bitte den Anmelde-Code des Kindes eingeben.'); return; }
+    if (!linkCode.trim()) { setError('Bitte den Login-Code des Kindes eingeben.'); return; }
     setBusy(true);
     const res = await familyService.linkChildByCode(familyId, linkCode);
     setBusy(false);
     if (res.ok) {
       setResultFamily(res.family);
       setResultKind('linked');
-      setResultName(res.child.display_name);
+      setResultName(res.child.display_name?.trim() || firstName(res.child.real_name || ''));
       setStep('result');
     } else {
       const msg =
@@ -111,20 +121,35 @@ export default function AddChildFlow({ familyId, onDone, onCancel, allowSkip }: 
     }
   };
 
+  // Weg ① — per E-Mail einladen
   const submitC = async () => {
     setError('');
+    if (childReal.trim().length < 2) { setError('Bitte den Namen des Kindes eingeben.'); return; }
+    if (!isValidEmail(childEmail)) { setError('Bitte eine gültige E-Mail-Adresse eingeben.'); return; }
     setBusy(true);
-    const res = await familyService.inviteChild(familyId, inviteName);
+    const res = await familyService.inviteChildByEmail(familyId, {
+      real_name: childReal,
+      email: childEmail,
+      schoolType: childSchool || undefined,
+      grade: childGrade || undefined,
+    });
     setBusy(false);
     if (res.ok && res.family) {
       setResultFamily(res.family);
       setResultKind('invited');
-      setResultCode(res.inviteCode);
-      setResultName(inviteName.trim() || 'dein Kind');
+      setResultCode(res.inviteToken);
+      setResultName(firstName(childReal));
+      setResultEmail(childEmail.trim());
       setStep('result');
     } else {
       setError('Einladung konnte nicht erstellt werden.');
     }
+  };
+
+  // Demo: E-Mail-Klick des Kindes simulieren → Eltern-Session verlassen, Annehmen-Flow per ?invite öffnen.
+  const openInviteAsChild = () => {
+    clearUserSession();
+    window.location.href = `${window.location.pathname}?invite=${encodeURIComponent(resultCode)}`;
   };
 
   const back = () => {
@@ -134,7 +159,7 @@ export default function AddChildFlow({ familyId, onDone, onCancel, allowSkip }: 
     setStep('mode');
   };
 
-  // ===== STEP: MODUS-AUSWAHL =====
+  // ===== STEP: WEG-AUSWAHL =====
   if (step === 'mode') {
     return (
       <OnboardingShell stepKey={step}
@@ -173,23 +198,20 @@ export default function AddChildFlow({ familyId, onDone, onCancel, allowSkip }: 
     );
   }
 
-  // ===== STEP: MODUS A — neues Kind =====
+  // ===== STEP: WEG ② — Login-Code erstellen =====
   if (step === 'detailA') {
     return (
       <OnboardingShell stepKey={step}
         onBack={back}
-        footer={<PrimaryButton loading={busy} disabled={busy} onClick={submitA}>Kind-Konto erstellen</PrimaryButton>}
+        footer={<PrimaryButton loading={busy} disabled={busy} onClick={submitA}>Login-Code erstellen</PrimaryButton>}
       >
         <div className="flex flex-col gap-5">
           <div className="flex items-start gap-3">
             <MascotAvatar size={56} />
             <ChatBubble>Erzähl mir kurz etwas über dein Kind.</ChatBubble>
           </div>
-          <Field label="Spitzname des Kindes *">
-            <TextInput value={childName} onChange={setChildName} placeholder="z.B. Lena" autoFocus />
-          </Field>
-          <Field label="Klarname (für Nachhilfe, optional)">
-            <TextInput value={childReal} onChange={setChildReal} placeholder="Vor- und Nachname" />
+          <Field label="Vor- und Nachname des Kindes *">
+            <TextInput value={childReal} onChange={setChildReal} placeholder="Vor- und Nachname" autoFocus />
           </Field>
           <Field label="Schulform">
             <ChoiceList options={SCHOOL_TYPES} value={childSchool} onChange={setChildSchool} columns={2} />
@@ -197,13 +219,16 @@ export default function AddChildFlow({ familyId, onDone, onCancel, allowSkip }: 
           <Field label="Klasse (optional)">
             <ChoiceList options={GRADES} value={childGrade} onChange={setChildGrade} columns={3} />
           </Field>
+          <p className="font-['Poppins:Regular',sans-serif] text-[13px] text-white/45 px-1">
+            Den Spitznamen wählt dein Kind beim ersten Login selbst.
+          </p>
           {error && <ErrorText>{error}</ErrorText>}
         </div>
       </OnboardingShell>
     );
   }
 
-  // ===== STEP: MODUS B — Code verknüpfen =====
+  // ===== STEP: WEG ③ — bestehendes Konto verknüpfen =====
   if (step === 'detailB') {
     return (
       <OnboardingShell stepKey={step}
@@ -213,9 +238,9 @@ export default function AddChildFlow({ familyId, onDone, onCancel, allowSkip }: 
         <div className="flex flex-col gap-5">
           <div className="flex items-start gap-3">
             <MascotAvatar size={56} />
-            <ChatBubble>Gib den Anmelde-Code deines Kindes ein.</ChatBubble>
+            <ChatBubble>Gib den Login-Code deines Kindes ein.</ChatBubble>
           </div>
-          <Field label="Anmelde-Code des Kindes">
+          <Field label="Login-Code des Kindes">
             <input
               value={linkCode}
               onChange={(e) => setLinkCode(e.target.value.toUpperCase())}
@@ -229,7 +254,7 @@ export default function AddChildFlow({ familyId, onDone, onCancel, allowSkip }: 
             />
           </Field>
           <p className="font-['Poppins:Regular',sans-serif] text-[13px] text-white/45 px-1">
-            Den Code findet dein Kind in seinem Profil unter „Verknüpfte Konten".
+            Den Code findet dein Kind in seinem Profil unter „Login & Sicherheit".
           </p>
           {error && <ErrorText>{error}</ErrorText>}
         </div>
@@ -237,25 +262,34 @@ export default function AddChildFlow({ familyId, onDone, onCancel, allowSkip }: 
     );
   }
 
-  // ===== STEP: MODUS C — Einladung =====
+  // ===== STEP: WEG ① — per E-Mail einladen =====
   if (step === 'detailC') {
     return (
       <OnboardingShell stepKey={step}
         onBack={back}
-        footer={<PrimaryButton loading={busy} disabled={busy} onClick={submitC}>Einladung erstellen</PrimaryButton>}
+        footer={<PrimaryButton loading={busy} disabled={busy} onClick={submitC}>Einladung senden</PrimaryButton>}
       >
         <div className="flex flex-col gap-5">
           <div className="flex items-start gap-3">
             <MascotAvatar size={56} />
-            <ChatBubble>Ich erstelle einen Einladungs-Code zum Teilen.</ChatBubble>
+            <ChatBubble>Ich schicke deinem Kind eine Einladung per E-Mail.</ChatBubble>
           </div>
-          <Field label="Name des Kindes (optional)">
-            <TextInput value={inviteName} onChange={setInviteName} placeholder="z.B. Nina" autoFocus />
+          <Field label="Vor- und Nachname des Kindes *">
+            <TextInput value={childReal} onChange={setChildReal} placeholder="Vor- und Nachname" autoFocus />
+          </Field>
+          <Field label="E-Mail des Kindes *">
+            <TextInput value={childEmail} onChange={setChildEmail} placeholder="kind@beispiel.de" type="email" />
+          </Field>
+          <Field label="Schulform (optional)">
+            <ChoiceList options={SCHOOL_TYPES} value={childSchool} onChange={setChildSchool} columns={2} />
+          </Field>
+          <Field label="Klasse (optional)">
+            <ChoiceList options={GRADES} value={childGrade} onChange={setChildGrade} columns={3} />
           </Field>
           <p className="font-['Poppins:Regular',sans-serif] text-[13px] text-white/45 px-1">
-            Dein Kind gibt den Einladungs-Code in seinem SoStudy-Profil ein und ist dann mit eurem
-            Familienkonto verbunden.
+            Dein Kind öffnet die Einladung und meldet sich selbst mit Apple oder Google an — den Spitznamen wählt es dabei selbst.
           </p>
+          {error && <ErrorText>{error}</ErrorText>}
         </div>
       </OnboardingShell>
     );
@@ -263,15 +297,24 @@ export default function AddChildFlow({ familyId, onDone, onCancel, allowSkip }: 
 
   // ===== STEP: ERGEBNIS =====
   return (
-    <OnboardingShell stepKey={step} footer={<PrimaryButton onClick={() => resultFamily && onDone(resultFamily)}>Fertig</PrimaryButton>}>
+    <OnboardingShell stepKey={step} footer={
+      resultKind === 'invited' ? (
+        <div className="space-y-2.5">
+          <PrimaryButton onClick={openInviteAsChild}>Einladung als Kind öffnen ▶</PrimaryButton>
+          <SecondaryButton onClick={() => resultFamily && onDone(resultFamily)}>Fertig</SecondaryButton>
+        </div>
+      ) : (
+        <PrimaryButton onClick={() => resultFamily && onDone(resultFamily)}>Fertig</PrimaryButton>
+      )
+    }>
       <div className="h-full flex flex-col items-center justify-center text-center gap-6">
         <MascotAvatar size={96} />
         {resultKind === 'created' && (
           <>
             <ChatBubble>{resultName}s Konto ist bereit! 🎉</ChatBubble>
-            <CodeCard label="Anmelde-Code des Kindes" code={resultCode} copied={copied} onCopy={() => copy(resultCode)} />
+            <CodeCard label="Login-Code des Kindes" code={resultCode} copied={copied} onCopy={() => copy(resultCode)} />
             <p className="font-['Poppins:Regular',sans-serif] text-[13px] text-white/45 max-w-[300px]">
-              Gib diesen Code an dein Kind weiter — damit meldet es sich an.
+              Gib diesen Code an dein Kind weiter — damit meldet es sich an. Du findest ihn jederzeit hier im Familienkonto.
             </p>
           </>
         )}
@@ -280,10 +323,12 @@ export default function AddChildFlow({ familyId, onDone, onCancel, allowSkip }: 
         )}
         {resultKind === 'invited' && (
           <>
-            <ChatBubble>Einladung für {resultName} erstellt! ✉️</ChatBubble>
-            <CodeCard label="Einladungs-Code" code={resultCode} copied={copied} onCopy={() => copy(resultCode)} />
-            <p className="font-['Poppins:Regular',sans-serif] text-[13px] text-white/45 max-w-[300px]">
-              Teile den Code mit deinem Kind. Sobald es annimmt, erscheint es in deiner Kinder-Liste.
+            <ChatBubble>Einladung an {resultEmail} gesendet! ✉️</ChatBubble>
+            <p className="font-['Poppins:Regular',sans-serif] text-[14px] text-white/55 max-w-[320px]">
+              {resultName} öffnet die E-Mail und meldet sich mit Apple oder Google an. Danach erscheint {resultName} in deiner Kinder-Liste.
+            </p>
+            <p className="font-['Poppins:Regular',sans-serif] text-[12px] text-white/35 max-w-[300px]">
+              Zum Ausprobieren simuliert „Einladung als Kind öffnen" den Klick deines Kindes auf die E-Mail.
             </p>
           </>
         )}
@@ -303,14 +348,19 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 }
 
 function TextInput({
-  value, onChange, placeholder, autoFocus,
-}: { value: string; onChange: (v: string) => void; placeholder?: string; autoFocus?: boolean }) {
+  value, onChange, placeholder, autoFocus, type,
+}: { value: string; onChange: (v: string) => void; placeholder?: string; autoFocus?: boolean; type?: string }) {
+  const isEmail = type === 'email';
   return (
     <input
+      type={type}
       autoFocus={autoFocus}
       value={value}
       onChange={(e) => onChange(e.target.value)}
       placeholder={placeholder}
+      autoCapitalize={isEmail ? 'none' : undefined}
+      autoCorrect={isEmail ? 'off' : undefined}
+      spellCheck={isEmail ? false : undefined}
       className="w-full px-5 py-3.5 rounded-2xl bg-white/[0.05] border border-white/[0.10] text-white font-['Poppins:Medium',sans-serif] outline-none focus:border-[#009379] transition-colors"
       style={{ fontSize: 16 }}
     />
@@ -328,7 +378,7 @@ function CodeCard({ label, code, copied, onCopy }: { label: string; code: string
     <button
       onClick={onCopy}
       className="w-full max-w-[320px] rounded-3xl py-6 px-4 active:scale-[0.98] transition-transform"
-      style={{ background: 'rgba(0,147,121,0.12)', border: `1.5px solid ${BRAND}` }}
+      style={{ background: 'rgba(0,147,121,0.12)', border: `1.5px solid ${BRAND.primary}` }}
     >
       <div className="font-['Poppins:Medium',sans-serif] text-[12px] text-white/50 mb-1">{label}</div>
       <div className="font-['Poppins:Bold',sans-serif] text-[26px] tracking-[0.1em] text-white break-all">{code}</div>

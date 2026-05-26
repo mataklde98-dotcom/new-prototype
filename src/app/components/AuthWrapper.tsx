@@ -6,6 +6,8 @@ import LoginScreen from './LoginScreen';
 import RegisterScreen from './RegisterScreen';
 import OnboardingFlow from './onboarding/OnboardingFlow';
 import ParentOnboardingFlow from './parent/ParentOnboardingFlow';
+import NicknameClaimGate from './onboarding/NicknameClaimGate';
+import AcceptInviteFlow from './onboarding/AcceptInviteFlow';
 import { clearUserSession } from '@/lib/auth';
 
 // Social Auth info passed between screens
@@ -14,6 +16,13 @@ export interface SocialAuthInfo {
   email: string;
   firstName?: string;
   lastName?: string;
+}
+
+/** Entfernt den ?invite-Parameter aus der URL (nach Annahme/Abbruch), ohne Reload. */
+function clearInviteFromUrl() {
+  if (typeof window !== 'undefined' && window.history?.replaceState) {
+    window.history.replaceState({}, '', window.location.pathname);
+  }
 }
 
 interface AuthWrapperProps {
@@ -25,20 +34,27 @@ export default function AuthWrapper({ children }: AuthWrapperProps) {
   const [userData, setUserData] = useState<any>(null);
   // 'onboarding' = neuer Knowunity-Flow (Default-Einstieg). 'parentOnboarding' = Eltern-Pfad (E1–E8).
   // 'register' = alter Formular-Flow (Fallback).
-  const [authView, setAuthView] = useState<'login' | 'register' | 'onboarding' | 'parentOnboarding'>('onboarding');
+  const [authView, setAuthView] = useState<'login' | 'register' | 'onboarding' | 'parentOnboarding' | 'acceptInvite'>('onboarding');
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
   const [socialAuth, setSocialAuth] = useState<SocialAuthInfo | null>(null);
+  // Token aus einem ?invite=<token>-Deep-Link (Kind öffnet die E-Mail-Einladung, Weg ①).
+  const [inviteToken, setInviteToken] = useState<string | null>(null);
   
   // Check if user is already logged in
   useEffect(() => {
+    const invite = new URLSearchParams(window.location.search).get('invite');
     const loggedIn = localStorage.getItem('isLoggedIn');
     const storedUserData = localStorage.getItem('userData');
-    
+
     if (loggedIn === 'true' && storedUserData) {
       setIsLoggedIn(true);
       setUserData(JSON.parse(storedUserData));
+    } else if (invite) {
+      // Kind öffnet eine E-Mail-Einladung (Weg ①) → direkt in den Annehmen-Flow.
+      setInviteToken(invite);
+      setAuthView('acceptInvite');
     }
-    
+
     setIsCheckingAuth(false);
   }, []);
   
@@ -99,6 +115,15 @@ export default function AuthWrapper({ children }: AuthWrapperProps) {
   
   // Show auth screens if not logged in
   if (!isLoggedIn) {
+    if (authView === 'acceptInvite' && inviteToken) {
+      return (
+        <AcceptInviteFlow
+          token={inviteToken}
+          onComplete={(u) => { clearInviteFromUrl(); handleRegisterSuccess(u); }}
+          onInvalid={() => { clearInviteFromUrl(); setInviteToken(null); setAuthView('onboarding'); }}
+        />
+      );
+    }
     if (authView === 'onboarding') {
       return (
         <OnboardingFlow
@@ -141,6 +166,11 @@ export default function AuthWrapper({ children }: AuthWrapperProps) {
     }
   }
   
+  // Schüler ohne Spitznamen (frisch von Eltern angelegt/eingeladen) vergeben ihn zuerst selbst.
+  if (userData?.role === 'student' && !(userData.display_name ?? '').trim()) {
+    return <NicknameClaimGate userData={userData} onDone={(u) => setUserData(u)} />;
+  }
+
   // User is logged in - render app with userData
   return <>{children(userData, handleLogout)}</>;
 }

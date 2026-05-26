@@ -164,6 +164,9 @@ function ChildCard({
   const [copied, setCopied] = useState(false);
   const [code, setCode] = useState(child.anmeldeCode);
 
+  // Anzeigename: Spitzname (sobald das Kind ihn vergeben hat), sonst der echte Name.
+  const childLabel = child.display_name?.trim() || child.real_name?.trim() || 'Kind';
+
   const copy = () => {
     navigator.clipboard?.writeText(code).catch(() => {});
     setCopied(true);
@@ -208,11 +211,11 @@ function ChildCard({
           className="w-12 h-12 rounded-2xl flex items-center justify-center font-['Poppins:Bold',sans-serif] text-[18px] text-white shrink-0"
           style={{ background: `linear-gradient(135deg, #00B894, ${BRAND})` }}
         >
-          {child.display_name.charAt(0).toUpperCase()}
+          {childLabel.charAt(0).toUpperCase()}
         </div>
         <div className="flex-1 min-w-0">
           <div className="font-['Poppins:SemiBold',sans-serif] text-[16px] text-white truncate">
-            {child.display_name}
+            {childLabel}
           </div>
           <div className="font-['Poppins:Regular',sans-serif] text-[12px] text-white/45 truncate">
             {[child.schoolType, child.grade && `Klasse ${child.grade}`].filter(Boolean).join(' · ') || 'Kein Profil-Detail'}
@@ -230,28 +233,42 @@ function ChildCard({
         </span>
       </div>
 
-      {/* Anmelde-/Einladungs-Code + Verwaltung */}
-      <div
-        className="mt-3 flex items-center gap-2 px-3 py-2.5 rounded-2xl"
-        style={{ background: 'rgba(0,0,0,0.25)', border: '1px solid rgba(255,255,255,0.06)' }}
-      >
-        <div className="flex-1 min-w-0">
-          <div className="font-['Poppins:Medium',sans-serif] text-[10px] uppercase tracking-wider text-white/35">
-            {child.pending ? 'Einladungs-Code' : 'Anmelde-Code'}
-          </div>
-          <div className="font-['Poppins:SemiBold',sans-serif] text-[15px] tracking-[0.10em] text-white truncate">
-            {code}
+      {/* Login-Code (aktiv) bzw. Einladungs-Status (pending, per E-Mail eingeladen) */}
+      {child.pending ? (
+        <div
+          className="mt-3 flex items-center gap-2 px-3 py-2.5 rounded-2xl"
+          style={{ background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.20)' }}
+        >
+          <div className="flex-1 min-w-0">
+            <div className="font-['Poppins:Medium',sans-serif] text-[10px] uppercase tracking-wider text-white/35">
+              Eingeladen per E-Mail
+            </div>
+            <div className="font-['Poppins:Medium',sans-serif] text-[14px] text-white/80 truncate">
+              {child.email || 'Einladung offen'}
+            </div>
           </div>
         </div>
-        <button onClick={copy} className="p-2 rounded-lg bg-white/[0.05] active:scale-90 transition-transform" aria-label="Code kopieren">
-          {copied ? <Check className="w-4 h-4" style={{ color: BRAND }} /> : <Copy className="w-4 h-4 text-white/55" />}
-        </button>
-        {!child.pending && (
+      ) : (
+        <div
+          className="mt-3 flex items-center gap-2 px-3 py-2.5 rounded-2xl"
+          style={{ background: 'rgba(0,0,0,0.25)', border: '1px solid rgba(255,255,255,0.06)' }}
+        >
+          <div className="flex-1 min-w-0">
+            <div className="font-['Poppins:Medium',sans-serif] text-[10px] uppercase tracking-wider text-white/35">
+              Login-Code
+            </div>
+            <div className="font-['Poppins:SemiBold',sans-serif] text-[15px] tracking-[0.10em] text-white truncate">
+              {code}
+            </div>
+          </div>
+          <button onClick={copy} className="p-2 rounded-lg bg-white/[0.05] active:scale-90 transition-transform" aria-label="Code kopieren">
+            {copied ? <Check className="w-4 h-4" style={{ color: BRAND }} /> : <Copy className="w-4 h-4 text-white/55" />}
+          </button>
           <button onClick={regenerate} className="p-2 rounded-lg bg-white/[0.05] active:scale-90 transition-transform" aria-label="Neuen Code generieren">
             <RefreshCw className={`w-4 h-4 text-white/55 ${busy === 'code' ? 'animate-spin' : ''}`} />
           </button>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* Nachhilfe-Einwilligung + Entfernen */}
       <div className="mt-3 flex items-center justify-between">
