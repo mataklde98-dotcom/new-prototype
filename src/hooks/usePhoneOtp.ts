@@ -33,7 +33,9 @@ export function usePhoneOtp(onVerified?: (fullPhone: string) => void) {
   const [resendIn, setResendIn] = useState(0);
 
   const fullPhone = `${countryCode} ${phone.trim()}`.trim();
-  const phoneValid = phone.replace(/\D/g, '').length >= 6;
+  // Prototyp: KEINE Validierung — beliebige (auch leere) Eingabe wird akzeptiert,
+  // damit der Demo-Flow ohne Reibung durchläuft.
+  const phoneValid = true;
 
   // onVerified per Ref → stabile verify-Callback ohne Stale-Closure.
   const onVerifiedRef = useRef(onVerified);
@@ -55,7 +57,8 @@ export function usePhoneOtp(onVerified?: (fullPhone: string) => void) {
     if (res.ok) {
       setDemoCode(res.code);
       setStage('verify');
-      setOtp('');
+      // Prototyp: Code direkt vorbefüllen → ein Tap auf "Bestätigen" genügt (kein Abtippen nötig).
+      setOtp(res.code);
       setResendIn(RESEND_SECONDS);
     } else {
       setError('Code konnte nicht gesendet werden.');

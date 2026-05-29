@@ -1,8 +1,18 @@
 import { createRoot } from "react-dom/client";
 import App from "./app/App.tsx";
 import { ErrorBoundary } from "./app/components/ErrorBoundary";
+import NewRegistrationFlow from "./app/components/onboarding/NewRegistrationFlow";
 import "./styles/index.css";
 import { applyDemoFromQuery } from "./lib/demoSeed";
+
+// Isolierte Referenz-Strecke (28-Mai-Wireframe), erreichbar unter /new-registration
+// oder ?new-registration. Berührt den bestehenden Onboarding-/Auth-Flow NICHT.
+function isNewRegistrationRoute(): boolean {
+  if (typeof window === 'undefined') return false;
+  const path = window.location.pathname || '';
+  const search = window.location.search || '';
+  return path.includes('new-registration') || search.includes('new-registration');
+}
 
 // Force rebuild v1.6.7
 
@@ -64,7 +74,7 @@ if (!applyDemoFromQuery()) {
   // Statt eines schwarzen Bildschirms erscheint die Wiederherstellungs-Karte.
   createRoot(document.getElementById("root")!).render(
     <ErrorBoundary>
-      <App />
+      {isNewRegistrationRoute() ? <NewRegistrationFlow /> : <App />}
     </ErrorBoundary>
   );
 }

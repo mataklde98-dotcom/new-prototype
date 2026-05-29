@@ -16,6 +16,11 @@ export interface UserProfile {
   real_name?: string;      // Klarname (Nachhilfe-/Vertrags-Kontext)
   familyId?: string;       // Familienkonto-Verknüpfung
   familyRole?: 'owner' | 'child';
+  // ===== Onboarding 28-Mai (One-Step-Signup, Profil nach Dashboard) =====
+  ageBracket?: '16plus' | 'under16'; // Self-Declaration (16), steuert Pfad B/C
+  anonymous?: boolean;     // Pfad C: keine E-Mail/Klarname
+  username?: string;       // Pfad C: Fantasie-Login-Kennung
+  profileComplete?: boolean; // Schul-Daten (+ KI bei 16+) gesetzt → Banner aus
 }
 
 // ===== MOCK USERS (Development) =====
@@ -139,6 +144,11 @@ export const getCurrentUserProfile = (): UserProfile => {
         real_name: userData.real_name ?? mockUser.real_name,
         familyId: userData.familyId || mockUser.familyId,
         familyRole: userData.familyRole || mockUser.familyRole,
+        // Onboarding 28-Mai — additiv durchreichen
+        ageBracket: userData.ageBracket,
+        anonymous: userData.anonymous ?? false,
+        username: userData.username,
+        profileComplete: userData.profileComplete,
       };
     } catch (e) {
       console.error('Failed to parse userData:', e);

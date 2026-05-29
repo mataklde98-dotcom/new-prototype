@@ -41,7 +41,8 @@ export function PhoneEntryFields({ otp }: { otp: PhoneOtpController }) {
           autoComplete="tel-national"
           autoFocus
           value={otp.phone}
-          onChange={(e) => otp.setPhone(e.target.value.replace(/[^\d ]/g, ''))}
+          // Prototyp: beliebige Eingabe erlaubt (Ziffern, +, -, Klammern, Leerzeichen …) — kein Strippen.
+          onChange={(e) => otp.setPhone(e.target.value)}
           onKeyDown={(e) => { if (e.key === 'Enter') otp.sendCode(); }}
           placeholder="151 23456789"
           className="flex-1 min-w-0 px-5 py-3.5 rounded-2xl bg-white/[0.05] border border-white/[0.10] text-white font-['Poppins:Medium',sans-serif] outline-none focus:border-[#009379] transition-colors"

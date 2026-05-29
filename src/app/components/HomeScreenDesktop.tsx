@@ -8,6 +8,7 @@ import TodoCardsSection from "@/app/components/TodoCardsSection";
 import TodoFilterPopup from "@/app/components/TodoFilterPopup";
 import FlashcardItem from "@/app/components/FlashcardItem";
 import StudentProfileCard from "@/app/components/StudentProfileCard";
+import CompleteProfileBanner from "@/app/components/onboarding/CompleteProfileBanner";
 import SkillMapCard from "@/app/components/SkillMapCard";
 import { LEARNING_STREAK } from "@/app/components/ProfileAnalyticsScreen";
 import svgPaths from "@/imports/svg-umyc99t8pe";
@@ -116,6 +117,9 @@ const HomeScreenDesktop = React.memo(function HomeScreenDesktop({
 
   return (
     <div>
+      {/* Profil-Vervollständigen-Hinweis (Schul-Daten nach dem Dashboard, 28-Mai-Wireframe) */}
+      <CompleteProfileBanner />
+
       {/* TOP SECTION: Two Column Layout - Profil/Skill Map + ToDo's */}
       <div className="grid grid-cols-1 min-[900px]:grid-cols-[minmax(280px,340px)_minmax(0,1fr)] min-[1440px]:grid-cols-[minmax(320px,380px)_minmax(0,1fr)] gap-5 mb-6">
         {/* LEFT COLUMN - Profile + Skill Map */}

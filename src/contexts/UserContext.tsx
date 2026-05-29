@@ -141,6 +141,14 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
         const realName = (userData.real_name && userData.real_name.trim()) || legacyFullName;
         const [realFirst, ...realRest] = realName.split(' ');
 
+        // Schul-Daten NICHT mehr per Default auffüllen, wenn ein frisch registrierter Schüler
+        // sie noch nicht gesetzt hat (28-Mai-Wireframe: Schul-Daten kommen erst nach dem Dashboard).
+        // Sonst erschiene das Profil fälschlich als „Bayern/Gymnasium/10" → der CompleteProfile-Banner
+        // würde nie greifen. Bei Schülern bleiben leere Felder leer; nur für Eltern/Legacy gelten Defaults.
+        const isStudent = userData.role === 'student';
+        const schoolFallback = (val: any, def: string) =>
+          val || (isStudent ? '' : def);
+
         // Update account data from userData (Klarname-basiert)
         const updatedAccountData = {
           firstName: realFirst || userData.firstName || userProfile.firstName,
@@ -149,9 +157,9 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
           phone: DEFAULT_ACCOUNT_DATA.phone,
           countryCode: DEFAULT_ACCOUNT_DATA.countryCode,
           countryFlag: DEFAULT_ACCOUNT_DATA.countryFlag,
-          bundesland: userData.bundesland || DEFAULT_ACCOUNT_DATA.bundesland,
-          schoolType: userData.schoolType || DEFAULT_ACCOUNT_DATA.schoolType,
-          grade: userData.grade || DEFAULT_ACCOUNT_DATA.grade
+          bundesland: schoolFallback(userData.bundesland, DEFAULT_ACCOUNT_DATA.bundesland),
+          schoolType: schoolFallback(userData.schoolType, DEFAULT_ACCOUNT_DATA.schoolType!),
+          grade: schoolFallback(userData.grade, DEFAULT_ACCOUNT_DATA.grade!)
         };
 
         setAccountDataState(updatedAccountData);

@@ -31,6 +31,18 @@ const USER_DATA_KEY = 'userData';         // bestehende Kompat-Shape (UserContex
 // Schreibt einen userData-Datensatz, den UserContext & AuthWrapper bereits verstehen.
 // Wichtig: Im Zwei-Bubble-Modell treibt der SPITZNAME (display_name) die App-Begrüßung,
 // der Klarname (real_name) bleibt für den Nachhilfe-Kontext separat.
+/**
+ * Profil vollständig? (treibt den CompleteProfile-Banner auf dem Dashboard.)
+ * Schüler: Schul-Daten gesetzt UND — bei 16+ — KI-Consent erteilt. Eltern gelten immer als vollständig.
+ * Unter-16 (anonym) braucht KEINEN expliziten KI-Consent-Schritt (über AGB/Eltern abgedeckt).
+ */
+export function isProfileComplete(identity: SoStudyIdentity): boolean {
+  if (identity.role !== 'student') return true;
+  const hasSchool = !!(identity.bundesland && identity.schoolType && identity.grade);
+  const hasKi = identity.ageBracket === 'under16' || identity.kiConsent.accepted;
+  return hasSchool && hasKi;
+}
+
 export function identityToUserData(identity: SoStudyIdentity) {
   return {
     userId: identity.userId,
@@ -53,6 +65,12 @@ export function identityToUserData(identity: SoStudyIdentity) {
     // Familienkonto-Verknüpfung (für Parent-/Student-Routing & Tutoring-Matrix)
     familyId: identity.familyId,
     familyRole: identity.familyRole,
+    // Onboarding 28-Mai (One-Step-Signup + Profil-nach-Dashboard)
+    ageBracket: identity.ageBracket,
+    anonymous: identity.anonymous ?? false,
+    username: identity.username,
+    kiConsentAccepted: identity.kiConsent.accepted,
+    profileComplete: isProfileComplete(identity),
   };
 }
 
@@ -102,15 +120,24 @@ export const identityService = {
   registerStudent: async (draft: OnboardingDraft): Promise<SoStudyIdentity> => {
     await delay(400);
 
+    // Pfad C (unter 16): anonym — keine E-Mail, Login per Apple "E-Mail verbergen" oder Fantasie-Username.
+    const isAnonymous = draft.ageBracket === 'under16';
+    const username = draft.username?.trim() || undefined;
+
     const identity: SoStudyIdentity = {
       userId: `user_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
       role: 'student',
-      display_name: draft.display_name.trim(),
+      // Beim One-Step-Signup gibt es keinen Spitzname-Schritt mehr. Pfad C nimmt den Username
+      // als Anzeigenamen; Pfad B startet leer → NicknameClaimGate fragt ihn einmalig nach dem Login.
+      display_name: (draft.display_name.trim() || username || ''),
       real_name: '', // Klarname kommt erst bei Tutoring-Aktivierung
-      bundesland: draft.bundesland,
+      bundesland: draft.bundesland, // beim One-Step-Signup leer → CompleteProfile nach Dashboard
       schoolType: draft.schoolType,
       grade: draft.grade,
-      volljaehrig: false, // später per Volljährigkeits-Toggle setzbar (Phase 5)
+      volljaehrig: false, // 18er-Grenze, UNABHÄNGIG von ageBracket — erst bei Tutoring relevant
+      ageBracket: draft.ageBracket,
+      anonymous: isAnonymous,
+      username,
       // Jeder Schüler erhält IMMER einen Login-Code (vollwertige Methode + Backup, Anton-Style) —
       // auch bei Apple/Google. Der Code wird nie gelöscht, nur bei Bedarf regenerierbar.
       anmeldeCode: generateAnmeldeCode(),
@@ -121,7 +148,8 @@ export const identityService = {
         accepted: draft.kiConsentAccepted,
         timestamp: draft.kiConsentAccepted ? new Date().toISOString() : undefined,
       },
-      email: draft.email,
+      // Anonyme Konten (Pfad C) erheben KEINE E-Mail.
+      email: isAnonymous ? undefined : draft.email,
       createdAt: new Date().toISOString(),
     };
 
@@ -339,6 +367,22 @@ export const identityService = {
     const current = identityService.getIdentity();
     if (!current) return null;
     const updated: SoStudyIdentity = { ...current, volljaehrig: value };
+    persistSession(updated, false);
+    return updated;
+  },
+
+  /**
+   * Setzt die KI-Einwilligung (Drittlandsübermittlung OpenAI/Anthropic/Google).
+   * Genutzt vom CompleteProfile-Flow nach dem Dashboard (16+-Pfad, Pflicht zum Abschluss).
+   */
+  setKiConsent: async (accepted: boolean): Promise<SoStudyIdentity | null> => {
+    await delay(150);
+    const current = identityService.getIdentity();
+    if (!current) return null;
+    const updated: SoStudyIdentity = {
+      ...current,
+      kiConsent: { accepted, timestamp: accepted ? new Date().toISOString() : undefined },
+    };
     persistSession(updated, false);
     return updated;
   },

@@ -1,7 +1,10 @@
-// ===== ONBOARDING FLOW (Schüler-Pfad, Knowunity v5) =====
-// Vollflächiger Chat-Bubble-Flow mit Maskottchen. Läuft VOR dem Login-Gate
-// (in AuthWrapper) und endet mit onComplete(userData) → App-Dashboard.
-// Reiner Prototyp: Apple/Google sind VISUELL gemockt, Daten via identityService (localStorage).
+// ===== ONBOARDING FLOW (Schüler-Pfad, 28-Mai-Wireframe) =====
+// One-Step-Signup: Landing → Wer bist du? → Alter (16+/unter 16) → Registrieren → Dashboard.
+// Schul-Daten + KI-Consent werden NICHT mehr hier gesammelt, sondern NACH dem Dashboard
+// über den CompleteProfile-Banner. Apple/Google sind VISUELL gemockt; Daten via identityService.
+//   Pfad B (16+):     Apple / Google / E-Mail+Passwort → direkt ins Dashboard.
+//   Pfad C (unter 16): anonym — Apple "E-Mail verbergen" ODER Fantasie-Username+Passwort.
+//                      Danach EINMALIG der Login-Code (einzige Wiederanmeldung), dann Dashboard.
 
 import React, { useState } from 'react';
 import { identityService } from '@/services/identityService';
@@ -9,13 +12,11 @@ import {
   EMPTY_ONBOARDING_DRAFT,
   type OnboardingDraft,
   type AuthMethod,
+  type AgeBracket,
   type SoStudyIdentity,
 } from '@/types/identity';
 import {
   BRAND,
-  BUNDESLAENDER,
-  SCHOOL_TYPES,
-  GRADES,
   MascotAvatar,
   ChatBubble,
   OnboardingShell,
@@ -23,36 +24,44 @@ import {
   SecondaryButton,
   LegalDisclaimer,
   TextLink,
-  ChoiceList,
   BigSelectionCard,
   GoogleIcon,
   AppleIcon,
 } from './OnboardingShared';
 import SoStudyLogo from '@/app/components/SoStudyLogo';
 
-type Step =
-  | 'landing'
-  | 'role'
-  | 'mascotIntro'
-  | 'nickname'
-  | 'bundesland'
-  | 'schoolType'
-  | 'grade'
-  | 'kiConsent'
-  | 'authChoice'
-  | 'codeDisplay';
+type Step = 'landing' | 'role' | 'ageBracket' | 'signup' | 'codeDisplay';
 
-// Lineare Reihenfolge des Schüler-Pfads (für goNext/goBack & Fortschritt)
-const FLOW: Step[] = [
-  'landing', 'role', 'mascotIntro', 'nickname',
-  'bundesland', 'schoolType', 'grade', 'kiConsent', 'authChoice',
-];
-const PROGRESS_STEPS: Step[] = FLOW.slice(2); // ab Maskottchen-Intro Fortschritt zeigen
+// Lineare Reihenfolge (für goBack & Fortschritt). 'codeDisplay' liegt außerhalb (nur Pfad C).
+const FLOW: Step[] = ['landing', 'role', 'ageBracket', 'signup'];
+const PROGRESS_STEPS: Step[] = ['ageBracket', 'signup'];
 
 interface OnboardingFlowProps {
   onComplete: (userData: any) => void;
   onSwitchToLogin: () => void;
   onSwitchToParent: () => void; // Rolle "Elternteil" → Eltern-Onboarding (E1–E8)
+}
+
+// Eingabe-Feld im Onboarding-Look (Glass, ≥16px gegen iOS-Zoom).
+function OnbInput(props: React.InputHTMLAttributes<HTMLInputElement>) {
+  return (
+    <input
+      {...props}
+      className="selectable-text w-full px-5 py-4 rounded-2xl bg-white/[0.05] border border-white/[0.10] text-white text-[16px] font-['Poppins:Medium',sans-serif] outline-none focus:border-[#009379] transition-colors"
+      style={{ fontSize: 16, ...(props.style || {}) }}
+    />
+  );
+}
+
+// "oder"-Trenner zwischen Social-Login und Formular.
+function OrDivider({ label }: { label: string }) {
+  return (
+    <div className="flex items-center gap-3">
+      <div className="flex-1 h-px bg-white/[0.10]" />
+      <span className="font-['Poppins:Regular',sans-serif] text-[12px] text-white/35">{label}</span>
+      <div className="flex-1 h-px bg-white/[0.10]" />
+    </div>
+  );
 }
 
 export default function OnboardingFlow({ onComplete, onSwitchToLogin, onSwitchToParent }: OnboardingFlowProps) {
@@ -62,10 +71,14 @@ export default function OnboardingFlow({ onComplete, onSwitchToLogin, onSwitchTo
   const [registered, setRegistered] = useState<SoStudyIdentity | null>(null);
   const [copied, setCopied] = useState(false);
 
+  // Formular-Felder des One-Step-Signups
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [username, setUsername] = useState('');
+
   const set = (patch: Partial<OnboardingDraft>) => setDraft((d) => ({ ...d, ...patch }));
 
   const idx = FLOW.indexOf(step);
-  const goNext = () => setStep(FLOW[Math.min(idx + 1, FLOW.length - 1)]);
   const goBack = () => {
     if (idx > 0) setStep(FLOW[idx - 1]);
   };
@@ -74,18 +87,32 @@ export default function OnboardingFlow({ onComplete, onSwitchToLogin, onSwitchTo
     ? { current: PROGRESS_STEPS.indexOf(step), total: PROGRESS_STEPS.length }
     : undefined;
 
-  // Registrierung abschließen (nach Auth-Methoden-Wahl)
-  const handleRegister = async (method: AuthMethod) => {
-    setSocialLoading(method);
-    const identity = await identityService.registerStudent({ ...draft, authMethod: method });
-    setSocialLoading(null);
-    setRegistered(identity);
-    setStep('codeDisplay');
-  };
-
-  const finish = () => {
+  const finishWith = (_identity: SoStudyIdentity) => {
+    // registerStudent() hat userData bereits in localStorage persistiert.
     const raw = localStorage.getItem('userData');
     onComplete(raw ? JSON.parse(raw) : null);
+  };
+
+  // ===== Registrierung (nach Auth-Methoden-Wahl) =====
+  const handleRegister = async (method: AuthMethod) => {
+    if (socialLoading) return;
+    const anonymous = draft.ageBracket === 'under16';
+    const usernamePath = anonymous && method === 'anmeldeCode';
+    setSocialLoading(method);
+    const identity = await identityService.registerStudent({
+      ...draft,
+      authMethod: method,
+      // Pfad C per Username: Anzeigename = Username (kein Nachname/Spitzname-Schritt nötig).
+      display_name: usernamePath ? username.trim() : '',
+      username: usernamePath ? username.trim() : undefined,
+      // E-Mail nur im 16+-E-Mail-Pfad; anonyme Konten erheben keine.
+      email: method === 'email' ? email.trim() : undefined,
+    });
+    setSocialLoading(null);
+    setRegistered(identity);
+    // Doc §8: JEDER Schüler bekommt seinen Login-Code EINMALIG beim Signup gezeigt
+    // (danach immer im Profil sichtbar). Für anonyme Konten ist er die einzige Wiederanmeldung.
+    setStep('codeDisplay');
   };
 
   const copyCode = () => {
@@ -104,6 +131,10 @@ export default function OnboardingFlow({ onComplete, onSwitchToLogin, onSwitchTo
             <PrimaryButton onClick={() => setStep('role')}>Neuen Account erstellen</PrimaryButton>
             <SecondaryButton onClick={onSwitchToLogin}>Bereits ein Konto? Anmelden</SecondaryButton>
             <LegalDisclaimer />
+            {/* Unter-16-Hinweis (Doc §3 Screen 0) */}
+            <p className="text-center font-['Poppins:Regular',sans-serif] text-[12px] leading-[1.5] text-white/35 px-3">
+              Unter 16? Dein Konto bleibt anonym — wir fragen keine persönlichen Daten.
+            </p>
           </div>
         }
       >
@@ -126,19 +157,10 @@ export default function OnboardingFlow({ onComplete, onSwitchToLogin, onSwitchTo
   }
 
   // ===== STEP: ROLLE-AUSWAHL =====
+  // Doc §3: Auswahl führt OHNE extra "Weiter" direkt in den jeweiligen Pfad.
   if (step === 'role') {
     return (
-      <OnboardingShell stepKey={step}
-        onBack={goBack}
-        footer={
-          <PrimaryButton
-            disabled={!draft.role}
-            onClick={() => (draft.role === 'parent' ? onSwitchToParent() : goNext())}
-          >
-            Weiter
-          </PrimaryButton>
-        }
-      >
+      <OnboardingShell stepKey={step} onBack={goBack}>
         <div className="flex flex-col gap-6">
           <div className="flex items-start gap-3">
             <MascotAvatar size={56} />
@@ -150,14 +172,14 @@ export default function OnboardingFlow({ onComplete, onSwitchToLogin, onSwitchTo
               title="Ich bin Schüler:in"
               subtitle="Erstelle dein eigenes Lernkonto."
               selected={draft.role === 'student'}
-              onClick={() => set({ role: 'student' })}
+              onClick={() => { set({ role: 'student' }); setStep('ageBracket'); }}
             />
             <BigSelectionCard
               emoji="👨‍👩‍👧"
               title="Ich bin Elternteil"
               subtitle="Richte den Account für dein Kind ein."
               selected={draft.role === 'parent'}
-              onClick={() => set({ role: 'parent' })}
+              onClick={() => { set({ role: 'parent' }); onSwitchToParent(); }}
             />
           </div>
         </div>
@@ -165,176 +187,57 @@ export default function OnboardingFlow({ onComplete, onSwitchToLogin, onSwitchTo
     );
   }
 
-  // ===== STEP: MASKOTTCHEN-INTRO =====
-  if (step === 'mascotIntro') {
-    return (
-      <OnboardingShell stepKey={step}
-        onBack={goBack}
-        progress={progress}
-        footer={<PrimaryButton onClick={goNext}>Cool, weiter!</PrimaryButton>}
-      >
-        <div className="h-full flex flex-col items-center justify-center text-center gap-6">
-          <MascotAvatar size={130} />
-          <ChatBubble>
-            Hey! Ich bin Sumi 👋 Ich helfe dir beim Lernen. Lass uns kurz dein Profil einrichten.
-          </ChatBubble>
-        </div>
-      </OnboardingShell>
-    );
-  }
-
-  // ===== STEP: SPITZNAME =====
-  if (step === 'nickname') {
-    const valid = draft.display_name.trim().length >= 2;
-    return (
-      <OnboardingShell stepKey={step}
-        onBack={goBack}
-        progress={progress}
-        footer={<PrimaryButton disabled={!valid} onClick={goNext}>Weiter</PrimaryButton>}
-      >
-        <div className="flex flex-col gap-6">
-          <div className="flex items-start gap-3">
-            <MascotAvatar size={56} />
-            <ChatBubble>Wie soll ich dich nennen?</ChatBubble>
-          </div>
-          <div>
-            <input
-              autoFocus
-              value={draft.display_name}
-              onChange={(e) => set({ display_name: e.target.value })}
-              placeholder="Dein Spitzname"
-              className="selectable-text w-full px-5 py-4 rounded-2xl bg-white/[0.05] border border-white/[0.10] text-white text-[18px] font-['Poppins:Medium',sans-serif] outline-none focus:border-[#009379] transition-colors"
-              style={{ fontSize: 18 }}
-            />
-            <p className="font-['Poppins:Regular',sans-serif] text-[13px] text-white/40 mt-2.5 px-1">
-              Du kannst auch einen Fantasienamen nehmen — deinen echten Namen brauchen wir erst für
-              die Nachhilfe.
-            </p>
-          </div>
-        </div>
-      </OnboardingShell>
-    );
-  }
-
-  // ===== STEP: BUNDESLAND =====
-  if (step === 'bundesland') {
-    return (
-      <OnboardingShell stepKey={step}
-        onBack={goBack}
-        progress={progress}
-        footer={<PrimaryButton disabled={!draft.bundesland} onClick={goNext}>Weiter</PrimaryButton>}
-      >
-        <div className="flex flex-col gap-6">
-          <div className="flex items-start gap-3">
-            <MascotAvatar size={56} />
-            <ChatBubble>In welchem Bundesland gehst du zur Schule?</ChatBubble>
-          </div>
-          <ChoiceList
-            options={BUNDESLAENDER}
-            value={draft.bundesland}
-            onChange={(v) => set({ bundesland: v })}
-            columns={2}
-          />
-        </div>
-      </OnboardingShell>
-    );
-  }
-
-  // ===== STEP: SCHULFORM =====
-  if (step === 'schoolType') {
-    return (
-      <OnboardingShell stepKey={step}
-        onBack={goBack}
-        progress={progress}
-        footer={<PrimaryButton disabled={!draft.schoolType} onClick={goNext}>Weiter</PrimaryButton>}
-      >
-        <div className="flex flex-col gap-6">
-          <div className="flex items-start gap-3">
-            <MascotAvatar size={56} />
-            <ChatBubble>Auf welche Schule gehst du?</ChatBubble>
-          </div>
-          <ChoiceList
-            options={SCHOOL_TYPES}
-            value={draft.schoolType}
-            onChange={(v) => set({ schoolType: v })}
-            columns={2}
-          />
-        </div>
-      </OnboardingShell>
-    );
-  }
-
-  // ===== STEP: KLASSENSTUFE (Pflicht — nicht überspringbar) =====
-  if (step === 'grade') {
-    return (
-      <OnboardingShell stepKey={step}
-        onBack={goBack}
-        progress={progress}
-        footer={<PrimaryButton disabled={!draft.grade} onClick={goNext}>Weiter</PrimaryButton>}
-      >
-        <div className="flex flex-col gap-6">
-          <div className="flex items-start gap-3">
-            <MascotAvatar size={56} />
-            <ChatBubble>In welcher Klasse bist du?</ChatBubble>
-          </div>
-          <ChoiceList
-            options={GRADES}
-            value={draft.grade ?? ''}
-            onChange={(v) => set({ grade: v })}
-            columns={3}
-          />
-        </div>
-      </OnboardingShell>
-    );
-  }
-
-  // ===== STEP: KI-EINWILLIGUNG =====
-  if (step === 'kiConsent') {
-    return (
-      <OnboardingShell stepKey={step}
-        onBack={goBack}
-        progress={progress}
-        footer={
-          <PrimaryButton onClick={() => { set({ kiConsentAccepted: true }); goNext(); }}>
-            Zustimmen & weiter
-          </PrimaryButton>
-        }
-      >
-        <div className="flex flex-col gap-6">
-          <div className="flex items-start gap-3">
-            <MascotAvatar size={56} />
-            <ChatBubble>Kurz zur KI — okay für dich?</ChatBubble>
-          </div>
-          <div
-            className="rounded-3xl p-5"
-            style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}
-          >
-            <p className="font-['Poppins:Regular',sans-serif] text-[14px] leading-[1.55] text-white/70">
-              SoStudy nutzt KI-Anbieter (<span className="text-white/90">OpenAI</span>,
-              <span className="text-white/90"> Anthropic</span>, <span className="text-white/90">Google</span>) als
-              Kernfunktion unseres Lernangebots. Diese Verarbeitung ist gemäß{' '}
-              <span className="text-white/90">Art. 6 Abs. 1 lit. b DSGVO</span> zur Erfüllung des Nutzungsvertrags
-              erforderlich. Da die Verarbeitung teilweise in den USA erfolgt, willigst du mit „Zustimmen" gemäß{' '}
-              <span className="text-white/90">Art. 49 Abs. 1 lit. a DSGVO</span> in diese Drittlandsübermittlung ein.
-            </p>
-          </div>
-        </div>
-      </OnboardingShell>
-    );
-  }
-
-  // ===== STEP: AUTH-AUSWAHL (Apple/Google visuell gemockt + Anmelde-Code) =====
-  if (step === 'authChoice') {
-    const busy = socialLoading !== null;
+  // ===== STEP: ALTERS-STUFE (Self-Declaration, KEIN Geburtsdatum) =====
+  // Doc §3/§6: Tippen wählt die Stufe und führt OHNE extra "Weiter" direkt zum Signup (B vs. C).
+  if (step === 'ageBracket') {
+    const pick = (v: AgeBracket) => { set({ ageBracket: v }); setStep('signup'); };
     return (
       <OnboardingShell stepKey={step} onBack={goBack} progress={progress}>
         <div className="flex flex-col gap-6">
           <div className="flex items-start gap-3">
             <MascotAvatar size={56} />
-            <ChatBubble>Fast geschafft — so sicherst du deinen Account.</ChatBubble>
+            <ChatBubble>Wie alt bist du ungefähr?</ChatBubble>
+          </div>
+          <div className="space-y-3">
+            <BigSelectionCard
+              emoji="🧑"
+              title="16 oder älter"
+              subtitle="Du kannst dich mit E-Mail, Apple oder Google anmelden."
+              selected={draft.ageBracket === '16plus'}
+              onClick={() => pick('16plus')}
+            />
+            <BigSelectionCard
+              emoji="🧒"
+              title="Unter 16"
+              subtitle="Dein Konto bleibt anonym — wir fragen keinen echten Namen."
+              selected={draft.ageBracket === 'under16'}
+              onClick={() => pick('under16')}
+            />
+          </div>
+          <p className="font-['Poppins:Regular',sans-serif] text-[12px] text-white/35 px-1 leading-[1.5]">
+            Wir fragen kein Geburtsdatum — nur diese grobe Einordnung für den Datenschutz.
+          </p>
+        </div>
+      </OnboardingShell>
+    );
+  }
+
+  // ===== STEP: ONE-STEP-SIGNUP =====
+  if (step === 'signup') {
+    const busy = socialLoading !== null;
+    const isUnder16 = draft.ageBracket === 'under16';
+    const emailValid = email.includes('@') && email.trim().length >= 5 && password.trim().length >= 6;
+    const usernameValid = username.trim().length >= 2 && password.trim().length >= 6;
+
+    return (
+      <OnboardingShell stepKey={step} onBack={goBack} progress={progress}>
+        <div className="flex flex-col gap-6">
+          <div className="flex items-start gap-3">
+            <MascotAvatar size={56} />
+            <ChatBubble>Fast geschafft — erstelle deinen Account.</ChatBubble>
           </div>
 
-          {/* Apple (primär) */}
+          {/* Apple (immer, primär) */}
           <button
             onClick={() => handleRegister('apple')}
             disabled={busy}
@@ -347,45 +250,104 @@ export default function OnboardingFlow({ onComplete, onSwitchToLogin, onSwitchTo
             )}
             {socialLoading === 'apple' ? 'Verbinden…' : 'Mit Apple fortfahren'}
           </button>
+          {isUnder16 && (
+            <p className="-mt-3 text-center font-['Poppins:Regular',sans-serif] text-[12px] text-white/35">
+              Mit „E-Mail verbergen" bleibst du komplett anonym.
+            </p>
+          )}
 
-          {/* Google + E-Mail (sekundär) */}
-          <button
-            onClick={() => handleRegister('google')}
-            disabled={busy}
-            className="w-full flex items-center justify-center gap-2.5 py-3.5 rounded-2xl bg-white/[0.05] border border-white/[0.10] text-white/80 font-['Poppins:Medium',sans-serif] text-[15px] active:scale-[0.98] transition-all duration-150 disabled:opacity-60"
-          >
-            {socialLoading === 'google' ? (
-              <div className="w-[18px] h-[18px] border-2 border-white/20 border-t-white/60 rounded-full animate-spin" />
-            ) : (
-              <GoogleIcon />
-            )}
-            {socialLoading === 'google' ? 'Verbinden…' : 'Mit Google fortfahren'}
-          </button>
+          {/* Google nur für 16+ (Pfad C ist Apple-only / Username) */}
+          {!isUnder16 && (
+            <button
+              onClick={() => handleRegister('google')}
+              disabled={busy}
+              className="w-full flex items-center justify-center gap-2.5 py-3.5 rounded-2xl bg-white/[0.05] border border-white/[0.10] text-white/80 font-['Poppins:Medium',sans-serif] text-[15px] active:scale-[0.98] transition-all duration-150 disabled:opacity-60"
+            >
+              {socialLoading === 'google' ? (
+                <div className="w-[18px] h-[18px] border-2 border-white/20 border-t-white/60 rounded-full animate-spin" />
+              ) : (
+                <GoogleIcon />
+              )}
+              {socialLoading === 'google' ? 'Verbinden…' : 'Mit Google fortfahren'}
+            </button>
+          )}
 
-          {/* Anmelde-Code (Anton-Style, dezent) */}
-          <div className="pt-2">
-            <TextLink onClick={() => handleRegister('anmeldeCode')}>
-              Lieber ohne Apple/Google? Login-Code nutzen
-            </TextLink>
+          <OrDivider label={isUnder16 ? 'oder ohne Apple' : 'oder mit E-Mail'} />
+
+          {/* Formular — 16+: E-Mail+Passwort · unter 16: Fantasie-Username+Passwort */}
+          {isUnder16 ? (
+            <div className="space-y-3">
+              <OnbInput
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                placeholder="Username (Fantasiename)"
+                autoCapitalize="none"
+                autoCorrect="off"
+              />
+              <OnbInput
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Passwort (mind. 6 Zeichen)"
+              />
+              <PrimaryButton
+                disabled={!usernameValid || busy}
+                loading={socialLoading === 'anmeldeCode'}
+                onClick={() => handleRegister('anmeldeCode')}
+              >
+                Account erstellen
+              </PrimaryButton>
+              <p className="font-['Poppins:Regular',sans-serif] text-[12px] text-white/35 px-1 leading-[1.5]">
+                Keine E-Mail, kein echter Name — dein Username genügt.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <OnbInput
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="E-Mail"
+                autoCapitalize="none"
+                autoCorrect="off"
+              />
+              <OnbInput
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Passwort (mind. 6 Zeichen)"
+              />
+              <PrimaryButton
+                disabled={!emailValid || busy}
+                loading={socialLoading === 'email'}
+                onClick={() => handleRegister('email')}
+              >
+                Account erstellen
+              </PrimaryButton>
+            </div>
+          )}
+
+          <div className="pt-1">
+            <TextLink onClick={onSwitchToLogin}>Bereits ein Konto? Anmelden</TextLink>
           </div>
         </div>
       </OnboardingShell>
     );
   }
 
-  // ===== STEP: LOGIN-CODE-ANZEIGE (Backup, immer — auch nach Apple/Google) =====
+  // ===== STEP: LOGIN-CODE-ANZEIGE (Doc §8: jeder Schüler, einmalig beim Signup) =====
   if (step === 'codeDisplay' && registered) {
-    const usesAuth = registered.authMethod === 'apple' || registered.authMethod === 'google';
+    const anon = !!registered.anonymous;
     return (
       <OnboardingShell stepKey={step}
-        footer={<PrimaryButton onClick={finish}>Weiter zum Dashboard</PrimaryButton>}
+        footer={<PrimaryButton onClick={() => finishWith(registered)}>Weiter zum Dashboard</PrimaryButton>}
       >
         <div className="h-full flex flex-col items-center justify-center text-center gap-6">
           <MascotAvatar size={96} />
           <ChatBubble>
-            {usesAuth
-              ? 'Geschafft! 🎉 Und hier ist dein Login-Code als Backup.'
-              : 'Das ist dein Login-Code — bitte gut aufbewahren!'}
+            {anon
+              ? 'Geschafft! 🎉 Das ist dein Login-Code — bitte gut aufbewahren!'
+              : 'Geschafft! 🎉 Hier ist dein Login-Code als Backup.'}
           </ChatBubble>
 
           <button
@@ -402,9 +364,9 @@ export default function OnboardingFlow({ onComplete, onSwitchToLogin, onSwitchTo
           </button>
 
           <p className="font-['Poppins:Regular',sans-serif] text-[13px] text-white/45 max-w-[300px]">
-            {usesAuth
-              ? 'Falls du dich mal nicht mit Apple oder Google anmelden kannst, kommst du hiermit rein. Dein Elternteil sieht ihn auch im Familienkonto.'
-              : 'Mit diesem Code meldest du dich auf jedem Gerät an. Apple oder Google kannst du später in den Einstellungen verknüpfen.'}
+            {anon
+              ? 'Da dein Konto anonym ist, kommst du nur mit diesem Code (oder Apple) wieder rein. Du findest ihn jederzeit in den Einstellungen.'
+              : 'Falls du dich mal nicht anmelden kannst, kommst du hiermit rein. Du findest ihn jederzeit in den Einstellungen.'}
           </p>
         </div>
       </OnboardingShell>

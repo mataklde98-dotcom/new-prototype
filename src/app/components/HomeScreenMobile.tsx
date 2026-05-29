@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { SlidersHorizontal } from 'lucide-react';
 import MobileHeader from "@/app/components/MobileHeader";
+import CompleteProfileBanner from "@/app/components/onboarding/CompleteProfileBanner";
 import SwipeableDateSelector from "@/app/components/SwipeableDateSelector";
 import TodoFilterPopup from "@/app/components/TodoFilterPopup";
 import AddTaskButton from "@/imports/Button";
@@ -152,6 +153,9 @@ export default React.memo(function HomeScreenMobile({
         <MobileHeader onStreakClick={onOpenStreakScreen} />
 
         <div className="px-5 pt-2">
+          {/* Profil-Vervollständigen-Hinweis (Schul-Daten nach dem Dashboard, 28-Mai-Wireframe) */}
+          <CompleteProfileBanner />
+
           {/* Gesamtfortschritt Progress-Bar */}
           <div className="mb-5">
             <div className="flex items-center justify-between mb-2">
