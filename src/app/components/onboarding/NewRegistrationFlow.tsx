@@ -11,6 +11,7 @@
 // Reiner Prototyp: Apple/Google sind visuell gemockt; Registrierung läuft über identityService
 // (localStorage). Nach Abschluss → Redirect auf "/" (Haupt-App liest die Session → Home/Dashboard).
 
+
 import React, { useState } from 'react';
 import { identityService } from '@/services/identityService';
 import type { AuthMethod, AgeBracket, SoStudyIdentity } from '@/types/identity';
