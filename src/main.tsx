@@ -5,13 +5,30 @@ import NewRegistrationFlow from "./app/components/onboarding/NewRegistrationFlow
 import "./styles/index.css";
 import { applyDemoFromQuery } from "./lib/demoSeed";
 
-// Isolierte Referenz-Strecke (28-Mai-Wireframe), erreichbar unter /new-registration
-// oder ?new-registration. Berührt den bestehenden Onboarding-/Auth-Flow NICHT.
-function isNewRegistrationRoute(): boolean {
+// NewRegistrationFlow (28-Mai-Wireframe) ist jetzt die STANDARD-Einstiegsstrecke für
+// ausgeloggte Nutzer — kein Slug mehr nötig. Sobald eine Session besteht (Registrierung
+// oder Login abgeschlossen → isLoggedIn + userData in localStorage), übernimmt die
+// Haupt-App <App/> und zeigt Home/Dashboard. Genau diese Keys liest auch AuthWrapper.
+function hasSession(): boolean {
   if (typeof window === 'undefined') return false;
-  const path = window.location.pathname || '';
+  try {
+    return localStorage.getItem('isLoggedIn') === 'true' && !!localStorage.getItem('userData');
+  } catch {
+    return false;
+  }
+}
+
+// Einladungs-Deep-Links (?invite / ?parentinvite) gehen weiterhin direkt in die Haupt-App,
+// damit die bestehenden Annehmen-Flows in AuthWrapper erreichbar bleiben.
+function hasInviteDeepLink(): boolean {
+  if (typeof window === 'undefined') return false;
   const search = window.location.search || '';
-  return path.includes('new-registration') || search.includes('new-registration');
+  return search.includes('invite');
+}
+
+// Eingeloggt oder Einladungs-Link → Haupt-App; sonst die neue Registrierungs-/Login-Strecke.
+function showMainApp(): boolean {
+  return hasSession() || hasInviteDeepLink();
 }
 
 // Force rebuild v1.6.7
@@ -74,7 +91,7 @@ if (!applyDemoFromQuery()) {
   // Statt eines schwarzen Bildschirms erscheint die Wiederherstellungs-Karte.
   createRoot(document.getElementById("root")!).render(
     <ErrorBoundary>
-      {isNewRegistrationRoute() ? <NewRegistrationFlow /> : <App />}
+      {showMainApp() ? <App /> : <NewRegistrationFlow />}
     </ErrorBoundary>
   );
 }

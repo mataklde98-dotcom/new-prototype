@@ -115,6 +115,9 @@ export default function AuthWrapper({ children }: AuthWrapperProps) {
     clearUserSession();
     setIsLoggedIn(false);
     setUserData(null);
+    // Logout führt zurück zur Standard-Einstiegsstrecke (NewRegistrationFlow in main.tsx).
+    // clearUserSession() hat isLoggedIn bereits aus localStorage entfernt → '/' zeigt die neue Strecke.
+    if (typeof window !== 'undefined') window.location.assign('/');
   };
   
   // Show loading while checking auth

@@ -1,6 +1,7 @@
-// ===== NEW REGISTRATION FLOW (Referenz-Strecke, 28-Mai-Wireframe) =====
-// EIGENSTÄNDIGE Single-Screen-Registrierung — erreichbar NUR unter /new-registration (siehe main.tsx).
-// Berührt den bestehenden Onboarding-/Auth-Flow NICHT. Gedacht als Referenz für andere Entwickler.
+// ===== NEW REGISTRATION FLOW (28-Mai-Wireframe) =====
+// EIGENSTÄNDIGE Single-Screen-Registrierung — STANDARD-Einstiegsstrecke für ausgeloggte Nutzer
+// (siehe main.tsx: wird gerendert, solange keine Session besteht). Nach Registrierung/Login
+// übernimmt die Haupt-App <App/> und zeigt Home/Dashboard.
 //
 // Prinzip (Doc §3): EIN Screen, progressive Inline-Enthüllung. Beim Tippen auf "Schüler:in" / "Elternteil"
 // erscheint das passende Formular SOFORT darunter — KEIN Seitenwechsel, kein extra "Weiter".
