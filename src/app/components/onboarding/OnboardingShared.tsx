@@ -3,6 +3,7 @@
 // Reiner Prototyp-UI-Layer; deutsche Texte, Dark-Glass, Poppins, Brand #009379.
 
 import React from 'react';
+import mascotMinion from '@/assets/mascot-minion.png';
 
 // ===== BRAND =====
 export const BRAND = {
@@ -42,35 +43,32 @@ export const KLASSEN_BY_SCHULFORM: Record<string, string[]> = {
 export const gradesForSchoolType = (schoolType: string): string[] =>
   KLASSEN_BY_SCHULFORM[schoolType] ?? GRADES;
 
-// ===== MASKOTTCHEN (Inline-SVG-Platzhalter) =====
-// Freundliches Blob-Maskottchen im Brand-Verlauf. Später 1:1 gegen ein echtes Asset austauschbar.
+// ===== MASKOTTCHEN (echtes 3D-Asset: SoStudy-„Minion") =====
+// Freigestelltes PNG (transparenter Hintergrund) mit weichem Brand-Glow dahinter.
+// `size` bleibt die quadratische Grundfläche; das Bild wird darin proportional (contain)
+// zentriert, damit alle bestehenden Aufrufstellen unverändert weiterfunktionieren.
 export function MascotAvatar({ size = 96 }: { size?: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 96 96" fill="none" aria-hidden>
-      <defs>
-        <linearGradient id="mascotGrad" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor={BRAND.primaryLight} />
-          <stop offset="100%" stopColor={BRAND.primary} />
-        </linearGradient>
-      </defs>
-      {/* Glow */}
-      <circle cx="48" cy="48" r="40" fill="url(#mascotGrad)" opacity="0.18" />
-      {/* Körper */}
-      <path
-        d="M24 44c0-13.255 10.745-24 24-24s24 10.745 24 24v10c0 9.941-8.059 18-18 18H42c-9.941 0-18-8.059-18-18V44z"
-        fill="url(#mascotGrad)"
+    <div
+      className="relative inline-flex items-center justify-center shrink-0"
+      style={{ width: size, height: size }}
+      aria-hidden
+    >
+      {/* Weicher Brand-Glow als Spotlight hinter dem Maskottchen */}
+      <div
+        className="absolute inset-0"
+        style={{
+          background: `radial-gradient(circle at 50% 48%, rgba(0,184,148,0.28) 0%, rgba(0,184,148,0.10) 38%, transparent 68%)`,
+        }}
       />
-      {/* Antenne */}
-      <line x1="48" y1="20" x2="48" y2="11" stroke="url(#mascotGrad)" strokeWidth="3" strokeLinecap="round" />
-      <circle cx="48" cy="9" r="3.5" fill={BRAND.primaryLight} />
-      {/* Augen */}
-      <circle cx="39" cy="46" r="5.5" fill="#0a0a0a" />
-      <circle cx="57" cy="46" r="5.5" fill="#0a0a0a" />
-      <circle cx="40.8" cy="44.3" r="1.8" fill="#fff" />
-      <circle cx="58.8" cy="44.3" r="1.8" fill="#fff" />
-      {/* Lächeln */}
-      <path d="M40 58c2.5 3 11.5 3 16 0" stroke="#0a0a0a" strokeWidth="3" strokeLinecap="round" fill="none" />
-    </svg>
+      <img
+        src={mascotMinion}
+        alt=""
+        draggable={false}
+        className="relative select-none"
+        style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+      />
+    </div>
   );
 }
 
