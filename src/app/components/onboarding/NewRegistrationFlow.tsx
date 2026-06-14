@@ -160,9 +160,6 @@ function Reveal({ k, children }: { k: string; children: React.ReactNode }) {
   return <div key={k} className="animate-[onbStepIn_0.3s_ease-out]">{children}</div>;
 }
 
-function SectionLabel({ children }: { children: React.ReactNode }) {
-  return <h2 className="font-['Poppins:SemiBold',sans-serif] text-[15px] text-white/90 mb-3 mt-1">{children}</h2>;
-}
 
 function BackButton({ onClick }: { onClick: () => void }) {
   return (
@@ -338,17 +335,6 @@ function CompanionStage() {
   return (
     <div data-companion-3d-slot className="flex items-center justify-center my-1" style={{ minHeight: 228 }}>
       <MascotAvatar size={212} />
-    </div>
-  );
-}
-
-// Voller Willkommen-Header (Login).
-function WelcomeHeader() {
-  return (
-    <div className="flex flex-col items-center text-center gap-4 mb-7">
-      <SoStudyLogo />
-      <MascotAvatar size={96} />
-      <div className="font-['Poppins:Bold',sans-serif] text-[24px] leading-[1.2] text-white">Willkommen bei SoStudy</div>
     </div>
   );
 }
@@ -599,8 +585,7 @@ export default function NewRegistrationFlow() {
   const renderSignup = () => (
     <>
       <TopBar onBack={goBack} progress={progressFor('signup')} />
-      <div className="flex flex-col items-center text-center gap-3 mb-6">
-        <MascotAvatar size={84} />
+      <div className="flex flex-col items-center text-center gap-3 mb-6 mt-2">
         <h1 className="font-['Poppins:Bold',sans-serif] text-[26px] leading-[1.15] text-white">
           Account <span style={{ color: BRAND.primaryLight }}>erstellen</span>
         </h1>
@@ -757,11 +742,13 @@ export default function NewRegistrationFlow() {
   const renderParent = () => (
     <>
       <TopBar onBack={goBack} />
-      <div className="flex flex-col items-center text-center gap-3 mb-6">
-        <MascotAvatar size={84} />
+      <div className="flex flex-col items-center text-center gap-3 mb-6 mt-2">
         <h1 className="font-['Poppins:Bold',sans-serif] text-[26px] leading-[1.15] text-white">
           Eltern-Account <span style={{ color: BRAND.primaryLight }}>erstellen</span>
         </h1>
+        <p className="font-['Poppins:Regular',sans-serif] text-[14px] leading-[1.5] text-white/50 px-2">
+          Behalte den Lernweg deines Kindes im Blick, von Fortschritten in der App bis zu Nachhilfeleistungen.
+        </p>
       </div>
       <div className="space-y-3">
         <AppleBtn onClick={() => verifyParentAndRegister('apple')} label="Mit Apple fortfahren" />
@@ -800,8 +787,8 @@ export default function NewRegistrationFlow() {
   // LOGIN (bestehend)
   const renderLogin = () => (
     <>
-      <WelcomeHeader />
-      <SectionLabel>Willkommen zurück</SectionLabel>
+      <img src={welcomeHero} alt="" draggable={false} className="w-full select-none" />
+      <h1 className="text-center font-['Poppins:Bold',sans-serif] text-[26px] leading-[1.15] text-white -mt-1 mb-7">Willkommen zurück</h1>
       <div className="space-y-3">
         <AppleBtn onClick={() => demoSocialLogin('apple')} label="Mit Apple anmelden" />
         <GoogleBtn onClick={() => demoSocialLogin('google')} />
