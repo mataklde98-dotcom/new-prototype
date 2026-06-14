@@ -16,7 +16,7 @@ import React, { useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
   GraduationCap, ShieldCheck, ArrowRight, Eye, EyeOff, Check,
-  PartyPopper, Copy, Download,
+  PartyPopper, Copy, Download, KeyRound, LogIn,
 } from 'lucide-react';
 import PeopleRounded from '@mui/icons-material/PeopleRounded';
 import PersonRounded from '@mui/icons-material/PersonRounded';
@@ -27,7 +27,7 @@ import SoStudyLogo from '@/app/components/SoStudyLogo';
 import welcomeHero from '@/assets/welcome-hero.png';
 
 type Role = 'student' | 'parent';
-type Step = 'role' | 'method' | 'signup' | 'codeShow' | 'nickname' | 'bundesland' | 'schoolForm' | 'grade' | 'companion' | 'done' | 'parent';
+type Step = 'role' | 'method' | 'loginCodeChoice' | 'codeEntry' | 'signup' | 'codeShow' | 'nickname' | 'bundesland' | 'schoolForm' | 'grade' | 'companion' | 'done' | 'parent';
 
 // Auswahl-Listen (Prototyp).
 const SCHOOL_FORMS = ['Gymnasium', 'Realschule', 'Gesamtschule', 'Hauptschule', 'Berufsschule', 'Andere'];
@@ -407,7 +407,9 @@ export default function NewRegistrationFlow() {
       case 'method': setStep('role'); break;
       case 'signup': setStep('method'); break;
       case 'parent': setStep('role'); break;
-      case 'codeShow': setStep('method'); break;
+      case 'loginCodeChoice': setStep('method'); break;
+      case 'codeEntry': setStep('loginCodeChoice'); break;
+      case 'codeShow': setStep('loginCodeChoice'); break;
       case 'nickname': setStep(codePath ? 'codeShow' : 'signup'); break;
       case 'bundesland': setStep('nickname'); break;
       case 'schoolForm': setStep('bundesland'); break;
@@ -577,7 +579,7 @@ export default function NewRegistrationFlow() {
           icon={<ShieldCheck size={24} color="rgba(255,255,255,0.82)" strokeWidth={2} />}
           title="Mit Login-Code starten"
           subtitle="Ohne E-Mail, ohne Telefonnummer und ohne echten Namen. Du erhältst einen Code für deinen Zugang."
-          onClick={createLoginCode} />
+          onClick={() => advance('loginCodeChoice')} />
       </div>
     </>
   );
@@ -609,6 +611,61 @@ export default function NewRegistrationFlow() {
         <button type="button" onClick={switchToLogin}
           className="inline-flex items-center gap-1 font-['Poppins:Medium',sans-serif] text-[14px] text-white/55 active:text-white/85">
           Bereits ein Konto? Anmelden <ArrowRight size={14} strokeWidth={2.2} />
+        </button>
+      </div>
+    </>
+  );
+
+  // SCREEN — Login-Code verwenden (Auswahl: neu erstellen / vorhandenen nutzen)
+  const renderLoginCodeChoice = () => (
+    <>
+      <TopBar onBack={goBack} />
+      <div className="flex flex-col items-center text-center gap-3 mb-6 mt-2">
+        <h1 className="font-['Poppins:Bold',sans-serif] text-[26px] leading-[1.15] text-white">
+          Login-Code <span style={{ color: BRAND.primaryLight }}>verwenden</span>
+        </h1>
+        <p className="font-['Poppins:Regular',sans-serif] text-[14px] leading-[1.5] text-white/50 px-4">
+          Hast du schon einen Code oder brauchst du einen neuen?
+        </p>
+      </div>
+      <div className="flex flex-col gap-3">
+        <MethodCard accent
+          icon={<KeyRound size={24} color={BRAND.primaryLight} strokeWidth={2} />}
+          title="Neuen Code erstellen"
+          subtitle="Starte ohne E-Mail und erhalte deinen persönlichen Zugangscode."
+          onClick={createLoginCode} />
+        <MethodCard
+          icon={<LogIn size={24} color="rgba(255,255,255,0.82)" strokeWidth={2} />}
+          title="Ich habe bereits einen Code"
+          subtitle="Melde dich mit deinem vorhandenen Code an."
+          onClick={() => advance('codeEntry')} />
+      </div>
+    </>
+  );
+
+  // SCREEN — Login-Code eingeben (vorhandenen Code zum Einloggen nutzen)
+  const renderCodeEntry = () => (
+    <>
+      <TopBar onBack={goBack} />
+      <div className="flex flex-col items-center text-center gap-3 mb-6 mt-2">
+        <div className="w-16 h-16 rounded-full flex items-center justify-center"
+          style={{ background: 'radial-gradient(circle at 50% 45%, rgba(0,184,148,0.22), transparent 70%)', border: '1px solid rgba(0,184,148,0.40)' }}>
+          <KeyRound size={28} color={BRAND.primaryLight} strokeWidth={2} />
+        </div>
+        <h1 className="font-['Poppins:Bold',sans-serif] text-[24px] leading-[1.2] text-white">Login-Code eingeben</h1>
+        <p className="font-['Poppins:Regular',sans-serif] text-[14px] leading-[1.5] text-white/50 px-4">
+          Gib deinen Zugangscode ein, um dich anzumelden.
+        </p>
+      </div>
+      <div className="space-y-3">
+        <Field value={loginCode} onChange={(e) => setLoginCode(e.target.value.toUpperCase())} placeholder="z. B. SOST-7K4P-92MX" autoCapitalize="characters" autoCorrect="off" style={{ textTransform: 'uppercase', letterSpacing: '0.10em', textAlign: 'center' }} />
+        <PrimaryBtn onClick={doCodeLogin} loading={busy === 'anmeldeCode'} disabled={!loginCode.trim()}>Mit Code anmelden</PrimaryBtn>
+        {error && <p className="font-['Poppins:Medium',sans-serif] text-[13px] text-red-300 px-1">{error}</p>}
+      </div>
+      <div className="mt-auto pt-6 text-center">
+        <button type="button" onClick={createLoginCode}
+          className="font-['Poppins:Medium',sans-serif] text-[14px] active:opacity-70 transition-opacity" style={{ color: BRAND.primaryLight }}>
+          Noch keinen Code? Neuen Code erstellen
         </button>
       </div>
     </>
@@ -827,6 +884,8 @@ export default function NewRegistrationFlow() {
   if (mode === 'login') content = renderLogin();
   else if (step === 'role') content = renderRole();
   else if (step === 'method') content = renderMethod();
+  else if (step === 'loginCodeChoice') content = renderLoginCodeChoice();
+  else if (step === 'codeEntry') content = renderCodeEntry();
   else if (step === 'signup') content = renderSignup();
   else if (step === 'codeShow') content = renderCodeShow();
   else if (step === 'nickname') content = renderNickname();
