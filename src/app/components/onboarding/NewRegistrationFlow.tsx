@@ -377,8 +377,15 @@ export default function NewRegistrationFlow() {
   const [finalizing, setFinalizing] = useState(false);
   const [advancing, setAdvancing] = useState(false);
 
+  // Eltern-Registrierung (Demo-SMS-OTP)
+  const [fullName, setFullName] = useState('');
+  const [phone, setPhone] = useState('');
+  const [otpStage, setOtpStage] = useState<'idle' | 'sent'>('idle');
+  const [demoCode, setDemoCode] = useState('');
+  const [otpInput, setOtpInput] = useState('');
+
   // Login (bestehend)
-  const [busy, setBusy] = useState<AuthMethod | null>(null);
+  const [busy, setBusy] = useState<AuthMethod | 'verify' | null>(null);
   const [loginCode, setLoginCode] = useState('');
   const [showCodeLogin, setShowCodeLogin] = useState(false);
 
@@ -430,6 +437,29 @@ export default function NewRegistrationFlow() {
   // Account-Erstellung (Prototyp: KEIN echter Login — Methode merken, weiter zum Profil-Wizard).
   const createAccount = (method: AuthMethod) => { setAccountMethod(method); advance('nickname'); };
   const createLoginCode = () => { setAccountMethod('anmeldeCode'); setCreatedCode(genLoginCode()); advance('codeShow'); };
+
+  // ===== Eltern-Registrierung (Demo-SMS-OTP) → Eltern-Dashboard =====
+  const requestParentOtp = () => {
+    const code = String(Math.floor(100000 + Math.random() * 900000));
+    setDemoCode(code);
+    setOtpInput(code);
+    setOtpStage('sent');
+    setError('');
+  };
+  const verifyParentAndRegister = async (method: AuthMethod) => {
+    if (busy) return;
+    setError('');
+    setBusy(method === 'email' ? 'verify' : method);
+    await identityService.registerParent({
+      real_name: fullName.trim(),
+      phone: phone.trim() ? `${phone.trim()}` : undefined,
+      email: method === 'email' ? email.trim() : undefined,
+      kiConsentAccepted: true,
+      authMethod: method,
+    });
+    setBusy(null);
+    goToApp();
+  };
 
   const copyCode = () => {
     navigator.clipboard?.writeText(createdCode).catch(() => {});
@@ -495,6 +525,7 @@ export default function NewRegistrationFlow() {
 
   // ===== Validierung (rein Frontend) =====
   const accountValid = email.includes('@') && email.trim().length >= 5 && password.trim().length >= 6;
+  const parentEmailValid = fullName.trim().length >= 2 && email.includes('@') && password.trim().length >= 6;
   const nicknameValid = username.trim().length >= 2;
 
   // ===== Screens =====
@@ -722,21 +753,46 @@ export default function NewRegistrationFlow() {
     </>
   );
 
-  // ELTERN — Platzhalter (separater Flow, hier nicht gebaut)
+  // ELTERN — Registrierung (Apple/Google oder E-Mail + Demo-SMS-OTP) → Eltern-Dashboard
   const renderParent = () => (
     <>
       <TopBar onBack={goBack} />
-      <div className="flex-1 flex flex-col items-center justify-center text-center gap-5 px-4">
-        <MascotAvatar size={120} />
-        <h1 className="font-['Poppins:Bold',sans-serif] text-[24px] leading-[1.2] text-white">Eltern-Bereich</h1>
-        <p className="font-['Poppins:Regular',sans-serif] text-[15px] leading-[1.5] text-white/55 max-w-[300px]">
-          Der Eltern-Bereich kommt bald. Hier richtest du später den Account für dein Kind ein.
+      <div className="flex flex-col items-center text-center gap-3 mb-6">
+        <MascotAvatar size={84} />
+        <h1 className="font-['Poppins:Bold',sans-serif] text-[26px] leading-[1.15] text-white">
+          Eltern-Account <span style={{ color: BRAND.primaryLight }}>erstellen</span>
+        </h1>
+      </div>
+      <div className="space-y-3">
+        <AppleBtn onClick={() => verifyParentAndRegister('apple')} label="Mit Apple fortfahren" />
+        <GoogleBtn onClick={() => verifyParentAndRegister('google')} />
+        <Or label="oder mit E-Mail" />
+        <Field value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Vor- und Nachname" />
+        <Field type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="E-Mail" autoCapitalize="none" autoCorrect="off" />
+        <PasswordField value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Passwort (mind. 6 Zeichen)" />
+        <Field type="tel" inputMode="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Handynummer (für Rückrufe)" />
+
+        {otpStage === 'idle' ? (
+          <PrimaryBtn onClick={requestParentOtp} disabled={!parentEmailValid}>
+            Account erstellen <ArrowRight size={18} strokeWidth={2.4} />
+          </PrimaryBtn>
+        ) : (
+          <Reveal k="parentOtp">
+            <div className="flex items-center justify-center gap-2.5 px-4 py-2.5 rounded-xl mb-3"
+              style={{ background: 'rgba(0,184,148,0.08)', border: '1px solid rgba(0,184,148,0.20)' }}>
+              <span className="font-['Poppins:Regular',sans-serif] text-[12px] text-white/50">Demo — dein SMS-Code:</span>
+              <span className="font-['Poppins:Bold',sans-serif] text-[16px] tracking-[0.25em] text-white">{demoCode}</span>
+            </div>
+            <Field inputMode="numeric" maxLength={6} value={otpInput}
+              onChange={(e) => setOtpInput(e.target.value.replace(/\D/g, '').slice(0, 6))}
+              placeholder="••••••" style={{ textAlign: 'center', letterSpacing: '0.4em', fontSize: 22 }} />
+            <div className="h-2.5" />
+            <PrimaryBtn onClick={() => verifyParentAndRegister('email')} loading={busy === 'verify'}>Bestätigen & loslegen</PrimaryBtn>
+          </Reveal>
+        )}
+        <p className="font-['Poppins:Regular',sans-serif] text-[12px] text-white/35 px-1 leading-[1.5]">
+          Handynummer ist Pflicht — für Nachhilfe-Rückrufe. Dein Kind verbindest du später vom Dashboard aus.
         </p>
-        <button type="button" onClick={goBack}
-          className="px-6 py-3 rounded-2xl font-['Poppins:SemiBold',sans-serif] text-[15px] text-white/85"
-          style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.10)' }}>
-          Zurück
-        </button>
       </div>
     </>
   );
