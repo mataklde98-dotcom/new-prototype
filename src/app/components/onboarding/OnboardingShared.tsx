@@ -3,6 +3,7 @@
 // Reiner Prototyp-UI-Layer; deutsche Texte, Dark-Glass, Poppins, Brand #009379.
 
 import React from 'react';
+import { createPortal } from 'react-dom';
 import mascotMinion from '@/assets/mascot-minion.png';
 
 // ===== BRAND =====
@@ -126,11 +127,13 @@ export function OnboardingShell({
 }) {
   // Zentrierte Spalte (max. 480px) für Desktop-Parität; mobil unverändert vollflächig.
   const COL = 'max-w-[480px] mx-auto w-full';
-  return (
+  return createPortal(
     <div
-      className="fixed inset-0 flex flex-col"
+      className="fixed inset-0 z-[9999] flex flex-col"
       style={{
-        background: `radial-gradient(120% 80% at 50% 0%, rgba(0,147,121,0.10) 0%, ${BRAND.bg} 55%)`,
+        // Deckender Unterboden (BRAND.bg) + dezenter Türkis-Glow oben. Vorher war es nur der
+        // Verlauf, der oben fast transparent war → durchscheinender Home-Hintergrund. Jetzt opak.
+        background: `radial-gradient(120% 80% at 50% 0%, rgba(0,147,121,0.12) 0%, transparent 55%), ${BRAND.bg}`,
       }}
     >
       {/* Kopfzeile */}
@@ -167,7 +170,8 @@ export function OnboardingShell({
           <div className={COL}>{footer}</div>
         </div>
       )}
-    </div>
+    </div>,
+    document.body,
   );
 }
 

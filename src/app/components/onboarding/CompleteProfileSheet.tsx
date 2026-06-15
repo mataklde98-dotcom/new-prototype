@@ -39,6 +39,7 @@ export default function CompleteProfileSheet({ requireKiConsent, onClose, onDone
   const [schoolType, setSchoolType] = useState('');
   const [grade, setGrade] = useState('');
   const [busy, setBusy] = useState(false);
+  const [advancing, setAdvancing] = useState(false);
 
   const idx = FLOW.indexOf(step);
   const progress = { current: idx, total: FLOW.length };
@@ -58,18 +59,25 @@ export default function CompleteProfileSheet({ requireKiConsent, onClose, onDone
     onDone();
   };
 
+  // Auto-Advance: Auswahl kurz hervorheben, dann automatisch zum nächsten Schritt (kein „Weiter").
+  const pickAndGo = (apply: () => void, next: () => void) => {
+    if (advancing || busy) return;
+    apply();
+    setAdvancing(true);
+    setTimeout(() => { setAdvancing(false); next(); }, 200);
+  };
+
   // ===== SCHRITT: BUNDESLAND =====
   if (step === 'bundesland') {
     return (
-      <OnboardingShell stepKey={step} onBack={goBack} progress={progress}
-        footer={<PrimaryButton disabled={!bundesland} onClick={() => setStep('schoolType')}>Weiter</PrimaryButton>}
-      >
+      <OnboardingShell stepKey={step} onBack={goBack} progress={progress}>
         <div className="flex flex-col gap-6">
           <div className="flex items-start gap-3">
             <MascotAvatar size={56} />
             <ChatBubble>In welchem Bundesland gehst du zur Schule?</ChatBubble>
           </div>
-          <ChoiceList options={BUNDESLAENDER} value={bundesland} onChange={setBundesland} columns={2} />
+          <ChoiceList options={BUNDESLAENDER} value={bundesland}
+            onChange={(v) => pickAndGo(() => setBundesland(v), () => setStep('schoolType'))} columns={2} />
         </div>
       </OnboardingShell>
     );
@@ -78,15 +86,14 @@ export default function CompleteProfileSheet({ requireKiConsent, onClose, onDone
   // ===== SCHRITT: SCHULFORM =====
   if (step === 'schoolType') {
     return (
-      <OnboardingShell stepKey={step} onBack={goBack} progress={progress}
-        footer={<PrimaryButton disabled={!schoolType} onClick={() => setStep('grade')}>Weiter</PrimaryButton>}
-      >
+      <OnboardingShell stepKey={step} onBack={goBack} progress={progress}>
         <div className="flex flex-col gap-6">
           <div className="flex items-start gap-3">
             <MascotAvatar size={56} />
             <ChatBubble>Auf welche Schule gehst du?</ChatBubble>
           </div>
-          <ChoiceList options={SCHOOL_TYPES} value={schoolType} onChange={(v) => { setSchoolType(v); setGrade(''); }} columns={2} />
+          <ChoiceList options={SCHOOL_TYPES} value={schoolType}
+            onChange={(v) => pickAndGo(() => { setSchoolType(v); setGrade(''); }, () => setStep('grade'))} columns={2} />
         </div>
       </OnboardingShell>
     );
@@ -94,19 +101,8 @@ export default function CompleteProfileSheet({ requireKiConsent, onClose, onDone
 
   // ===== SCHRITT: KLASSENSTUFE =====
   if (step === 'grade') {
-    const isLast = !requireKiConsent;
     return (
-      <OnboardingShell stepKey={step} onBack={goBack} progress={progress}
-        footer={
-          <PrimaryButton
-            disabled={!grade || busy}
-            loading={busy}
-            onClick={() => (isLast ? persist() : setStep('kiConsent'))}
-          >
-            {isLast ? 'Fertig' : 'Weiter'}
-          </PrimaryButton>
-        }
-      >
+      <OnboardingShell stepKey={step} onBack={goBack} progress={progress}>
         <div className="flex flex-col gap-6">
           <div className="flex items-start gap-3">
             <MascotAvatar size={56} />
@@ -115,7 +111,7 @@ export default function CompleteProfileSheet({ requireKiConsent, onClose, onDone
           <ChoiceList
             options={gradesForSchoolType(schoolType)}
             value={grade}
-            onChange={setGrade}
+            onChange={(v) => pickAndGo(() => setGrade(v), () => (requireKiConsent ? setStep('kiConsent') : persist()))}
             columns={schoolType === 'Berufsschule' ? 1 : 3}
           />
         </div>

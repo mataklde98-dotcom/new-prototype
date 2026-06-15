@@ -33,7 +33,6 @@ import LernStreakScreen from "./components/LernStreakScreen";
 import CreditHistoryScreen from "./components/CreditHistoryScreen";
 import OnboardingTrialPopup from "./components/OnboardingTrialPopup";
 import AuthWrapper from "@/app/components/AuthWrapper";
-import DemoSeedPanel from "@/app/components/DemoSeedPanel";
 import ParentDashboard from "@/app/components/parent/ParentDashboard";
 import { ScreenManager } from "@/app/components/ScreenManager";
 import { MobileRouteTransition } from "@/app/components/MobileRouteTransition";
@@ -112,8 +111,6 @@ export default function App() {
           )
         }
       </AuthWrapper>
-      {/* Demo-Seeding: schwebender Knopf für Präsentations-Zustände (Onboarding v5) */}
-      <DemoSeedPanel />
     </>
   );
 }
