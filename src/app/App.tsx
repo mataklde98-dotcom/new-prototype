@@ -31,7 +31,6 @@ import TutoringExplainScreen from "./components/TutoringExplainScreen";
 import ExtraSessionsScreen from "./components/ExtraSessionScreen";
 import LernStreakScreen from "./components/LernStreakScreen";
 import CreditHistoryScreen from "./components/CreditHistoryScreen";
-import OnboardingTrialPopup from "./components/OnboardingTrialPopup";
 import AuthWrapper from "@/app/components/AuthWrapper";
 import ParentDashboard from "@/app/components/parent/ParentDashboard";
 import { ScreenManager } from "@/app/components/ScreenManager";
@@ -154,37 +153,6 @@ function AppContent({ userData, onLogout }: { userData: any; onLogout: () => voi
 
   // Pending Teacher Meeting — when tapping an anstehende/vergangene Karte im Lehrerprofil, Meetings-Detail direkt öffnen
   const [pendingTeacherMeeting, setPendingTeacherMeeting] = useState<Meeting | null>(null);
-
-  // ===== ONBOARDING TRIAL POPUP =====
-  // Prototyping-Modus: Popup wird nach jeder Registrierung angezeigt,
-  // aber NICHT nach einem normalen Login. Das `isNewRegistration`-Flag
-  // wird nur in RegisterScreen gesetzt.
-  const [showOnboardingTrial, setShowOnboardingTrial] = useState(false);
-
-  useEffect(() => {
-    const isNewReg = localStorage.getItem('isNewRegistration');
-    if (isNewReg) {
-      // Prototyping: Immer nach Registrierung anzeigen, auch wenn Trial schon mal gestartet wurde
-      const timer = setTimeout(() => setShowOnboardingTrial(true), 700);
-      return () => clearTimeout(timer);
-    }
-    // --- Produktions-Logik (später aktivieren): ---
-    // if (isNewReg && !localStorage.getItem('trialStartedAt')) {
-    //   const timer = setTimeout(() => setShowOnboardingTrial(true), 700);
-    //   return () => clearTimeout(timer);
-    // }
-  }, []);
-
-  const handleStartTrial = () => {
-    localStorage.setItem('trialStartedAt', new Date().toISOString());
-    localStorage.removeItem('isNewRegistration');
-    setShowOnboardingTrial(false);
-  };
-
-  const handleDismissTrial = () => {
-    localStorage.removeItem('isNewRegistration');
-    setShowOnboardingTrial(false);
-  };
 
   // ===== CUSTOM HOOKS (State Management) =====
   const navigation = useNavigation();
@@ -1072,14 +1040,6 @@ function AppContent({ userData, onLogout }: { userData: any; onLogout: () => voi
 
       {/* Developer Console (Cmd/Ctrl + Shift + E) */}
       <DeveloperConsole />
-
-      {/* Onboarding Trial Popup — first login after registration */}
-      {showOnboardingTrial && (
-        <OnboardingTrialPopup
-          onStartTrial={handleStartTrial}
-          onDismiss={handleDismissTrial}
-        />
-      )}
 
       {/* Debug Layout Overlay (Ctrl+Shift+D) — Desktop only, temporary */}
       {!isMobile && (
