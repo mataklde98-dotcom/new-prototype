@@ -73,6 +73,57 @@ export function MascotAvatar({ size = 96 }: { size?: number }) {
   );
 }
 
+// ===== MASKOTTCHEN-HERO (Profil-Screens, prominent + dezenter Glow) =====
+// Größere, freigestellte Variante für die zentrierten „Profil vervollständigen"-Screens
+// (Intro/Lernbegleiter/Fertig). Bewusst SUBTILER als der Willkommens-Hero: nur ein weicher
+// Brand-Schein, KEIN Szenen-Hintergrund/keine Icons — damit der Inhalt im Fokus bleibt.
+//
+// AUSTAUSCHBAR: Um später einen 3D-Avatar/ein Modell einzusetzen, NUR den <img> im
+// „MASKOTTCHEN-RENDER-SLOT" unten gegen das 3D-Element (z.B. <canvas>) tauschen — Layout-
+// Rahmen (size), Glow und Positionierung bleiben gleich, die Screens müssen nicht angefasst
+// werden. Der Glow ist absolut positioniert und ragt über den Layout-Rahmen hinaus, ohne die
+// Layout-Höhe zu vergrößern (kein zusätzliches Verschieben des Inhalts).
+export function OnbMascotHero({
+  src = mascotMinion,
+  size = 140,
+  glow = true,
+}: {
+  src?: string;
+  size?: number;
+  /** false, wenn das Bild bereits einen Glow enthält (vermeidet doppelten Schein). */
+  glow?: boolean;
+}) {
+  return (
+    <div
+      className="relative flex items-center justify-center shrink-0"
+      style={{ width: size }}
+      aria-hidden
+    >
+      {/* Dezenter, weicher Glow hinter dem Maskottchen (überlappt den Rahmen, ohne ihn zu vergrößern) */}
+      {glow && (
+        <div
+          className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none"
+          style={{
+            width: size * 1.7,
+            height: size * 1.7,
+            background:
+              'radial-gradient(circle at 50% 50%, rgba(0,184,148,0.22) 0%, rgba(0,147,121,0.10) 42%, transparent 70%)',
+            filter: 'blur(2px)',
+          }}
+        />
+      )}
+      {/* ===== MASKOTTCHEN-RENDER-SLOT (austauschbar gegen 3D-Avatar) ===== */}
+      <img
+        src={src}
+        alt=""
+        draggable={false}
+        className="relative select-none"
+        style={{ width: '100%', height: 'auto', display: 'block' }}
+      />
+    </div>
+  );
+}
+
 // ===== CHAT-BUBBLE (Maskottchen spricht) =====
 export function ChatBubble({ children }: { children: React.ReactNode }) {
   return (
@@ -420,7 +471,7 @@ export function OnbToggleRow({
   return (
     <div
       className="flex items-center gap-4 px-4 py-4 rounded-2xl"
-      style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}
+      style={{ background: 'rgba(255,255,255,0.055)', border: '1px solid rgba(255,255,255,0.14)' }}
     >
       <div className="flex-1 min-w-0">
         <div className="font-['Poppins:SemiBold',sans-serif] text-[15px] text-white">{title}</div>

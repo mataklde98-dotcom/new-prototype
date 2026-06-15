@@ -13,12 +13,16 @@ import { identityService } from '@/services/identityService';
 import { getUserStorageKey } from '@/lib/auth';
 import { useUser } from '@/contexts/UserContext';
 import LegalScreen from '@/app/components/LegalScreen';
+import mascotProfilIntro from '@/assets/mascot-profil-intro.png';
+import mascotProfilHilfe from '@/assets/mascot-profil-hilfe.png';
+import mascotProfilFertig from '@/assets/mascot-profil-fertig.png';
 import {
   BRAND,
   BUNDESLAENDER,
   SCHOOL_TYPES,
   gradesForSchoolType,
   MascotAvatar,
+  OnbMascotHero,
   ChatBubble,
   OnboardingShell,
   PrimaryButton,
@@ -140,8 +144,8 @@ export default function CompleteProfileSheet({ onClose, onDone }: CompleteProfil
         footer={<PrimaryButton onClick={() => go('bundesland')}>Weiter</PrimaryButton>}
       >
         <div className="flex flex-col gap-6">
-          <div className="flex flex-col items-center text-center gap-4">
-            <MascotAvatar size={96} />
+          <div className="flex flex-col items-center text-center gap-3 -mt-10">
+            <OnbMascotHero src={mascotProfilIntro} glow={false} size={210} />
             <OnbHeading
               title="Lass uns SoStudy an dich anpassen"
               subtitle="Damit SoStudy dir passende Themen, Karteikarten, Übungen und Prüfungssimulationen zeigen kann, brauchen wir ein paar Angaben zu deinem Schulprofil."
@@ -275,8 +279,8 @@ export default function CompleteProfileSheet({ onClose, onDone }: CompleteProfil
         footer={<PrimaryButton onClick={() => go('fertig')}>Auswahl speichern</PrimaryButton>}
       >
         <div className="flex flex-col gap-6">
-          <div className="flex flex-col items-center text-center gap-4">
-            <MascotAvatar size={96} />
+          <div className="flex flex-col items-center text-center gap-3 -mt-10">
+            <OnbMascotHero src={mascotProfilHilfe} glow={false} size={210} />
             <OnbHeading title="Bekomme passendere Hilfe statt allgemeiner Antworten" />
           </div>
           <div className="flex flex-col gap-3">
@@ -310,8 +314,8 @@ export default function CompleteProfileSheet({ onClose, onDone }: CompleteProfil
       footer={<PrimaryButton onClick={finish}>Loslegen</PrimaryButton>}
     >
       <div className="flex flex-col gap-6">
-        <div className="flex flex-col items-center text-center gap-4">
-          <MascotAvatar size={96} />
+        <div className="flex flex-col items-center text-center gap-3 -mt-10">
+          <OnbMascotHero src={mascotProfilFertig} glow={false} size={210} />
           <OnbHeading
             title="Dein Lernprofil ist fertig"
             subtitle="SoStudy ist jetzt auf dein Bundesland, deine Schulform und deine Klassenstufe eingestellt."
