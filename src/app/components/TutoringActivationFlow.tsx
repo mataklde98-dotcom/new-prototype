@@ -12,7 +12,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import {
   ArrowLeft, Globe, MapPin, Search, Check, CheckCircle2,
   Phone, Mail, BookOpen, GraduationCap, ChevronRight, Star, Clock,
-  User as UserIcon, Cake, ShieldCheck, Users, Hourglass,
+  User as UserIcon, Cake, ShieldCheck, Users, Hourglass, X,
 } from 'lucide-react';
 import { useUser } from '@/contexts/UserContext';
 import type { TutoringRequestData } from '@/contexts/UserContext';
@@ -27,7 +27,7 @@ import { identityService } from '@/services/identityService';
 import { familyService } from '@/services/familyService';
 import type { SoStudyIdentity } from '@/types/identity';
 import { usePhoneOtp } from '@/hooks/usePhoneOtp';
-import { PhoneEntryFields, OtpEntryFields, PhoneVerifiedRow } from '@/app/components/onboarding/PhoneOtpFields';
+import { PhoneEntryFields, OtpEntryFields } from '@/app/components/onboarding/PhoneOtpFields';
 import { parentInviteService } from '@/services/parentInviteService';
 import type { ParentInvite } from '@/mocks/parentInvites.mock';
 import { clearUserSession } from '@/lib/auth';
@@ -735,11 +735,20 @@ function TutoringRequestFlow({
 //   minderjährig + kein Konto  → Eltern per E-Mail einladen (Änderung 7)
 // Erst nach bestandenem Gate wird der eigentliche Request-Flow gerendert.
 // ===================================================================
-type GateStep = 'age' | 'adultData' | 'consent';
+type GateStep = 'age' | 'adultData' | 'adultVerify' | 'consent';
 
-function GateShell({ onBack, children }: { onBack: () => void; children: React.ReactNode }) {
+function GateShell({ onBack, onClose, children }: { onBack: () => void; onClose?: () => void; children: React.ReactNode }) {
   return (
-    <div className="size-full flex flex-col overflow-hidden overscroll-none" style={{ background: '#0a0a0a' }}>
+    <div className="relative size-full flex flex-col overflow-hidden overscroll-none" style={{ background: '#0a0a0a' }}>
+      {onClose && (
+        <button
+          onClick={onClose}
+          aria-label="Schließen"
+          className="absolute top-7 right-6 z-10 w-9 h-9 flex items-center justify-center rounded-full bg-white/[0.06] border border-white/[0.08] text-white/60 active:text-white/90 active:scale-90 transition-all"
+        >
+          <X className="w-[18px] h-[18px]" />
+        </button>
+      )}
       <div className="flex-1 overflow-y-auto scrollbar-hide px-6 py-8 min-h-0">
         <div className="max-w-md mx-auto flex flex-col" style={{ minHeight: '100%' }}>
           <BackButton onClick={onBack} />
@@ -792,7 +801,14 @@ export default function TutoringActivationFlow(props: TutoringActivationFlowProp
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
-  const phoneOtp = usePhoneOtp();
+  // Bei erfolgreicher Code-Bestätigung: Klarname + Kontakt speichern und automatisch
+  // in den Request-Flow ("Nachhilfe aktivieren") weiterleiten.
+  const phoneOtp = usePhoneOtp(async (fullPhone) => {
+    await identityService.setRealName(`${firstName.trim()} ${lastName.trim()}`);
+    const updated = await identityService.setContact({ email: email.trim(), phone: fullPhone });
+    if (updated) setIdentity(updated);
+    setEligible(true);
+  });
 
   // Für die Selbst-Aktivierung (18+) nötige Nachhilfe-Kontaktdaten bereits vollständig?
   const adultDataComplete = (id: SoStudyIdentity) =>
@@ -845,19 +861,17 @@ export default function TutoringActivationFlow(props: TutoringActivationFlowProp
     }
   };
 
-  const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
-  const adultFormValid =
-    firstName.trim().length >= 2 && lastName.trim().length >= 1 && emailValid && phoneOtp.verified;
+  // Name vollständig? → erst dann darf der SMS-Code angefordert werden.
+  // (E-Mail kommt bereits aus der Registrierung und wird nicht erneut abgefragt.)
+  const adultBaseValid =
+    firstName.trim().length >= 2 && lastName.trim().length >= 1;
 
-  // 18+-Datenschritt absenden: Klarname + E-Mail + verifiziertes Telefon speichern (ersetzt NICHT
-  // den Spitznamen) und in den Request-Flow wechseln.
-  const submitAdultData = async () => {
-    if (!adultFormValid || busy) return;
-    setBusy(true);
-    await identityService.setRealName(`${firstName.trim()} ${lastName.trim()}`);
-    const updated = await identityService.setContact({ email: email.trim(), phone: phoneOtp.fullPhone });
-    setBusy(false);
-    if (updated) { setIdentity(updated); setEligible(true); }
+  // Daten abschicken: SMS-Code senden und auf den separaten Bestätigungs-Screen wechseln.
+  // Die finale Speicherung + Weiterleitung passiert nach der Code-Bestätigung (onVerified oben).
+  const sendAdultCode = async () => {
+    if (!adultBaseValid || phoneOtp.busy) return;
+    await phoneOtp.sendCode();
+    setGateStep('adultVerify');
   };
 
   // ----- Eltern-Einladung (Pfad 4, Änderung 7) -----
@@ -975,46 +989,40 @@ export default function TutoringActivationFlow(props: TutoringActivationFlowProp
             className="w-full px-5 py-3.5 rounded-2xl bg-white/[0.05] border border-white/[0.10] text-white font-['Poppins:Medium',sans-serif] outline-none focus:border-[#009379] transition-colors"
             style={{ fontSize: 16 }}
           />
-          <input
-            type="email"
-            inputMode="email"
-            autoCapitalize="none"
-            autoCorrect="off"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="E-Mail"
-            className="w-full px-5 py-3.5 rounded-2xl bg-white/[0.05] border border-white/[0.10] text-white font-['Poppins:Medium',sans-serif] outline-none focus:border-[#009379] transition-colors"
-            style={{ fontSize: 16 }}
-          />
         </div>
 
-        {/* Telefonnummer (Pflicht, per SMS-OTP verifiziert) */}
+        {/* Telefonnummer (Pflicht) — Bestätigung erfolgt auf dem nächsten Screen */}
         <div className="mb-6">
           <label className="font-['Poppins:Medium',sans-serif] text-[13px] text-white/60 px-1 mb-2 block">
             Telefonnummer
           </label>
-          {phoneOtp.stage === 'verified' ? (
-            <PhoneVerifiedRow otp={phoneOtp} />
-          ) : phoneOtp.stage === 'verify' ? (
-            <div className="space-y-3">
-              <OtpEntryFields otp={phoneOtp} />
-              <Button onClick={phoneOtp.verify} disabled={phoneOtp.otp.length !== 6 || phoneOtp.busy}>
-                {phoneOtp.busy ? 'Prüfen…' : 'Code bestätigen'}
-              </Button>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              <PhoneEntryFields otp={phoneOtp} />
-              <Button onClick={phoneOtp.sendCode} disabled={!phoneOtp.phoneValid || phoneOtp.busy}>
-                {phoneOtp.busy ? 'Senden…' : 'Code per SMS senden'}
-              </Button>
-            </div>
-          )}
+          <PhoneEntryFields otp={phoneOtp} />
         </div>
 
-        <Button onClick={submitAdultData} disabled={!adultFormValid || busy}>
-          {busy ? 'Speichern…' : 'Weiter zur Fächer-Auswahl'}
+        <Button onClick={sendAdultCode} disabled={!adultBaseValid || phoneOtp.busy}>
+          {phoneOtp.busy ? 'Senden…' : 'Code per SMS senden'}
         </Button>
+      </GateShell>
+    );
+  }
+
+  // ----- CODE-BESTÄTIGUNG (eigener Screen) → danach automatisch zur Fächer-Auswahl -----
+  if (gateStep === 'adultVerify') {
+    return (
+      <GateShell onBack={() => { phoneOtp.changeNumber(); setGateStep('adultData'); }}>
+        <div className="w-14 h-14 rounded-2xl flex items-center justify-center mb-5" style={{ background: 'rgba(0,184,148,0.12)' }}>
+          <ShieldCheck className="w-7 h-7" style={{ color: '#00B894' }} />
+        </div>
+        <StepHeader
+          title="Code bestätigen"
+          subtitle={`Wir haben dir einen 6-stelligen Code an ${phoneOtp.fullPhone} geschickt.`}
+        />
+        <OtpEntryFields otp={phoneOtp} />
+        <div className="mt-5">
+          <Button onClick={phoneOtp.verify} disabled={phoneOtp.otp.length !== 6 || phoneOtp.busy}>
+            {phoneOtp.busy ? 'Prüfen…' : 'Code bestätigen'}
+          </Button>
+        </div>
       </GateShell>
     );
   }
@@ -1025,8 +1033,11 @@ export default function TutoringActivationFlow(props: TutoringActivationFlowProp
   const hasParent = !!family;
   const parentConsent = !!childEntry?.tutoringConsent;
 
+  // Auf dem "Einladung gesendet"-Status: Schließen oben rechts als X (statt unten).
+  const showCloseX = !hasParent && !!parentInvite && !editingInviteEmail;
+
   return (
-    <GateShell onBack={onClose}>
+    <GateShell onBack={onClose} onClose={showCloseX ? onClose : undefined}>
       {hasParent && parentConsent && (
         <>
           <div className="w-14 h-14 rounded-2xl flex items-center justify-center mb-5" style={{ background: 'rgba(0,184,148,0.12)' }}>
@@ -1091,17 +1102,6 @@ export default function TutoringActivationFlow(props: TutoringActivationFlowProp
                   className="w-full px-5 py-3.5 rounded-2xl bg-white/[0.05] border border-white/[0.10] text-white font-['Poppins:Medium',sans-serif] outline-none focus:border-[#009379] transition-colors"
                   style={{ fontSize: 16 }}
                 />
-                {!editingInviteEmail && (
-                  <input
-                    type="tel"
-                    inputMode="tel"
-                    value={parentMobile}
-                    onChange={(e) => setParentMobile(e.target.value)}
-                    placeholder="Mobilnummer der Eltern (optional, für SMS)"
-                    className="w-full px-5 py-3.5 rounded-2xl bg-white/[0.05] border border-white/[0.10] text-white font-['Poppins:Medium',sans-serif] outline-none focus:border-[#009379] transition-colors"
-                    style={{ fontSize: 16 }}
-                  />
-                )}
               </div>
               <Button
                 onClick={editingInviteEmail ? submitChangeInviteEmail : sendParentInvite}
@@ -1161,12 +1161,6 @@ export default function TutoringActivationFlow(props: TutoringActivationFlowProp
                   className="w-full text-center py-2.5 font-['Poppins:Medium',sans-serif] text-[13px] text-white/40 active:text-white/65 transition-colors"
                 >
                   Einladung als Elternteil öffnen ▶
-                </button>
-                <button
-                  onClick={onClose}
-                  className="w-full text-center py-2 font-['Poppins:Medium',sans-serif] text-[14px] text-white/45 active:text-white/70 transition-colors"
-                >
-                  Schließen
                 </button>
               </div>
             </>

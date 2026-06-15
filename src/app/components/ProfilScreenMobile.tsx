@@ -7,7 +7,7 @@
 // signals open/close via callback props.
 
 import React, { useState, useRef } from 'react';
-import { GraduationCap, Clock, Book, User, Bell, Lock, LogOut, Shield, FileText, ChevronRight, BookOpen, ClipboardList, NotebookPen, Pencil, BarChart3, Globe, MapPin, Phone, Mail, CheckCircle2, Zap, Scale, Building2, Crown, Headset } from 'lucide-react';
+import { GraduationCap, Clock, Book, User, Bell, Lock, LogOut, Shield, FileText, ChevronRight, BookOpen, ClipboardList, NotebookPen, Pencil, BarChart3, Globe, MapPin, Phone, Mail, CheckCircle2, Scale, Building2, Crown, Headset } from 'lucide-react';
 import { Lightbulb } from 'lucide-react';
 import ProfileImageEditor from './ProfileImageEditor';
 import NotificationSettingsPopup from './NotificationSettingsPopup';
@@ -343,7 +343,7 @@ export default React.memo(function ProfilScreenMobile({
                   className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0"
                   style={{ background: 'linear-gradient(135deg, #00B894, #009379)' }}
                 >
-                  <Zap className="w-6 h-6 text-white" />
+                  <GraduationCap className="w-6 h-6 text-white" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <h3 className="font-['Poppins:SemiBold',sans-serif] text-[15px] text-white mb-0.5">

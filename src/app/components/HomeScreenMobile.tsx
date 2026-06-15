@@ -12,7 +12,7 @@ import imgInformation2 from "figma:asset/e51112c4419b0e3840e36fc1512cdd56c4bab64
 import img5Be1B62F1B70E1Fb790B348D76Ddb4Becf81401B9B6732 from "figma:asset/49d3c05880ae6ac2ad58868ed10af9056db78537.png";
 import imgEllipse2 from "figma:asset/11a2b9c104f9ad331556dffc2e3e770195913d21.png";
 import { Sparkles, GraduationCap } from 'lucide-react';
-import { Flame, TrendingUp, TrendingDown, ChevronRight, Minus, Lock, Zap, CheckCircle2, Phone, Mail, Clock, Headset, Star, AlertTriangle, Target, Brain, ShieldAlert, ClipboardList, NotebookPen, Layers } from 'lucide-react';
+import { Flame, TrendingUp, TrendingDown, ChevronRight, Minus, Lock, CheckCircle2, Phone, Mail, Clock, Headset, Star, AlertTriangle, Target, Brain, ShieldAlert, ClipboardList, NotebookPen, Layers } from 'lucide-react';
 import { useUser } from '@/contexts/UserContext';
 import { LEARNING_STREAK } from "@/app/components/ProfileAnalyticsScreen";
 import { OVERALL_PROGRESS, MOCK_SUBJECTS, MOCK_ACTIVE_GOALS, MOCK_WEAKNESSES, MOCK_KNOWLEDGE_GAPS_SELF, MOCK_RISKS } from "@/app/components/ProfileAnalyticsScreen";
@@ -727,7 +727,7 @@ export default React.memo(function HomeScreenMobile({
                     className="w-14 h-14 rounded-2xl flex items-center justify-center flex-shrink-0"
                     style={{ background: 'linear-gradient(135deg, #00B894, #009379)' }}
                   >
-                    <Zap className="w-7 h-7 text-white" />
+                    <GraduationCap className="w-7 h-7 text-white" />
                   </div>
                   <div className="flex-1 min-w-0">
                     <h3 className="font-['Poppins:SemiBold',sans-serif] text-[15px] text-white mb-0.5">
