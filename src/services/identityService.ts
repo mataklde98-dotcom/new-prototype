@@ -33,14 +33,13 @@ const USER_DATA_KEY = 'userData';         // bestehende Kompat-Shape (UserContex
 // der Klarname (real_name) bleibt für den Nachhilfe-Kontext separat.
 /**
  * Profil vollständig? (treibt den CompleteProfile-Banner auf dem Dashboard.)
- * Schüler: Schul-Daten gesetzt UND — bei 16+ — KI-Consent erteilt. Eltern gelten immer als vollständig.
- * Unter-16 (anonym) braucht KEINEN expliziten KI-Consent-Schritt (über AGB/Eltern abgedeckt).
+ * Schüler: Schul-Daten (Bundesland/Schulform/Klasse) gesetzt. Eltern gelten immer als vollständig.
+ * Hinweis: KI-Consent ist KEINE Voraussetzung mehr für die Profil-Vollständigkeit
+ * (KI-Nutzung = notwendige Verarbeitung zur Vertragserfüllung, kein eigener Einwilligungsschritt).
  */
 export function isProfileComplete(identity: SoStudyIdentity): boolean {
   if (identity.role !== 'student') return true;
-  const hasSchool = !!(identity.bundesland && identity.schoolType && identity.grade);
-  const hasKi = identity.ageBracket === 'under16' || identity.kiConsent.accepted;
-  return hasSchool && hasKi;
+  return !!(identity.bundesland && identity.schoolType && identity.grade);
 }
 
 export function identityToUserData(identity: SoStudyIdentity) {

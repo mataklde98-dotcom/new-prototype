@@ -50,7 +50,6 @@ interface AddChildFlowProps {
 // Reihenfolge = Empfehlung: E-Mail zuerst (sicherster Weg, Kind nutzt eigene Auth).
 const MODE_CARDS: { mode: ActivationMode; emoji: string; title: string; subtitle: string }[] = [
   { mode: 'C', emoji: '✉️', title: 'Per E-Mail einladen', subtitle: 'Dein Kind meldet sich selbst mit Apple oder Google an.' },
-  { mode: 'A', emoji: '🔑', title: 'Login-Code erstellen', subtitle: 'Wir erzeugen einen Code, den du deinem Kind weitergibst.' },
   { mode: 'B', emoji: '🔗', title: 'Bestehendes Konto verknüpfen', subtitle: 'Dein Kind nutzt SoStudy schon? Gib seinen Login-Code ein.' },
 ];
 
@@ -383,18 +382,13 @@ export default function AddChildFlow({ familyId, onDone, onCancel, allowSkip }: 
           </div>
           <Field label="Vor- und Nachname des Kindes *">
             <TextInput value={childReal} onChange={setChildReal} placeholder="Vor- und Nachname" autoFocus />
+            <p className="font-['Poppins:Regular',sans-serif] text-[12px] text-white/40 px-1">
+              Wird für die spätere Nachhilfe-Betreuung verwendet.
+            </p>
           </Field>
           <Field label="E-Mail des Kindes *">
             <TextInput value={childEmail} onChange={setChildEmail} placeholder="kind@beispiel.de" type="email" />
           </Field>
-          <Field label="Schulform (optional)">
-            <ChoiceList options={SCHOOL_TYPES} value={childSchool} onChange={(v) => { setChildSchool(v); setChildGrade(''); }} columns={2} />
-          </Field>
-          {childSchool && (
-            <Field label="Klassenstufe (optional)">
-              <ChoiceList options={gradesForSchoolType(childSchool)} value={childGrade} onChange={setChildGrade} columns={childSchool === 'Berufsschule' ? 1 : 3} />
-            </Field>
-          )}
           <p className="font-['Poppins:Regular',sans-serif] text-[13px] text-white/45 px-1">
             Dein Kind öffnet die Einladung und meldet sich selbst mit Apple oder Google an — den Spitznamen wählt es dabei selbst.
           </p>

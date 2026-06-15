@@ -301,6 +301,160 @@ export function ChoiceList({
   );
 }
 
+// ===== SCREEN-HEADING (Titel + Untertitel, für Intro-/Info-/Erfolgs-Screens) =====
+export function OnbHeading({ title, subtitle }: { title: string; subtitle?: string }) {
+  return (
+    <div>
+      <h2 className="font-['Poppins:SemiBold',sans-serif] text-[22px] leading-[1.25] text-white">
+        {title}
+      </h2>
+      {subtitle && (
+        <p className="font-['Poppins:Regular',sans-serif] text-[14px] leading-[1.5] text-white/60 mt-2">
+          {subtitle}
+        </p>
+      )}
+    </div>
+  );
+}
+
+// ===== INFO-LIST-ITEM (Icon-Chip + Titel + Text, z.B. Intro-Punkte) =====
+export function OnbInfoItem({
+  icon,
+  title,
+  text,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  text: string;
+}) {
+  return (
+    <div className="flex items-start gap-3.5">
+      <div
+        className="w-11 h-11 shrink-0 flex items-center justify-center rounded-2xl"
+        style={{ background: 'rgba(0,147,121,0.16)', border: '1px solid rgba(0,147,121,0.30)' }}
+      >
+        {icon}
+      </div>
+      <div className="flex-1 pt-0.5">
+        <div className="font-['Poppins:SemiBold',sans-serif] text-[15px] text-white">{title}</div>
+        <div className="font-['Poppins:Regular',sans-serif] text-[13px] leading-[1.45] text-white/55 mt-0.5">
+          {text}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ===== CHECK-LIST (Brand-Häkchen + Text, z.B. Lernfortschritt-/Erfolgs-Screen) =====
+// Items mit Trenner " – " werden zweizeilig dargestellt: fetter Nutzen-Teil +
+// hellerer Zusatz. Items ohne Trenner bleiben einzeilig (unveränderter Stil).
+export function OnbCheckList({ items }: { items: string[] }) {
+  return (
+    <div className="flex flex-col gap-3">
+      {items.map((it, i) => {
+        const sepIdx = it.indexOf(' – ');
+        const lead = sepIdx >= 0 ? it.slice(0, sepIdx) : it;
+        const rest = sepIdx >= 0 ? it.slice(sepIdx + 3) : '';
+        return (
+          <div key={i} className="flex items-start gap-3">
+            <div
+              className="w-6 h-6 shrink-0 flex items-center justify-center rounded-full mt-0.5"
+              style={{ background: 'rgba(0,147,121,0.16)' }}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                <path d="M5 13l4 4L19 7" stroke={BRAND.primaryLight} strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </div>
+            {rest ? (
+              <div className="flex-1 pt-0.5">
+                <div className="font-['Poppins:SemiBold',sans-serif] text-[15px] leading-[1.35] text-white">
+                  {lead}
+                </div>
+                <div className="font-['Poppins:Regular',sans-serif] text-[13px] leading-[1.4] text-white/55 mt-0.5">
+                  {rest}
+                </div>
+              </div>
+            ) : (
+              <span className="font-['Poppins:Regular',sans-serif] text-[14px] leading-[1.45] text-white/80 flex-1 pt-0.5">
+                {lead}
+              </span>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ===== TOGGLE (Brand-Switch, an/aus) =====
+export function OnbToggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      onClick={() => onChange(!checked)}
+      className="relative w-[46px] h-[28px] rounded-full shrink-0 transition-colors duration-300"
+      style={{ background: checked ? BRAND.primary : 'rgba(255,255,255,0.12)' }}
+    >
+      <span
+        className="absolute top-[3px] w-[22px] h-[22px] rounded-full bg-white shadow-md transition-all duration-300"
+        style={{ left: checked ? 21 : 3 }}
+      />
+    </button>
+  );
+}
+
+// ===== TOGGLE-ROW (Glass-Card: Titel + Erklärtext links, Toggle rechts) =====
+export function OnbToggleRow({
+  title,
+  text,
+  checked,
+  onChange,
+}: {
+  title: string;
+  text: string;
+  checked: boolean;
+  onChange: (v: boolean) => void;
+}) {
+  return (
+    <div
+      className="flex items-center gap-4 px-4 py-4 rounded-2xl"
+      style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}
+    >
+      <div className="flex-1 min-w-0">
+        <div className="font-['Poppins:SemiBold',sans-serif] text-[15px] text-white">{title}</div>
+        <div className="font-['Poppins:Regular',sans-serif] text-[13px] leading-[1.45] text-white/55 mt-1">
+          {text}
+        </div>
+      </div>
+      <OnbToggle checked={checked} onChange={onChange} />
+    </div>
+  );
+}
+
+// ===== HINWEIS (dezenter Fußnoten-Text) =====
+export function OnbHint({ children }: { children: React.ReactNode }) {
+  return (
+    <p className="font-['Poppins:Regular',sans-serif] text-[12px] leading-[1.5] text-white/40">
+      {children}
+    </p>
+  );
+}
+
+// ===== INLINE-LINK (dezent, unterstrichen) =====
+export function OnbLink({ children, onClick }: { children: React.ReactNode; onClick?: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="font-['Poppins:Medium',sans-serif] text-[13px] text-white/65 underline underline-offset-2 active:text-white/90 transition-colors"
+    >
+      {children}
+    </button>
+  );
+}
+
 // ===== BIG SELECTION CARD (Rolle-Auswahl) =====
 export function BigSelectionCard({
   emoji,

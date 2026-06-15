@@ -368,7 +368,7 @@ export default function NewRegistrationFlow() {
 
       <h2 className="font-['Poppins:SemiBold',sans-serif] text-[16px] text-white mt-6 mb-3">Wer bist du?</h2>
       <div className="grid grid-cols-2 gap-3 items-stretch">
-        <RoleCard accent={role === 'student'} icon={<GraduationCap size={30} color={BRAND.primaryLight} strokeWidth={1.8} />}
+        <RoleCard accent={role === 'student'} icon={<GraduationCap size={30} color={role === 'student' ? BRAND.primaryLight : 'rgba(255,255,255,0.82)'} strokeWidth={1.8} />}
           title="Ich bin Schüler:in" subtitle="Lerne, erstelle und organisiere deine Materialien." onClick={() => pickRole('student')} />
         <RoleCard accent={role === 'parent'} icon={<PeopleRounded style={{ fontSize: 32, color: role === 'parent' ? BRAND.primaryLight : 'rgba(255,255,255,0.82)' }} />}
           title="Ich bin Elternteil" subtitle="Unterstütze dein Kind und behalte den Überblick." onClick={() => pickRole('parent')} />

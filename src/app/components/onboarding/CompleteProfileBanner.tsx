@@ -25,7 +25,6 @@ export default function CompleteProfileBanner() {
   // Overlay-Flow (über dem Home gerendert, solange geöffnet).
   const sheet = sheetOpen && identity ? (
     <CompleteProfileSheet
-      requireKiConsent={identity.ageBracket !== 'under16'}
       onClose={() => setSheetOpen(false)}
       onDone={() => {
         setSheetOpen(false);
